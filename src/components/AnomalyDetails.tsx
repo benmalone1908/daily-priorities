@@ -3,13 +3,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+
+interface Anomaly {
+  campaign: string;
+  DATE: string;
+  actualValue: number;
+  mean: number;
+  deviation: number;
+}
 
 interface AnomalyDetailsProps {
-  anomalies: any[];
+  anomalies: Anomaly[];
   metric: string;
 }
 
 const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
+  const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
+
+  // Get unique campaigns
+  const campaigns = Array.from(new Set(anomalies.map(a => a.campaign))).sort();
+  
   // Group anomalies by campaign
   const anomaliesByCampaign = anomalies.reduce((acc, anomaly) => {
     if (!acc[anomaly.campaign]) {
@@ -17,7 +32,12 @@ const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
     }
     acc[anomaly.campaign].push(anomaly);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, Anomaly[]>);
+
+  // Filter campaigns based on selection
+  const filteredCampaigns = selectedCampaign === "all" 
+    ? Object.entries(anomaliesByCampaign)
+    : Object.entries(anomaliesByCampaign).filter(([campaign]) => campaign === selectedCampaign);
 
   return (
     <Dialog>
@@ -28,11 +48,24 @@ const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle>{metric} Anomalies Detail</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{metric} Anomalies Detail</DialogTitle>
+            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Filter by campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {campaigns.map(campaign => (
+                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </DialogHeader>
         <ScrollArea className="h-[60vh] mt-4">
           <div className="space-y-6">
-            {Object.entries(anomaliesByCampaign).map(([campaign, campaignAnomalies]) => (
+            {filteredCampaigns.map(([campaign, campaignAnomalies]) => (
               <Card key={campaign} className="p-4">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">

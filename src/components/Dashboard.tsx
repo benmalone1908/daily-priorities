@@ -1,5 +1,5 @@
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -13,6 +13,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 
 interface DashboardProps {
@@ -20,6 +21,13 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ data }: DashboardProps) => {
+  const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
+
+  const campaigns = useMemo(() => {
+    if (!data.length) return [];
+    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
+  }, [data]);
+
   const anomalies = useMemo(() => {
     if (!data.length) return null;
 
@@ -74,8 +82,13 @@ const Dashboard = ({ data }: DashboardProps) => {
   const aggregatedData = useMemo(() => {
     if (!data.length) return [];
 
+    // Filter data by selected campaign if needed
+    const filteredData = selectedCampaign === "all" 
+      ? data 
+      : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+
     // Group data by date
-    const dateGroups = data.reduce((acc, row) => {
+    const dateGroups = filteredData.reduce((acc, row) => {
       const date = row.DATE;
       if (!acc[date]) {
         acc[date] = {
@@ -95,7 +108,7 @@ const Dashboard = ({ data }: DashboardProps) => {
     return Object.values(dateGroups).sort((a: any, b: any) => 
       new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
     );
-  }, [data]);
+  }, [data, selectedCampaign]);
 
   if (!anomalies) return null;
 
@@ -120,7 +133,20 @@ const Dashboard = ({ data }: DashboardProps) => {
       </div>
 
       <Card className="p-6">
-        <h3 className="mb-4 text-lg font-semibold">Display Metrics Over Time</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
+          <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={aggregatedData}>
@@ -161,7 +187,20 @@ const Dashboard = ({ data }: DashboardProps) => {
       </Card>
 
       <Card className="p-6">
-        <h3 className="mb-4 text-lg font-semibold">Attribution Revenue Over Time</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
+          <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={aggregatedData}>
