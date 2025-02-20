@@ -20,17 +20,17 @@ interface AnomalyDetailsProps {
 }
 
 const getColorClasses = (deviation: number) => {
-  // Handle positive deviations (show in green)
-  if (deviation > 50) return 'bg-green-50 border-green-200 text-success';
-  if (deviation > 25) return 'bg-green-50 border-green-200 text-[#4ade80]';
-  if (deviation > 10) return 'bg-green-50 border-green-200 text-[#86efac]';
-  if (deviation > 0) return 'bg-green-50 border-green-200 text-[#bbf7d0]';
+  const absDeviation = Math.abs(deviation);
   
-  // Handle negative deviations (show in red)
-  if (deviation < -50) return 'bg-red-50 border-red-200 text-alert';
-  if (deviation < -25) return 'bg-red-50 border-red-200 text-[#f87171]';
-  if (deviation < -10) return 'bg-red-50 border-red-200 text-[#fca5a5]';
-  return 'bg-orange-50 border-orange-200 text-warning';
+  // The closer to 0%, the more green (normal)
+  if (absDeviation < 10) return 'bg-green-50 border-green-200 text-success';
+  if (absDeviation < 25) return 'bg-green-50 border-green-200 text-[#4ade80]';
+  if (absDeviation < 50) return 'bg-orange-50 border-orange-200 text-warning';
+  
+  // As deviation gets more extreme (in either direction), show redder colors
+  if (absDeviation < 100) return 'bg-red-50 border-red-200 text-[#fca5a5]';
+  if (absDeviation < 500) return 'bg-red-50 border-red-200 text-[#f87171]';
+  return 'bg-red-50 border-red-200 text-alert';
 };
 
 const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
