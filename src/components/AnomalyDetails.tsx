@@ -92,24 +92,27 @@ const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    {campaignAnomalies.map((anomaly, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`text-sm rounded-lg p-3 space-y-1 border ${getColorClasses(anomaly.deviation)}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          <span className="font-medium text-gray-900">Date: {anomaly.DATE}</span>
+                    {campaignAnomalies.map((anomaly, idx) => {
+                      const colorClasses = getColorClasses(anomaly.deviation);
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`text-sm rounded-lg p-3 space-y-1 border ${colorClasses}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className={`w-4 h-4 ${colorClasses.split(' ').find(c => c.startsWith('text-'))}`} />
+                            <span className="font-medium text-gray-900">Date: {anomaly.DATE}</span>
+                          </div>
+                          <div className="pl-6 space-y-1">
+                            <p className="text-gray-900">Value: {anomaly.actualValue.toLocaleString()}</p>
+                            <p className="text-gray-900">Campaign Average: {Math.round(anomaly.mean).toLocaleString()}</p>
+                            <p className={`font-medium ${colorClasses.split(' ').find(c => c.startsWith('text-'))}`}>
+                              Deviation: {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                            </p>
+                          </div>
                         </div>
-                        <div className="pl-6 space-y-1">
-                          <p className="text-gray-900">Value: {anomaly.actualValue.toLocaleString()}</p>
-                          <p className="text-gray-900">Campaign Average: {Math.round(anomaly.mean).toLocaleString()}</p>
-                          <p className="font-medium">
-                            Deviation: {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </Card>
