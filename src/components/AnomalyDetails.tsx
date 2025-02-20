@@ -19,6 +19,21 @@ interface AnomalyDetailsProps {
   metric: string;
 }
 
+const getColorClass = (deviation: number) => {
+  const absDeviation = Math.abs(deviation);
+  if (deviation > 0) {
+    if (absDeviation > 50) return 'text-success';
+    if (absDeviation > 25) return 'text-[#4ade80]';
+    if (absDeviation > 10) return 'text-[#86efac]';
+    return 'text-[#bbf7d0]';
+  } else {
+    if (absDeviation > 50) return 'text-alert';
+    if (absDeviation > 25) return 'text-[#f87171]';
+    if (absDeviation > 10) return 'text-[#fca5a5]';
+    return 'text-warning';
+  }
+};
+
 const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
 
@@ -86,7 +101,7 @@ const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
                         <div className="text-muted-foreground pl-6 space-y-1">
                           <p>Value: {anomaly.actualValue.toLocaleString()}</p>
                           <p>Campaign Average: {Math.round(anomaly.mean).toLocaleString()}</p>
-                          <p className={anomaly.deviation > 0 ? "text-alert" : "text-warning"}>
+                          <p className={getColorClass(anomaly.deviation)}>
                             Deviation: {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
                           </p>
                         </div>
