@@ -17,9 +17,11 @@ const Index = () => {
         </p>
       </div>
 
-      <div className="max-w-2xl mx-auto">
-        <FileUpload onDataLoaded={setData} />
-      </div>
+      {data.length === 0 && (
+        <div className="max-w-2xl mx-auto">
+          <FileUpload onDataLoaded={setData} />
+        </div>
+      )}
 
       {data.length > 0 && <Dashboard data={data} />}
     </div>
