@@ -9,6 +9,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Bar,
+  ComposedChart,
 } from "recharts";
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 
@@ -91,33 +93,83 @@ const Dashboard = ({ data }: DashboardProps) => {
       </div>
 
       <Card className="p-6">
-        <h3 className="mb-4 text-lg font-semibold">Metrics Over Time</h3>
+        <h3 className="mb-4 text-lg font-semibold">Display Metrics Over Time</h3>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <ComposedChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="DATE" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="IMPRESSIONS"
+              <YAxis 
+                yAxisId="left"
+                orientation="left"
                 stroke="#4ade80"
-                dot={false}
+                label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#f59e0b"
+                label={{ value: 'Clicks', angle: 90, position: 'insideRight' }}
+              />
+              <Tooltip />
+              <Bar
+                yAxisId="left"
+                dataKey="IMPRESSIONS"
+                fill="#4ade80"
+                opacity={0.8}
+                name="Impressions"
               />
               <Line
+                yAxisId="right"
                 type="monotone"
                 dataKey="CLICKS"
                 stroke="#f59e0b"
+                strokeWidth={2}
                 dot={false}
+                name="Clicks"
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <h3 className="mb-4 text-lg font-semibold">Attribution Revenue Over Time</h3>
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="DATE" />
+              <YAxis 
+                yAxisId="left"
+                orientation="left"
+                stroke="#4ade80"
+                label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#ef4444"
+                label={{ value: 'Revenue', angle: 90, position: 'insideRight' }}
+              />
+              <Tooltip />
+              <Bar
+                yAxisId="left"
+                dataKey="IMPRESSIONS"
+                fill="#4ade80"
+                opacity={0.8}
+                name="Impressions"
               />
               <Line
+                yAxisId="right"
                 type="monotone"
                 dataKey="REVENUE"
                 stroke="#ef4444"
+                strokeWidth={2}
                 dot={false}
+                name="Revenue"
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </Card>
