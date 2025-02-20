@@ -194,11 +194,27 @@ const Dashboard = ({ data }: DashboardProps) => {
     const previousValue = previousPeriod[metric];
     const percentChange = ((currentValue - previousValue) / previousValue) * 100;
 
+    const getColorClass = (change: number) => {
+      const absChange = Math.abs(change);
+      if (change > 0) {
+        if (absChange > 50) return 'text-success';
+        if (absChange > 25) return 'text-[#4ade80]';
+        if (absChange > 10) return 'text-[#86efac]';
+        return 'text-[#bbf7d0]';
+      } else {
+        if (absChange > 50) return 'text-alert';
+        if (absChange > 25) return 'text-[#f87171]';
+        if (absChange > 10) return 'text-[#fca5a5]';
+        return 'text-warning';
+      }
+    };
+
     return {
       currentValue,
       previousValue,
       percentChange,
-      increased: percentChange > 0
+      increased: percentChange > 0,
+      colorClass: getColorClass(percentChange)
     };
   };
 
@@ -387,7 +403,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {(() => {
                     const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
                     return (
-                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                      <div className={`flex items-center ${comparison.colorClass}`}>
                         {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                         <span className="ml-1 text-sm">
                           {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
@@ -425,7 +441,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {(() => {
                     const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
                     return (
-                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                      <div className={`flex items-center ${comparison.colorClass}`}>
                         {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                         <span className="ml-1 text-sm">
                           {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
@@ -463,7 +479,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {(() => {
                     const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
                     return (
-                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                      <div className={`flex items-center ${comparison.colorClass}`}>
                         {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                         <span className="ml-1 text-sm">
                           {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
@@ -501,7 +517,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {(() => {
                     const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
                     return (
-                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                      <div className={`flex items-center ${comparison.colorClass}`}>
                         {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                         <span className="ml-1 text-sm">
                           {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
