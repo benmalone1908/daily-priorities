@@ -194,28 +194,14 @@ const Dashboard = ({ data }: DashboardProps) => {
     const currentValue = recentPeriod[metric];
     const previousValue = previousPeriod[metric];
     const percentChange = ((currentValue - previousValue) / previousValue) * 100;
-
-    const getColorClass = (change: number) => {
-      const absChange = Math.abs(change);
-      if (change > 0) {
-        if (absChange > 50) return 'text-success';
-        if (absChange > 25) return 'text-[#4ade80]';
-        if (absChange > 10) return 'text-[#86efac]';
-        return 'text-[#bbf7d0]';
-      } else {
-        if (absChange > 50) return 'text-alert';
-        if (absChange > 25) return 'text-[#f87171]';
-        if (absChange > 10) return 'text-[#fca5a5]';
-        return 'text-warning';
-      }
-    };
-
+    const colorClasses = getColorClasses(percentChange);
+    
     return {
       currentValue,
       previousValue,
       percentChange,
-      increased: percentChange > 0,
-      colorClass: getColorClass(percentChange)
+      colorClass: colorClasses.split(' ').find(c => c.startsWith('text-')),
+      increased: percentChange > 0
     };
   };
 
@@ -574,7 +560,7 @@ const MetricCard = ({
         </div>
         {anomalies.length > 0 && (
           <div className={`p-2 rounded-full ${topAnomalyColor}`}>
-            <AlertTriangle className="w-5 h-5" />
+            <AlertTriangle className={`w-5 h-5 ${topAnomalyColor.split(' ').find(c => c.startsWith('text-'))}`} />
           </div>
         )}
       </div>
