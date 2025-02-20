@@ -70,6 +70,32 @@ const Dashboard = ({ data }: DashboardProps) => {
     return results;
   }, [data]);
 
+  const aggregatedData = useMemo(() => {
+    if (!data.length) return [];
+
+    // Group data by date
+    const dateGroups = data.reduce((acc, row) => {
+      const date = row.DATE;
+      if (!acc[date]) {
+        acc[date] = {
+          DATE: date,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0
+        };
+      }
+      acc[date].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+      acc[date].CLICKS += Number(row.CLICKS) || 0;
+      acc[date].REVENUE += Number(row.REVENUE) || 0;
+      return acc;
+    }, {});
+
+    // Convert to array and sort by date
+    return Object.values(dateGroups).sort((a: any, b: any) => 
+      new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
+    );
+  }, [data]);
+
   if (!anomalies) return null;
 
   return (
@@ -96,7 +122,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         <h3 className="mb-4 text-lg font-semibold">Display Metrics Over Time</h3>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data}>
+            <ComposedChart data={aggregatedData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="DATE" />
               <YAxis 
@@ -137,7 +163,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         <h3 className="mb-4 text-lg font-semibold">Attribution Revenue Over Time</h3>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data}>
+            <ComposedChart data={aggregatedData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="DATE" />
               <YAxis 
