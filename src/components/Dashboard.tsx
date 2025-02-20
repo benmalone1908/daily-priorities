@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -104,8 +105,12 @@ const Dashboard = ({ data }: DashboardProps) => {
     );
   }, [data, selectedCampaign]);
 
+  const formatNumber = (value: number) => {
+    return value.toLocaleString();
+  };
+
   const formatRevenue = (value: number) => {
-    return `$${value.toFixed(2)}`;
+    return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
   if (!anomalies) return null;
@@ -155,14 +160,18 @@ const Dashboard = ({ data }: DashboardProps) => {
                 orientation="left"
                 stroke="#4ade80"
                 label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+                tickFormatter={formatNumber}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 stroke="#f59e0b"
                 label={{ value: 'Clicks', angle: 90, position: 'insideRight' }}
+                tickFormatter={formatNumber}
               />
-              <Tooltip />
+              <Tooltip 
+                formatter={(value: number, name: string) => [formatNumber(value), name]}
+              />
               <Bar
                 yAxisId="left"
                 dataKey="IMPRESSIONS"
@@ -209,6 +218,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                 orientation="left"
                 stroke="#4ade80"
                 label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+                tickFormatter={formatNumber}
               />
               <YAxis
                 yAxisId="right"
@@ -220,7 +230,7 @@ const Dashboard = ({ data }: DashboardProps) => {
               <Tooltip 
                 formatter={(value: number, name: string) => {
                   if (name === "Revenue") return [formatRevenue(value), name];
-                  return [value.toLocaleString(), name];
+                  return [formatNumber(value), name];
                 }}
               />
               <Bar
