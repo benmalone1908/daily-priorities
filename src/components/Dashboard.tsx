@@ -13,6 +13,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import AnomalyDetails from "./AnomalyDetails";
 
 interface DashboardProps {
   data: any[];
@@ -236,9 +237,12 @@ const MetricCard = ({
     </div>
     {anomalies.length > 0 && (
       <div className="mt-4 space-y-3">
-        <div className="flex items-center text-sm text-muted-foreground">
-          <AlertTriangle className="w-4 h-4 mr-2" />
-          <span>Top anomalies:</span>
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center">
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            <span>Top anomalies:</span>
+          </div>
+          <AnomalyDetails anomalies={anomalies} metric={metric} />
         </div>
         {anomalies.slice(0, 2).map((anomaly, idx) => (
           <div key={idx} className="text-sm space-y-1">
