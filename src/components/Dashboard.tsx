@@ -20,24 +20,48 @@ const Dashboard = ({ data }: DashboardProps) => {
   const anomalies = useMemo(() => {
     if (!data.length) return null;
 
+    // Group data by campaign
+    const campaignData: Record<string, any[]> = {};
+    data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"];
+      if (!campaignData[campaignName]) {
+        campaignData[campaignName] = [];
+      }
+      campaignData[campaignName].push(row);
+    });
+
     const metrics = ["IMPRESSIONS", "CLICKS", "REVENUE"];
     const results: Record<string, any> = {};
 
     metrics.forEach((metric) => {
-      const values = data.map((row) => Number(row[metric]));
-      const mean = values.reduce((a, b) => a + b, 0) / values.length;
-      const stdDev = Math.sqrt(
-        values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
-      );
+      let allAnomalies: any[] = [];
 
-      const threshold = stdDev * 2; // 2 standard deviations
+      // Analyze each campaign separately
+      Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
+        const values = campaignRows.map((row) => Number(row[metric]) || 0);
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const stdDev = Math.sqrt(
+          values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
+        );
+
+        const threshold = stdDev * 2; // 2 standard deviations
+
+        const campaignAnomalies = campaignRows.filter((row) => {
+          const value = Number(row[metric]) || 0;
+          return Math.abs(value - mean) > threshold;
+        }).map(row => ({
+          ...row,
+          campaign,
+          mean,
+          actualValue: Number(row[metric]) || 0,
+          deviation: ((Number(row[metric]) || 0) - mean) / mean * 100
+        }));
+
+        allAnomalies = [...allAnomalies, ...campaignAnomalies];
+      });
 
       results[metric] = {
-        mean,
-        stdDev,
-        anomalies: data.filter(
-          (row) => Math.abs(Number(row[metric]) - mean) > threshold
-        ),
+        anomalies: allAnomalies.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation))
       };
     });
 
@@ -51,31 +75,18 @@ const Dashboard = ({ data }: DashboardProps) => {
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard
           title="Impression Anomalies"
-          count={anomalies.IMPRESSIONS.anomalies.length}
-          trend={
-            anomalies.IMPRESSIONS.anomalies[0]?.IMPRESSIONS >
-            anomalies.IMPRESSIONS.mean
-              ? "up"
-              : "down"
-          }
+          anomalies={anomalies.IMPRESSIONS.anomalies}
+          metric="IMPRESSIONS"
         />
         <MetricCard
           title="Click Anomalies"
-          count={anomalies.CLICKS.anomalies.length}
-          trend={
-            anomalies.CLICKS.anomalies[0]?.CLICKS > anomalies.CLICKS.mean
-              ? "up"
-              : "down"
-          }
+          anomalies={anomalies.CLICKS.anomalies}
+          metric="CLICKS"
         />
         <MetricCard
           title="Revenue Anomalies"
-          count={anomalies.REVENUE.anomalies.length}
-          trend={
-            anomalies.REVENUE.anomalies[0]?.REVENUE > anomalies.REVENUE.mean
-              ? "up"
-              : "down"
-          }
+          anomalies={anomalies.REVENUE.anomalies}
+          metric="REVENUE"
         />
       </div>
 
@@ -116,37 +127,52 @@ const Dashboard = ({ data }: DashboardProps) => {
 
 const MetricCard = ({
   title,
-  count,
-  trend,
+  anomalies,
+  metric
 }: {
   title: string;
-  count: number;
-  trend: "up" | "down";
+  anomalies: any[];
+  metric: string;
 }) => (
   <Card className="p-6 transition-all duration-300 hover:shadow-lg">
     <div className="flex items-start justify-between">
       <div>
         <h3 className="font-medium text-muted-foreground">{title}</h3>
-        <p className="mt-2 text-2xl font-bold">{count}</p>
+        <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
       </div>
-      <div
-        className={`p-2 rounded-full ${
-          trend === "up"
-            ? "bg-alert/10 text-alert"
-            : "bg-warning/10 text-warning"
-        }`}
-      >
-        {trend === "up" ? (
-          <TrendingUp className="w-5 h-5" />
-        ) : (
-          <TrendingDown className="w-5 h-5" />
-        )}
-      </div>
+      {anomalies.length > 0 && (
+        <div
+          className={`p-2 rounded-full ${
+            anomalies[0].deviation > 0
+              ? "bg-alert/10 text-alert"
+              : "bg-warning/10 text-warning"
+          }`}
+        >
+          {anomalies[0].deviation > 0 ? (
+            <TrendingUp className="w-5 h-5" />
+          ) : (
+            <TrendingDown className="w-5 h-5" />
+          )}
+        </div>
+      )}
     </div>
-    {count > 0 && (
-      <div className="flex items-center mt-4 text-sm text-muted-foreground">
-        <AlertTriangle className="w-4 h-4 mr-2" />
-        <span>Requires attention</span>
+    {anomalies.length > 0 && (
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center text-sm text-muted-foreground">
+          <AlertTriangle className="w-4 h-4 mr-2" />
+          <span>Top anomalies:</span>
+        </div>
+        {anomalies.slice(0, 2).map((anomaly, idx) => (
+          <div key={idx} className="text-sm space-y-1">
+            <div className="font-medium">{anomaly.campaign}</div>
+            <div className="text-muted-foreground">
+              Date: {anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
+              <span className={anomaly.deviation > 0 ? "text-alert" : "text-warning"}>
+                {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     )}
   </Card>
