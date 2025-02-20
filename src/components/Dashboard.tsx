@@ -24,6 +24,7 @@ interface WeeklyData {
   IMPRESSIONS: number;
   CLICKS: number;
   REVENUE: number;
+  ROAS: number;
   count: number;
 }
 
@@ -111,6 +112,11 @@ const Dashboard = ({ data }: DashboardProps) => {
     );
   };
 
+  const calculateROAS = (revenue: number, impressions: number): number => {
+    const spend = (impressions * 15) / 1000; // $15 CPM
+    return spend > 0 ? revenue / spend : 0;
+  };
+
   const getWeeklyData = () => {
     const filteredData = selectedMetricsCampaign === "all" 
       ? data 
@@ -130,6 +136,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         IMPRESSIONS: 0,
         CLICKS: 0,
         REVENUE: 0,
+        ROAS: 0,
         count: 0
       },
       {
@@ -137,6 +144,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         IMPRESSIONS: 0,
         CLICKS: 0,
         REVENUE: 0,
+        ROAS: 0,
         count: 0
       }
     ];
@@ -157,6 +165,9 @@ const Dashboard = ({ data }: DashboardProps) => {
         periods[1].count += 1;
       }
     });
+
+    periods[0].ROAS = calculateROAS(periods[0].REVENUE, periods[0].IMPRESSIONS);
+    periods[1].ROAS = calculateROAS(periods[1].REVENUE, periods[1].IMPRESSIONS);
 
     return periods;
   };
@@ -189,6 +200,10 @@ const Dashboard = ({ data }: DashboardProps) => {
       percentChange,
       increased: percentChange > 0
     };
+  };
+
+  const formatROAS = (value: number) => {
+    return value.toFixed(2);
   };
 
   const axisStyle = {
@@ -359,7 +374,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         </div>
 
         {weeklyData.length >= 2 ? (
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-4">
             {/* Impressions Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
@@ -457,6 +472,44 @@ const Dashboard = ({ data }: DashboardProps) => {
                   </p>
                   {(() => {
                     const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
+                    return (
+                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <span className="ml-1 text-sm">
+                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[0].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+            </div>
+
+            {/* ROAS Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                <p className="mb-1 text-2xl font-bold">
+                  {formatROAS(weeklyData[1].ROAS)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[1].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold">
+                    {formatROAS(weeklyData[0].ROAS)}
+                  </p>
+                  {(() => {
+                    const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
                     return (
                       <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
                         {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
