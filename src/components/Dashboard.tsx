@@ -369,7 +369,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       </Card>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
         </div>
 
@@ -378,16 +378,6 @@ const Dashboard = ({ data }: DashboardProps) => {
             {/* Impressions Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                <p className="mb-1 text-2xl font-bold">
-                  {formatNumber(weeklyData[1].IMPRESSIONS)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
-                </p>
-              </Card>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
                 <div className="flex items-center gap-2">
@@ -411,21 +401,21 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
-            </div>
-
-            {/* Clicks Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
                 <p className="mb-1 text-2xl font-bold">
-                  {formatNumber(weeklyData[1].CLICKS)}
+                  {formatNumber(weeklyData[1].IMPRESSIONS)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {formatDate(weeklyData[1].periodStart)} - {' '}
                   {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
+            </div>
+
+            {/* Clicks Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
                 <div className="flex items-center gap-2">
@@ -449,21 +439,21 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
-            </div>
-
-            {/* Revenue Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
                 <p className="mb-1 text-2xl font-bold">
-                  {formatRevenue(weeklyData[1].REVENUE)}
+                  {formatNumber(weeklyData[1].CLICKS)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {formatDate(weeklyData[1].periodStart)} - {' '}
                   {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
+            </div>
+
+            {/* Revenue Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
                 <div className="flex items-center gap-2">
@@ -487,21 +477,21 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
-            </div>
-
-            {/* ROAS Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
                 <p className="mb-1 text-2xl font-bold">
-                  {formatROAS(weeklyData[1].ROAS)}
+                  {formatRevenue(weeklyData[1].REVENUE)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {formatDate(weeklyData[1].periodStart)} - {' '}
                   {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
+            </div>
+
+            {/* ROAS Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
               <Card className="p-4">
                 <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
                 <div className="flex items-center gap-2">
@@ -523,6 +513,16 @@ const Dashboard = ({ data }: DashboardProps) => {
                 <p className="text-sm text-muted-foreground">
                   {formatDate(weeklyData[0].periodStart)} - {' '}
                   {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                <p className="mb-1 text-2xl font-bold">
+                  {formatROAS(weeklyData[1].ROAS)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[1].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
                 </p>
               </Card>
             </div>
