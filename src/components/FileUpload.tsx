@@ -18,7 +18,8 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
     if (file) {
       Papa.parse(file, {
         complete: (results) => {
-          const headers = results.data[0];
+          // Ensure headers is an array of strings
+          const headers = results.data[0] as string[];
           const requiredHeaders = [
             "DATE",
             "CAMPAIGN ORDER NAME",
@@ -29,8 +30,11 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
             "SPEND"
           ];
 
+          // Convert headers to uppercase for case-insensitive comparison
+          const upperHeaders = headers.map(header => String(header).toUpperCase());
+          
           const missingHeaders = requiredHeaders.filter(
-            (header) => !headers.includes(header)
+            (header) => !upperHeaders.includes(header)
           );
 
           if (missingHeaders.length > 0) {
@@ -41,7 +45,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
           onDataLoaded(results.data.slice(1));
           toast.success("Data loaded successfully!");
         },
-        header: true,
+        header: false, // Changed to false so we can handle headers manually
         skipEmptyLines: true,
       });
     }
