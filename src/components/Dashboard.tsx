@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -21,7 +20,8 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ data }: DashboardProps) => {
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
+  const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
+  const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
 
   const campaigns = useMemo(() => {
     if (!data.length) return [];
@@ -77,12 +77,10 @@ const Dashboard = ({ data }: DashboardProps) => {
     return results;
   }, [data]);
 
-  const aggregatedData = useMemo(() => {
-    if (!data.length) return [];
-
-    const filteredData = selectedCampaign === "all" 
+  const getAggregatedData = (campaign: string) => {
+    const filteredData = campaign === "all" 
       ? data 
-      : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+      : data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
 
     const dateGroups = filteredData.reduce((acc, row) => {
       const date = row.DATE;
@@ -103,7 +101,15 @@ const Dashboard = ({ data }: DashboardProps) => {
     return Object.values(dateGroups).sort((a: any, b: any) => 
       new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
     );
-  }, [data, selectedCampaign]);
+  };
+
+  const metricsData = useMemo(() => 
+    getAggregatedData(selectedMetricsCampaign),
+  [data, selectedMetricsCampaign]);
+
+  const revenueData = useMemo(() => 
+    getAggregatedData(selectedRevenueCampaign),
+  [data, selectedRevenueCampaign]);
 
   const formatNumber = (value: number) => {
     return value.toLocaleString();
@@ -147,7 +153,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+          <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Filter by campaign" />
             </SelectTrigger>
@@ -161,7 +167,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         </div>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={aggregatedData}>
+            <ComposedChart data={metricsData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="DATE" 
@@ -211,7 +217,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+          <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
             <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Filter by campaign" />
             </SelectTrigger>
@@ -225,7 +231,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         </div>
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={aggregatedData}>
+            <ComposedChart data={revenueData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="DATE" 
