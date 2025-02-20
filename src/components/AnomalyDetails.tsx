@@ -19,18 +19,18 @@ interface AnomalyDetailsProps {
   metric: string;
 }
 
-const getColorClass = (deviation: number) => {
+const getColorClasses = (deviation: number) => {
   const absDeviation = Math.abs(deviation);
   if (deviation > 0) {
-    if (absDeviation > 50) return 'text-success';
-    if (absDeviation > 25) return 'text-[#4ade80]';
-    if (absDeviation > 10) return 'text-[#86efac]';
-    return 'text-[#bbf7d0]';
+    if (absDeviation > 50) return 'bg-green-50 border-green-200 text-success';
+    if (absDeviation > 25) return 'bg-green-50 border-green-200 text-[#4ade80]';
+    if (absDeviation > 10) return 'bg-green-50 border-green-200 text-[#86efac]';
+    return 'bg-green-50 border-green-200 text-[#bbf7d0]';
   } else {
-    if (absDeviation > 50) return 'text-alert';
-    if (absDeviation > 25) return 'text-[#f87171]';
-    if (absDeviation > 10) return 'text-[#fca5a5]';
-    return 'text-warning';
+    if (absDeviation > 50) return 'bg-red-50 border-red-200 text-alert';
+    if (absDeviation > 25) return 'bg-red-50 border-red-200 text-[#f87171]';
+    if (absDeviation > 10) return 'bg-red-50 border-red-200 text-[#fca5a5]';
+    return 'bg-orange-50 border-orange-200 text-warning';
   }
 };
 
@@ -93,15 +93,18 @@ const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
                   </div>
                   <div className="space-y-2">
                     {campaignAnomalies.map((anomaly, idx) => (
-                      <div key={idx} className="text-sm border rounded-lg p-3 space-y-1">
+                      <div 
+                        key={idx} 
+                        className={`text-sm rounded-lg p-3 space-y-1 border ${getColorClasses(anomaly.deviation)}`}
+                      >
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="w-4 h-4" />
-                          <span className="font-medium">Date: {anomaly.DATE}</span>
+                          <span className="font-medium text-gray-900">Date: {anomaly.DATE}</span>
                         </div>
-                        <div className="text-muted-foreground pl-6 space-y-1">
-                          <p>Value: {anomaly.actualValue.toLocaleString()}</p>
-                          <p>Campaign Average: {Math.round(anomaly.mean).toLocaleString()}</p>
-                          <p className={getColorClass(anomaly.deviation)}>
+                        <div className="pl-6 space-y-1">
+                          <p className="text-gray-900">Value: {anomaly.actualValue.toLocaleString()}</p>
+                          <p className="text-gray-900">Campaign Average: {Math.round(anomaly.mean).toLocaleString()}</p>
+                          <p className="font-medium">
                             Deviation: {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
                           </p>
                         </div>
