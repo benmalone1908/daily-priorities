@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -31,7 +30,6 @@ const Dashboard = ({ data }: DashboardProps) => {
   const anomalies = useMemo(() => {
     if (!data.length) return null;
 
-    // Group data by campaign
     const campaignData: Record<string, any[]> = {};
     data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"];
@@ -47,7 +45,6 @@ const Dashboard = ({ data }: DashboardProps) => {
     metrics.forEach((metric) => {
       let allAnomalies: any[] = [];
 
-      // Analyze each campaign separately
       Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
         const values = campaignRows.map((row) => Number(row[metric]) || 0);
         const mean = values.reduce((a, b) => a + b, 0) / values.length;
@@ -55,7 +52,7 @@ const Dashboard = ({ data }: DashboardProps) => {
           values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
         );
 
-        const threshold = stdDev * 2; // 2 standard deviations
+        const threshold = stdDev * 2;
 
         const campaignAnomalies = campaignRows.filter((row) => {
           const value = Number(row[metric]) || 0;
@@ -82,12 +79,10 @@ const Dashboard = ({ data }: DashboardProps) => {
   const aggregatedData = useMemo(() => {
     if (!data.length) return [];
 
-    // Filter data by selected campaign if needed
     const filteredData = selectedCampaign === "all" 
       ? data 
       : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
 
-    // Group data by date
     const dateGroups = filteredData.reduce((acc, row) => {
       const date = row.DATE;
       if (!acc[date]) {
@@ -104,11 +99,14 @@ const Dashboard = ({ data }: DashboardProps) => {
       return acc;
     }, {});
 
-    // Convert to array and sort by date
     return Object.values(dateGroups).sort((a: any, b: any) => 
       new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
     );
   }, [data, selectedCampaign]);
+
+  const formatRevenue = (value: number) => {
+    return `$${value.toFixed(2)}`;
+  };
 
   if (!anomalies) return null;
 
@@ -216,9 +214,15 @@ const Dashboard = ({ data }: DashboardProps) => {
                 yAxisId="right"
                 orientation="right"
                 stroke="#ef4444"
-                label={{ value: 'Revenue', angle: 90, position: 'insideRight' }}
+                label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight' }}
+                tickFormatter={formatRevenue}
               />
-              <Tooltip />
+              <Tooltip 
+                formatter={(value: number, name: string) => {
+                  if (name === "Revenue") return [formatRevenue(value), name];
+                  return [value.toLocaleString(), name];
+                }}
+              />
               <Bar
                 yAxisId="left"
                 dataKey="IMPRESSIONS"
