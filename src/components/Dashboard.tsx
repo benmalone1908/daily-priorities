@@ -30,7 +30,6 @@ interface WeeklyData {
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
-  const [selectedWeeklyMetric, setSelectedWeeklyMetric] = useState<string>("IMPRESSIONS");
 
   const campaigns = useMemo(() => {
     if (!data.length) return [];
@@ -179,26 +178,18 @@ const Dashboard = ({ data }: DashboardProps) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  const getWeeklyComparison = () => {
-    if (weeklyData.length < 2) return null;
-
-    const recentPeriod = weeklyData[0];
-    const previousPeriod = weeklyData[1];
-    const metric = selectedWeeklyMetric;
-
+  const getMetricComparison = (metric: string, recentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
     const currentValue = recentPeriod[metric];
     const previousValue = previousPeriod[metric];
     const percentChange = ((currentValue - previousValue) / previousValue) * 100;
 
     return {
-      recentPeriod,
-      previousPeriod,
+      currentValue,
+      previousValue,
       percentChange,
       increased: percentChange > 0
     };
   };
-
-  const weeklyComparison = getWeeklyComparison();
 
   const axisStyle = {
     fontSize: '0.75rem'
@@ -365,62 +356,123 @@ const Dashboard = ({ data }: DashboardProps) => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
-          <Select value={selectedWeeklyMetric} onValueChange={setSelectedWeeklyMetric}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select metric" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="IMPRESSIONS">Impressions</SelectItem>
-              <SelectItem value="CLICKS">Clicks</SelectItem>
-              <SelectItem value="REVENUE">Revenue</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {weeklyComparison ? (
-          <div className="grid gap-8 md:grid-cols-2">
-            <Card className="p-4">
-              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h4>
-              <p className="mb-1 text-2xl font-bold">
-                {selectedWeeklyMetric === 'REVENUE' 
-                  ? formatRevenue(weeklyComparison.previousPeriod[selectedWeeklyMetric])
-                  : formatNumber(weeklyComparison.previousPeriod[selectedWeeklyMetric])}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {formatDate(weeklyComparison.previousPeriod.periodStart)} - {' '}
-                {formatDate(new Date(new Date(weeklyComparison.previousPeriod.periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
-              </p>
-            </Card>
-
-            <Card className="p-4">
-              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h4>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">
-                  {selectedWeeklyMetric === 'REVENUE'
-                    ? formatRevenue(weeklyComparison.recentPeriod[selectedWeeklyMetric])
-                    : formatNumber(weeklyComparison.recentPeriod[selectedWeeklyMetric])}
+        {weeklyData.length >= 2 ? (
+          <div className="grid gap-8 md:grid-cols-3">
+            {/* Impressions Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                <p className="mb-1 text-2xl font-bold">
+                  {formatNumber(weeklyData[1].IMPRESSIONS)}
                 </p>
-                <div
-                  className={`flex items-center ${
-                    weeklyComparison.increased ? 'text-alert' : 'text-warning'
-                  }`}
-                >
-                  {weeklyComparison.increased ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  <span className="ml-1 text-sm">
-                    {weeklyComparison.increased ? '+' : ''}
-                    {weeklyComparison.percentChange.toFixed(1)}%
-                  </span>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[1].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold">
+                    {formatNumber(weeklyData[0].IMPRESSIONS)}
+                  </p>
+                  {(() => {
+                    const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
+                    return (
+                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <span className="ml-1 text-sm">
+                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {formatDate(weeklyComparison.recentPeriod.periodStart)} - {' '}
-                {formatDate(new Date(new Date(weeklyComparison.recentPeriod.periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
-              </p>
-            </Card>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[0].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+            </div>
+
+            {/* Clicks Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                <p className="mb-1 text-2xl font-bold">
+                  {formatNumber(weeklyData[1].CLICKS)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[1].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold">
+                    {formatNumber(weeklyData[0].CLICKS)}
+                  </p>
+                  {(() => {
+                    const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
+                    return (
+                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <span className="ml-1 text-sm">
+                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[0].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+            </div>
+
+            {/* Revenue Comparison */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                <p className="mb-1 text-2xl font-bold">
+                  {formatRevenue(weeklyData[1].REVENUE)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[1].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+              <Card className="p-4">
+                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold">
+                    {formatRevenue(weeklyData[0].REVENUE)}
+                  </p>
+                  {(() => {
+                    const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
+                    return (
+                      <div className={`flex items-center ${comparison.increased ? 'text-alert' : 'text-warning'}`}>
+                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <span className="ml-1 text-sm">
+                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(weeklyData[0].periodStart)} - {' '}
+                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                </p>
+              </Card>
+            </div>
           </div>
         ) : (
           <p className="text-center text-muted-foreground">
