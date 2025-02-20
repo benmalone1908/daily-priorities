@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -113,6 +112,15 @@ const Dashboard = ({ data }: DashboardProps) => {
     return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
+  const axisStyle = {
+    fontSize: '0.75rem'
+  };
+
+  const labelStyle = {
+    fontSize: '0.75rem',
+    fill: '#64748b'
+  };
+
   if (!anomalies) return null;
 
   return (
@@ -154,23 +162,29 @@ const Dashboard = ({ data }: DashboardProps) => {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={aggregatedData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="DATE" />
+              <XAxis 
+                dataKey="DATE" 
+                style={axisStyle}
+              />
               <YAxis 
                 yAxisId="left"
                 orientation="left"
                 stroke="#4ade80"
-                label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+                label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
                 tickFormatter={formatNumber}
+                style={axisStyle}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 stroke="#f59e0b"
-                label={{ value: 'Clicks', angle: 90, position: 'insideRight' }}
+                label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
                 tickFormatter={formatNumber}
+                style={axisStyle}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [formatNumber(value), name]}
+                contentStyle={{ fontSize: '0.75rem' }}
               />
               <Bar
                 yAxisId="left"
@@ -212,26 +226,32 @@ const Dashboard = ({ data }: DashboardProps) => {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={aggregatedData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="DATE" />
+              <XAxis 
+                dataKey="DATE" 
+                style={axisStyle}
+              />
               <YAxis 
                 yAxisId="left"
                 orientation="left"
                 stroke="#4ade80"
-                label={{ value: 'Impressions', angle: -90, position: 'insideLeft' }}
+                label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
                 tickFormatter={formatNumber}
+                style={axisStyle}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 stroke="#ef4444"
-                label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight' }}
+                label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
                 tickFormatter={formatRevenue}
+                style={axisStyle}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => {
                   if (name === "Revenue") return [formatRevenue(value), name];
                   return [formatNumber(value), name];
                 }}
+                contentStyle={{ fontSize: '0.75rem' }}
               />
               <Bar
                 yAxisId="left"
