@@ -1,10 +1,10 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { getColorClasses } from "@/utils/anomalyColors";
 
 interface Anomaly {
   campaign: string;
@@ -18,20 +18,6 @@ interface AnomalyDetailsProps {
   anomalies: Anomaly[];
   metric: string;
 }
-
-const getColorClasses = (deviation: number) => {
-  const absDeviation = Math.abs(deviation);
-  
-  // The closer to 0%, the more green (normal)
-  if (absDeviation < 10) return 'bg-green-50 border-green-200 text-success';
-  if (absDeviation < 25) return 'bg-green-50 border-green-200 text-[#4ade80]';
-  if (absDeviation < 50) return 'bg-orange-50 border-orange-200 text-warning';
-  
-  // As deviation gets more extreme (in either direction), show redder colors
-  if (absDeviation < 100) return 'bg-red-50 border-red-200 text-[#fca5a5]';
-  if (absDeviation < 500) return 'bg-red-50 border-red-200 text-[#f87171]';
-  return 'bg-red-50 border-red-200 text-alert';
-};
 
 const AnomalyDetails = ({ anomalies, metric }: AnomalyDetailsProps) => {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all");

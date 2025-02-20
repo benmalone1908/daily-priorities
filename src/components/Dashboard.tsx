@@ -14,6 +14,7 @@ import {
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
+import { getColorClasses } from "@/utils/anomalyColors";
 
 interface DashboardProps {
   data: any[];
@@ -561,52 +562,49 @@ const MetricCard = ({
   title: string;
   anomalies: any[];
   metric: string;
-}) => (
-  <Card className="p-6 transition-all duration-300 hover:shadow-lg">
-    <div className="flex items-start justify-between">
-      <div>
-        <h3 className="font-medium text-muted-foreground">{title}</h3>
-        <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
+}) => {
+  const topAnomalyColor = anomalies.length > 0 ? getColorClasses(anomalies[0].deviation) : '';
+  
+  return (
+    <Card className="p-6 transition-all duration-300 hover:shadow-lg">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-medium text-muted-foreground">{title}</h3>
+          <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
+        </div>
+        {anomalies.length > 0 && (
+          <div className={`p-2 rounded-full ${topAnomalyColor}`}>
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+        )}
       </div>
       {anomalies.length > 0 && (
-        <div
-          className={`p-2 rounded-full ${
-            anomalies[0].deviation > 0
-              ? "bg-alert/10 text-alert"
-              : "bg-warning/10 text-warning"
-          }`}
-        >
-          {anomalies[0].deviation > 0 ? (
-            <TrendingUp className="w-5 h-5" />
-          ) : (
-            <TrendingDown className="w-5 h-5" />
-          )}
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              <span>Top anomalies:</span>
+            </div>
+            <AnomalyDetails anomalies={anomalies} metric={metric} />
+          </div>
+          {anomalies.slice(0, 2).map((anomaly, idx) => {
+            const colorClasses = getColorClasses(anomaly.deviation);
+            return (
+              <div key={idx} className="text-sm space-y-1">
+                <div className="font-medium">{anomaly.campaign}</div>
+                <div className="text-muted-foreground">
+                  Date: {anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
+                  <span className={colorClasses.split(' ').find(c => c.startsWith('text-'))}>
+                    {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
-    </div>
-    {anomalies.length > 0 && (
-      <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center">
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            <span>Top anomalies:</span>
-          </div>
-          <AnomalyDetails anomalies={anomalies} metric={metric} />
-        </div>
-        {anomalies.slice(0, 2).map((anomaly, idx) => (
-          <div key={idx} className="text-sm space-y-1">
-            <div className="font-medium">{anomaly.campaign}</div>
-            <div className="text-muted-foreground">
-              Date: {anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
-              <span className={anomaly.deviation > 0 ? "text-alert" : "text-warning"}>
-                {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </Card>
-);
+    </Card>
+  );
+};
 
 export default Dashboard;
