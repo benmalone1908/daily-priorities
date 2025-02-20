@@ -42,7 +42,22 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
             return;
           }
 
-          onDataLoaded(results.data.slice(1));
+          // Process the data to ensure numerical values are properly parsed
+          const processedData = results.data.slice(1).map(row => {
+            const processed: any = {};
+            headers.forEach((header, index) => {
+              const value = row[index];
+              // Convert numerical fields to numbers
+              if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
+                processed[header] = Number(value) || 0;
+              } else {
+                processed[header] = value;
+              }
+            });
+            return processed;
+          });
+
+          onDataLoaded(processedData);
           toast.success("Data loaded successfully!");
         },
         header: false, // Changed to false so we can handle headers manually
