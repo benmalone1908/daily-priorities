@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,15 +20,16 @@ interface AnomalyDetailsProps {
 }
 
 const getColorClasses = (deviation: number) => {
+  // Handle positive deviations
   if (deviation > 50) return 'bg-green-50 border-green-200 text-success';
   if (deviation > 25) return 'bg-green-50 border-green-200 text-[#4ade80]';
   if (deviation > 10) return 'bg-green-50 border-green-200 text-[#86efac]';
   if (deviation > 0) return 'bg-green-50 border-green-200 text-[#bbf7d0]';
   
-  const absDeviation = Math.abs(deviation);
-  if (absDeviation > 50) return 'bg-red-50 border-red-200 text-alert';
-  if (absDeviation > 25) return 'bg-red-50 border-red-200 text-[#f87171]';
-  if (absDeviation > 10) return 'bg-red-50 border-red-200 text-[#fca5a5]';
+  // Handle negative deviations
+  if (deviation < -50) return 'bg-red-50 border-red-200 text-alert';
+  if (deviation < -25) return 'bg-red-50 border-red-200 text-[#f87171]';
+  if (deviation < -10) return 'bg-red-50 border-red-200 text-[#fca5a5]';
   return 'bg-orange-50 border-orange-200 text-warning';
 };
 
