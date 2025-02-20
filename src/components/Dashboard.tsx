@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -109,7 +110,7 @@ const Dashboard = ({ data }: DashboardProps) => {
   };
 
   const formatRevenue = (value: number) => {
-    return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+    return `$${Math.round(value).toLocaleString()}`;
   };
 
   const axisStyle = {
