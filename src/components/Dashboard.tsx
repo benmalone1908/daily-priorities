@@ -19,6 +19,14 @@ interface DashboardProps {
   data: any[];
 }
 
+interface WeeklyData {
+  periodStart: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  REVENUE: number;
+  count: number;
+}
+
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
@@ -109,31 +117,49 @@ const Dashboard = ({ data }: DashboardProps) => {
       ? data 
       : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
 
-    const weekGroups = filteredData.reduce((acc, row) => {
-      const date = new Date(row.DATE);
-      const monday = new Date(date);
-      monday.setDate(date.getDate() - date.getDay() + 1);
-      const weekKey = monday.toISOString().split('T')[0];
+    const sortedData = [...filteredData].sort((a, b) => 
+      new Date(b.DATE).getTime() - new Date(a.DATE).getTime()
+    );
 
-      if (!acc[weekKey]) {
-        acc[weekKey] = {
-          weekStart: weekKey,
-          IMPRESSIONS: 0,
-          CLICKS: 0,
-          REVENUE: 0,
-          count: 0
-        };
+    if (sortedData.length === 0) return [];
+
+    const mostRecentDate = new Date(sortedData[0].DATE);
+    
+    const periods: WeeklyData[] = [
+      {
+        periodStart: mostRecentDate.toISOString().split('T')[0],
+        IMPRESSIONS: 0,
+        CLICKS: 0,
+        REVENUE: 0,
+        count: 0
+      },
+      {
+        periodStart: new Date(mostRecentDate.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        IMPRESSIONS: 0,
+        CLICKS: 0,
+        REVENUE: 0,
+        count: 0
       }
+    ];
 
-      acc[weekKey].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-      acc[weekKey].CLICKS += Number(row.CLICKS) || 0;
-      acc[weekKey].REVENUE += Number(row.REVENUE) || 0;
-      acc[weekKey].count += 1;
-      return acc;
-    }, {});
+    sortedData.forEach(row => {
+      const rowDate = new Date(row.DATE);
+      const daysDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (24 * 60 * 60 * 1000));
+      
+      if (daysDiff < 7) {
+        periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        periods[0].CLICKS += Number(row.CLICKS) || 0;
+        periods[0].REVENUE += Number(row.REVENUE) || 0;
+        periods[0].count += 1;
+      } else if (daysDiff < 14) {
+        periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        periods[1].CLICKS += Number(row.CLICKS) || 0;
+        periods[1].REVENUE += Number(row.REVENUE) || 0;
+        periods[1].count += 1;
+      }
+    });
 
-    return Object.values(weekGroups)
-      .sort((a: any, b: any) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime());
+    return periods;
   };
 
   const weeklyData = useMemo(() => getWeeklyData(), [data, selectedMetricsCampaign]);
@@ -156,17 +182,17 @@ const Dashboard = ({ data }: DashboardProps) => {
   const getWeeklyComparison = () => {
     if (weeklyData.length < 2) return null;
 
-    const currentWeek = weeklyData[weeklyData.length - 1];
-    const previousWeek = weeklyData[weeklyData.length - 2];
+    const recentPeriod = weeklyData[0];
+    const previousPeriod = weeklyData[1];
     const metric = selectedWeeklyMetric;
 
-    const currentValue = currentWeek[metric];
-    const previousValue = previousWeek[metric];
+    const currentValue = recentPeriod[metric];
+    const previousValue = previousPeriod[metric];
     const percentChange = ((currentValue - previousValue) / previousValue) * 100;
 
     return {
-      currentWeek,
-      previousWeek,
+      recentPeriod,
+      previousPeriod,
       percentChange,
       increased: percentChange > 0
     };
@@ -338,7 +364,7 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold">Weekly Performance Comparison</h3>
+          <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
           <Select value={selectedWeeklyMetric} onValueChange={setSelectedWeeklyMetric}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select metric" />
@@ -354,25 +380,25 @@ const Dashboard = ({ data }: DashboardProps) => {
         {weeklyComparison ? (
           <div className="grid gap-8 md:grid-cols-2">
             <Card className="p-4">
-              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Previous Week</h4>
+              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h4>
               <p className="mb-1 text-2xl font-bold">
                 {selectedWeeklyMetric === 'REVENUE' 
-                  ? formatRevenue(weeklyComparison.previousWeek[selectedWeeklyMetric])
-                  : formatNumber(weeklyComparison.previousWeek[selectedWeeklyMetric])}
+                  ? formatRevenue(weeklyComparison.previousPeriod[selectedWeeklyMetric])
+                  : formatNumber(weeklyComparison.previousPeriod[selectedWeeklyMetric])}
               </p>
               <p className="text-sm text-muted-foreground">
-                {formatDate(weeklyComparison.previousWeek.weekStart)} - {' '}
-                {formatDate(new Date(new Date(weeklyComparison.previousWeek.weekStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                {formatDate(weeklyComparison.previousPeriod.periodStart)} - {' '}
+                {formatDate(new Date(new Date(weeklyComparison.previousPeriod.periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
               </p>
             </Card>
 
             <Card className="p-4">
-              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Current Week</h4>
+              <h4 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h4>
               <div className="flex items-center gap-2">
                 <p className="text-2xl font-bold">
                   {selectedWeeklyMetric === 'REVENUE'
-                    ? formatRevenue(weeklyComparison.currentWeek[selectedWeeklyMetric])
-                    : formatNumber(weeklyComparison.currentWeek[selectedWeeklyMetric])}
+                    ? formatRevenue(weeklyComparison.recentPeriod[selectedWeeklyMetric])
+                    : formatNumber(weeklyComparison.recentPeriod[selectedWeeklyMetric])}
                 </p>
                 <div
                   className={`flex items-center ${
@@ -391,14 +417,14 @@ const Dashboard = ({ data }: DashboardProps) => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                {formatDate(weeklyComparison.currentWeek.weekStart)} - {' '}
-                {formatDate(new Date(new Date(weeklyComparison.currentWeek.weekStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                {formatDate(weeklyComparison.recentPeriod.periodStart)} - {' '}
+                {formatDate(new Date(new Date(weeklyComparison.recentPeriod.periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
               </p>
             </Card>
           </div>
         ) : (
           <p className="text-center text-muted-foreground">
-            Not enough data for week-over-week comparison
+            Not enough data for period comparison
           </p>
         )}
       </Card>
