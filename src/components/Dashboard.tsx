@@ -1,4 +1,4 @@
-<lov-code>
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -43,6 +43,93 @@ interface WeeklyAggregation {
 }
 
 type AnomalyPeriod = "daily" | "weekly";
+
+interface MetricCardProps {
+  title: string;
+  anomalies: any[];
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}
+
+const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
+  const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
+
+  return (
+    <Card className="p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <span className="text-xs font-medium bg-slate-100 px-2 py-1 rounded">
+          {anomalies.length} detected
+        </span>
+      </div>
+      
+      {anomalies.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+          <AlertTriangle className="h-8 w-8 mb-2 text-muted-foreground/60" />
+          <p>No anomalies detected</p>
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-[250px] overflow-y-auto pr-1">
+          {anomalies.slice(0, 5).map((anomaly, idx) => {
+            const colorClasses = getColorClasses(anomaly.deviation);
+            return (
+              <div 
+                key={idx}
+                className={cn(
+                  "p-2 rounded border cursor-pointer transition-colors",
+                  selectedAnomaly === anomaly ? "bg-slate-50 border-slate-200" : "hover:bg-slate-50 border-transparent"
+                )}
+                onClick={() => setSelectedAnomaly(anomaly)}
+              >
+                <div className="flex items-center gap-2">
+                  {anomaly.deviation > 0 ? (
+                    <TrendingUp className={cn("h-4 w-4", colorClasses)} />
+                  ) : (
+                    <TrendingDown className={cn("h-4 w-4", colorClasses)} />
+                  )}
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium">
+                      {anomaly.campaign || "All Campaigns"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {anomaly.DATE || anomaly.periodType === "weekly" ? 
+                        anomaly.DATE : 
+                        "Unknown date"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn("font-semibold", colorClasses)}>
+                      {anomaly.deviation > 0 ? "+" : ""}{Math.round(anomaly.deviation)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {metric === "REVENUE" ? "$" : ""}{Math.round(anomaly.actualValue).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          
+          {anomalies.length > 5 && (
+            <Button variant="ghost" className="w-full text-xs" size="sm">
+              View {anomalies.length - 5} more anomalies
+            </Button>
+          )}
+        </div>
+      )}
+      
+      {selectedAnomaly && (
+        <div className="mt-4 pt-4 border-t">
+          <AnomalyDetails 
+            anomalyData={selectedAnomaly}
+            metricName={metric} 
+            periodType={selectedAnomaly.periodType} 
+          />
+        </div>
+      )}
+    </Card>
+  );
+};
 
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
@@ -880,4 +967,11 @@ const Dashboard = ({ data }: DashboardProps) => {
               Upload historical data to enable day-of-week based anomaly detection
             </p>
           </div>
-          <FileUpload onDataLoaded={handleHistoricalDataUpload}
+          <FileUpload onDataLoaded={handleHistoricalDataUpload} />
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
