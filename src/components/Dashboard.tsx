@@ -44,6 +44,7 @@ type AnomalyPeriod = "daily" | "weekly";
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
+  const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
@@ -325,16 +326,16 @@ const Dashboard = ({ data }: DashboardProps) => {
     }
   };
 
-  const getWeeklyData = () => {
+  const getWeeklyData = (selectedCampaign: string) => {
     try {
       if (!data || !data.length) {
         console.log("No data available");
         return [];
       }
 
-      const filteredData = selectedMetricsCampaign === "all" 
+      const filteredData = selectedCampaign === "all" 
         ? data 
-        : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
+        : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
 
       if (!filteredData.length) {
         console.log("No filtered data available");
@@ -435,7 +436,7 @@ const Dashboard = ({ data }: DashboardProps) => {
     }
   };
 
-  const weeklyData = useMemo(() => getWeeklyData(), [data, selectedMetricsCampaign]);
+  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign), [data, selectedWeeklyCampaign]);
   const metricsData = useMemo(() => getAggregatedData(selectedMetricsCampaign), [data, selectedMetricsCampaign]);
   const revenueData = useMemo(() => getAggregatedData(selectedRevenueCampaign), [data, selectedRevenueCampaign]);
 
@@ -709,11 +710,24 @@ const Dashboard = ({ data }: DashboardProps) => {
       </Card>
 
       <Card className="p-6">
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+            </p>
+          </div>
+          <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {weeklyData.length >= 1 ? (
