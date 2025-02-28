@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -17,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import FileUpload from "./FileUpload";
+import { Button } from "@/components/ui/button";
 
 interface DashboardProps {
   data: any[];
@@ -46,11 +47,189 @@ const Dashboard = ({ data }: DashboardProps) => {
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
 
   const campaigns = useMemo(() => {
     if (!data || !data.length) return [];
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
   }, [data]);
+
+  // Calculate day-of-week baselines from historical data
+  const dayOfWeekBaselines = useMemo(() => {
+    if (!historicalData.length) return {};
+    
+    try {
+      // Group historical data by campaign and day of week
+      const campaignDayMetrics: Record<string, Record<string, number[]>> = {};
+      
+      historicalData.forEach(row => {
+        if (!row.DATE || !row["CAMPAIGN ORDER NAME"]) return;
+        
+        const campaign = row["CAMPAIGN ORDER NAME"];
+        const date = new Date(row.DATE);
+        
+        if (isNaN(date.getTime())) return;
+        
+        const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+        
+        if (!campaignDayMetrics[campaign]) {
+          campaignDayMetrics[campaign] = {};
+        }
+        
+        if (!campaignDayMetrics[campaign][dayOfWeek]) {
+          campaignDayMetrics[campaign][dayOfWeek] = {
+            IMPRESSIONS: [],
+            CLICKS: [],
+            REVENUE: []
+          };
+        }
+        
+        // Add metrics to respective arrays
+        ["IMPRESSIONS", "CLICKS", "REVENUE"].forEach(metric => {
+          campaignDayMetrics[campaign][dayOfWeek][metric].push(Number(row[metric]) || 0);
+        });
+      });
+      
+      // Calculate averages for each day of week and campaign
+      const baselines: Record<string, Record<string, Record<string, number>>> = {};
+      
+      Object.entries(campaignDayMetrics).forEach(([campaign, dayMetrics]) => {
+        baselines[campaign] = {};
+        
+        Object.entries(dayMetrics).forEach(([day, metrics]) => {
+          baselines[campaign][day] = {};
+          
+          Object.entries(metrics).forEach(([metric, values]) => {
+            // Calculate average (mean) if we have data
+            if (values.length > 0) {
+              baselines[campaign][day][metric] = values.reduce((a, b) => a + b, 0) / values.length;
+            } else {
+              baselines[campaign][day][metric] = 0;
+            }
+          });
+        });
+      });
+      
+      return baselines;
+    } catch (error) {
+      console.error("Error calculating day-of-week baselines:", error);
+      return {};
+    }
+  }, [historicalData]);
+  
+  // Calculate average weekly distribution patterns
+  const weeklyDistributionPatterns = useMemo(() => {
+    if (!historicalData.length) return {};
+    
+    try {
+      // First, group data by campaign and week
+      const campaignWeeks: Record<string, any[][]> = {};
+      
+      historicalData.forEach(row => {
+        if (!row.DATE || !row["CAMPAIGN ORDER NAME"]) return;
+        
+        const campaign = row["CAMPAIGN ORDER NAME"];
+        const date = new Date(row.DATE);
+        
+        if (isNaN(date.getTime())) return;
+        
+        // Get week number and year (for grouping)
+        const weekYear = `${date.getFullYear()}-${Math.floor((date.getDate() - 1 + date.getDay()) / 7) + 1}`;
+        
+        if (!campaignWeeks[campaign]) {
+          campaignWeeks[campaign] = {};
+        }
+        
+        if (!campaignWeeks[campaign][weekYear]) {
+          campaignWeeks[campaign][weekYear] = [];
+        }
+        
+        campaignWeeks[campaign][weekYear].push(row);
+      });
+      
+      // For each campaign and week, calculate day distribution
+      const distributions: Record<string, Record<string, { percent: number, count: number }>> = {};
+      
+      Object.entries(campaignWeeks).forEach(([campaign, weeks]) => {
+        if (!distributions[campaign]) {
+          distributions[campaign] = {
+            Sun: { percent: 0, count: 0 },
+            Mon: { percent: 0, count: 0 },
+            Tue: { percent: 0, count: 0 },
+            Wed: { percent: 0, count: 0 },
+            Thu: { percent: 0, count: 0 },
+            Fri: { percent: 0, count: 0 },
+            Sat: { percent: 0, count: 0 }
+          };
+        }
+        
+        // Process each week
+        Object.values(weeks).forEach(weekRows => {
+          if (!weekRows || weekRows.length < 3) return; // Skip weeks with insufficient data
+          
+          // Calculate total metrics for the week
+          const weekMetrics = {
+            IMPRESSIONS: 0,
+            CLICKS: 0,
+            REVENUE: 0
+          };
+          
+          // Daily metrics by day of week
+          const dailyMetrics: Record<string, any> = {};
+          
+          weekRows.forEach(row => {
+            const date = new Date(row.DATE);
+            if (isNaN(date.getTime())) return;
+            
+            const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+            
+            // Add to week totals
+            ["IMPRESSIONS", "CLICKS", "REVENUE"].forEach(metric => {
+              weekMetrics[metric] += Number(row[metric]) || 0;
+            });
+            
+            // Group by day of week
+            if (!dailyMetrics[dayOfWeek]) {
+              dailyMetrics[dayOfWeek] = {
+                IMPRESSIONS: 0,
+                CLICKS: 0,
+                REVENUE: 0
+              };
+            }
+            
+            ["IMPRESSIONS", "CLICKS", "REVENUE"].forEach(metric => {
+              dailyMetrics[dayOfWeek][metric] += Number(row[metric]) || 0;
+            });
+          });
+          
+          // Calculate percentages for each day and metric
+          Object.entries(dailyMetrics).forEach(([day, metrics]) => {
+            ["IMPRESSIONS", "CLICKS", "REVENUE"].forEach(metric => {
+              if (weekMetrics[metric] > 0) {
+                const percent = (metrics[metric] / weekMetrics[metric]) * 100;
+                
+                // Add to running averages
+                distributions[campaign][day].percent += percent;
+                distributions[campaign][day].count++;
+              }
+            });
+          });
+          
+          // Calculate final averages
+          Object.keys(distributions[campaign]).forEach(day => {
+            if (distributions[campaign][day].count > 0) {
+              distributions[campaign][day].percent /= distributions[campaign][day].count;
+            }
+          });
+        });
+      });
+      
+      return distributions;
+    } catch (error) {
+      console.error("Error calculating weekly distribution patterns:", error);
+      return {};
+    }
+  }, [historicalData]);
 
   const anomalies = useMemo(() => {
     if (!data || !data.length) return {
@@ -94,27 +273,70 @@ const Dashboard = ({ data }: DashboardProps) => {
 
             const threshold = stdDev * 2;
 
+            // Use day-of-week baselines if available
+            const useDayOfWeekBaselines = dayOfWeekBaselines[campaign] !== undefined;
+
             const campaignAnomalies = campaignRows.filter((row) => {
               const value = Number(row[metric]) || 0;
               
+              let expectedValue = mean;
+              
+              if (useDayOfWeekBaselines && row.DATE) {
+                try {
+                  const date = new Date(row.DATE);
+                  if (!isNaN(date.getTime())) {
+                    const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                    if (dayOfWeekBaselines[campaign][dayOfWeek] && 
+                        dayOfWeekBaselines[campaign][dayOfWeek][metric] !== undefined) {
+                      expectedValue = dayOfWeekBaselines[campaign][dayOfWeek][metric];
+                    }
+                  }
+                } catch (e) {
+                  console.error("Error processing day baseline:", e);
+                  // Fallback to overall mean
+                }
+              }
+              
               // Calculate deviation percentage
-              const deviationPercent = ((value - mean) / mean) * 100;
+              const deviationPercent = ((value - expectedValue) / expectedValue) * 100;
               
               // Only include anomalies with more than 10% deviation (either direction)
-              return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
-            }).map(row => ({
-              ...row,
-              campaign,
-              mean,
-              actualValue: Number(row[metric]) || 0,
-              deviation: ((Number(row[metric]) || 0) - mean) / mean * 100,
-              periodType: "daily"
-            }));
+              return Math.abs(deviationPercent) > 10 && Math.abs(value - expectedValue) > threshold;
+            }).map(row => {
+              let expectedValue = mean;
+              let dayOfWeek;
+              
+              if (useDayOfWeekBaselines && row.DATE) {
+                try {
+                  const date = new Date(row.DATE);
+                  if (!isNaN(date.getTime())) {
+                    dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                    if (dayOfWeekBaselines[campaign][dayOfWeek] && 
+                        dayOfWeekBaselines[campaign][dayOfWeek][metric] !== undefined) {
+                      expectedValue = dayOfWeekBaselines[campaign][dayOfWeek][metric];
+                    }
+                  }
+                } catch (e) {
+                  console.error("Error processing day baseline:", e);
+                  // Fallback to overall mean
+                }
+              }
+              
+              return {
+                ...row,
+                campaign,
+                mean: expectedValue,
+                actualValue: Number(row[metric]) || 0,
+                deviation: ((Number(row[metric]) || 0) - expectedValue) / expectedValue * 100,
+                periodType: "daily",
+                dayOfWeek
+              };
+            });
 
             allAnomalies = [...allAnomalies, ...campaignAnomalies];
           });
         } else {
-          // Week-over-week anomaly detection - IMPROVED LOGIC (v2)
+          // Week-over-week anomaly detection with day-of-week pattern analysis
           Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
             if (!campaignRows.length) return;
             
@@ -174,7 +396,6 @@ const Dashboard = ({ data }: DashboardProps) => {
             if (weeklyValues.length < 2) return;
             
             // Compare each week with the previous week (week to week comparison)
-            // This specifically looks at consecutive weeks for anomalies
             for (let i = 0; i < weeklyValues.length - 1; i++) {
               const currentWeek = weeklyValues[i];
               const previousWeek = weeklyValues[i + 1];
@@ -188,10 +409,81 @@ const Dashboard = ({ data }: DashboardProps) => {
               // Calculate week-over-week percentage change
               const percentChange = ((currentValue - previousValue) / previousValue) * 100;
               
+              // Analyze day-of-week distribution if we have historical patterns
+              let dayOfWeekDistribution;
+              let dayOfWeekBaselinesForWeek;
+              
+              if (weeklyDistributionPatterns[campaign]) {
+                dayOfWeekDistribution = {};
+                dayOfWeekBaselinesForWeek = {};
+                
+                // Calculate actual distribution for this week
+                const weekTotal = currentWeek.rows.reduce((total, row) => total + (Number(row[metric]) || 0), 0);
+                
+                // Group current week by day of week
+                const dayGroups: Record<string, { total: number, rows: any[] }> = {};
+                
+                currentWeek.rows.forEach(row => {
+                  if (!row.DATE) return;
+                  
+                  try {
+                    const date = new Date(row.DATE);
+                    if (isNaN(date.getTime())) return;
+                    
+                    const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                    
+                    if (!dayGroups[dayOfWeek]) {
+                      dayGroups[dayOfWeek] = { total: 0, rows: [] };
+                    }
+                    
+                    dayGroups[dayOfWeek].total += Number(row[metric]) || 0;
+                    dayGroups[dayOfWeek].rows.push(row);
+                  } catch (e) {
+                    console.error("Error grouping by day of week:", e);
+                  }
+                });
+                
+                // Compare to historical distribution
+                Object.entries(weeklyDistributionPatterns[campaign]).forEach(([day, { percent }]) => {
+                  const actualValue = dayGroups[day]?.total || 0;
+                  const actualPercent = weekTotal > 0 ? (actualValue / weekTotal) * 100 : 0;
+                  
+                  dayOfWeekDistribution[day] = {
+                    expected: percent,
+                    actual: actualPercent
+                  };
+                  
+                  // Store daily baselines for later use
+                  if (dayOfWeekBaselines[campaign] && dayOfWeekBaselines[campaign][day]) {
+                    dayOfWeekBaselinesForWeek[day] = dayOfWeekBaselines[campaign][day][metric];
+                  }
+                });
+              }
+              
               // Detect significant week-over-week changes (more than 15% change)
-              // Lowered threshold to catch more significant patterns
               if (Math.abs(percentChange) > 15) {
                 const weekLabel = currentWeek.weekStart;
+                
+                // Calculate daily expected values based on day-of-week baselines
+                let dailyExpectedValues;
+                
+                if (dayOfWeekBaselinesForWeek && Object.keys(dayOfWeekBaselinesForWeek).length > 0) {
+                  dailyExpectedValues = currentWeek.rows.map(row => {
+                    if (!row.DATE) return previousValue / previousWeek.rows.length;
+                    
+                    try {
+                      const date = new Date(row.DATE);
+                      if (isNaN(date.getTime())) return previousValue / previousWeek.rows.length;
+                      
+                      const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+                      
+                      return dayOfWeekBaselinesForWeek[dayOfWeek] || (previousValue / previousWeek.rows.length);
+                    } catch (e) {
+                      console.error("Error calculating daily expected value:", e);
+                      return previousValue / previousWeek.rows.length;
+                    }
+                  });
+                }
                 
                 allAnomalies.push({
                   campaign,
@@ -202,13 +494,15 @@ const Dashboard = ({ data }: DashboardProps) => {
                   periodType: "weekly",
                   rows: currentWeek.rows,
                   weekNumber: currentWeek.weekNumber,
-                  comparedTo: previousWeek.weekStart // Add info about which week this is compared to
+                  comparedTo: previousWeek.weekStart, // Add info about which week this is compared to
+                  dayOfWeekDistribution,
+                  dayOfWeekBaselines: dayOfWeekBaselinesForWeek,
+                  dailyExpectedValues
                 });
               }
             }
             
             // Also compare to the overall average (for detecting long-term anomalies)
-            // This can catch weeks that are anomalous compared to the overall trend
             if (weeklyValues.length >= 3) {
               // Calculate mean and standard deviation across all available weeks
               const allWeekValues = weeklyValues.map(week => week[metric]);
@@ -273,7 +567,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         REVENUE: { anomalies: [] }
       };
     }
-  }, [data, anomalyPeriod]);
+  }, [data, anomalyPeriod, dayOfWeekBaselines, weeklyDistributionPatterns]);
 
   const getAggregatedData = (campaign: string) => {
     try {
@@ -526,6 +820,12 @@ const Dashboard = ({ data }: DashboardProps) => {
       </div>
     );
   }
+  
+  // Add a function to handle historical data upload
+  const handleHistoricalDataUpload = (data: any[]) => {
+    setHistoricalData(data);
+    console.log(`Loaded ${data.length} historical data rows for day-of-week analysis`);
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -566,376 +866,21 @@ const Dashboard = ({ data }: DashboardProps) => {
         </div>
       </div>
 
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="h-[400px]">
-          {metricsData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={metricsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="DATE" 
-                  style={axisStyle}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  orientation="left"
-                  stroke="#4ade80"
-                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                  tickFormatter={formatNumber}
-                  style={axisStyle}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#f59e0b"
-                  label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
-                  tickFormatter={formatNumber}
-                  style={axisStyle}
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => [formatNumber(value), name]}
-                  contentStyle={{ fontSize: '0.75rem' }}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="IMPRESSIONS"
-                  fill="#4ade80"
-                  opacity={0.8}
-                  name="Impressions"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="CLICKS"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Clicks"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No data available for the selected campaign</p>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="h-[400px]">
-          {revenueData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="DATE" 
-                  style={axisStyle}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  orientation="left"
-                  stroke="#4ade80"
-                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                  tickFormatter={formatNumber}
-                  style={axisStyle}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#ef4444"
-                  label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
-                  tickFormatter={formatRevenue}
-                  style={axisStyle}
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => {
-                    if (name === "Revenue") return [formatRevenue(value), name];
-                    return [formatNumber(value), name];
-                  }}
-                  contentStyle={{ fontSize: '0.75rem' }}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="IMPRESSIONS"
-                  fill="#4ade80"
-                  opacity={0.8}
-                  name="Impressions"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="REVENUE"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Revenue"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No revenue data available for the selected campaign</p>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+      {/* Historical data upload section */}
+      {!historicalData.length && (
+        <Card className="p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Upload Historical Data</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+              Upload historical data to enable day-of-week based anomaly detection
             </p>
           </div>
-          <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {weeklyData.length >= 1 ? (
-          <div className="grid gap-8 md:grid-cols-4">
-            {/* Impressions Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`impressions-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatNumber(period.IMPRESSIONS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* Clicks Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`clicks-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatNumber(period.CLICKS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* Revenue Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`revenue-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatRevenue(period.REVENUE)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* ROAS Comparison */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`roas-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatROAS(period.ROAS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground">
-            Not enough data for period comparison
-          </p>
-        )}
-      </Card>
-    </div>
-  );
-};
-
-const MetricCard = ({
-  title,
-  anomalies,
-  metric,
-  anomalyPeriod
-}: {
-  title: string;
-  anomalies: any[];
-  metric: string;
-  anomalyPeriod: AnomalyPeriod;
-}) => {
-  const topAnomalyColor = anomalies.length > 0 ? getColorClasses(anomalies[0].deviation) : '';
-  
-  return (
-    <Card className="p-6 transition-all duration-300 hover:shadow-lg">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-medium text-muted-foreground">{title}</h3>
-          <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
-        </div>
-        {anomalies.length > 0 && (
-          <div className={`p-2 rounded-full ${topAnomalyColor}`}>
-            <AlertTriangle className={`w-5 h-5 ${topAnomalyColor.split(' ').find(c => c.startsWith('text-'))}`} />
-          </div>
-        )}
-      </div>
-      {anomalies.length > 0 && (
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center">
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              <span>Top anomalies:</span>
-            </div>
-            <AnomalyDetails 
-              anomalies={anomalies} 
-              metric={metric} 
-              anomalyPeriod={anomalyPeriod}
-            />
-          </div>
-          {anomalies.slice(0, 2).map((anomaly, idx) => {
-            const colorClasses = getColorClasses(anomaly.deviation);
-            return (
-              <div key={idx} className="text-sm space-y-1">
-                <div className="font-medium">{anomaly.campaign}</div>
-                <div className="text-muted-foreground">
-                  {anomalyPeriod === "weekly" ? "Week of: " : "Date: "}{anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
-                  <span className={colorClasses.split(' ').find(c => c.startsWith('text-'))}>
-                    {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
-                  </span>
-                </div>
-                {anomaly.comparedTo && (
-                  <div className="text-xs text-muted-foreground">
-                    Compared to: {anomaly.comparedTo}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+          <FileUpload onDataLoaded={handleHistoricalDataUpload} />
+        </Card>
       )}
-    </Card>
-  );
-};
 
-export default Dashboard;
+      {historicalData.length > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <

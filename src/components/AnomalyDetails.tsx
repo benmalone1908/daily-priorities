@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getColorClasses } from "@/utils/anomalyColors";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface AnomalyDetailsProps {
   anomalies: any[];
@@ -15,6 +16,23 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
   if (!anomalies || anomalies.length === 0) {
     return null;
   }
+
+  const formatDayOfWeek = (dateStr: string) => {
+    try {
+      // Check if it's already a day name
+      if (dateStr.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i)) {
+        return dateStr;
+      }
+      
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      
+      return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
+    } catch (err) {
+      console.error("Error formatting day of week:", err);
+      return dateStr;
+    }
+  };
 
   return (
     <Dialog>
@@ -33,6 +51,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
           <TabsList className="mb-4">
             <TabsTrigger value="table">Table View</TabsTrigger>
             <TabsTrigger value="details">Detailed View</TabsTrigger>
+            <TabsTrigger value="chart">Chart View</TabsTrigger>
           </TabsList>
           
           <TabsContent value="table">
@@ -105,6 +124,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                             <thead>
                               <tr className="border-b border-muted">
                                 <th className="text-left py-2 font-medium">Date</th>
+                                <th className="text-left py-2 font-medium">Day</th>
                                 <th className="text-right py-2 font-medium">Actual</th>
                                 <th className="text-right py-2 font-medium">Expected</th>
                                 <th className="text-right py-2 font-medium">Deviation</th>
@@ -119,6 +139,10 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                                 if (anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]) {
                                   expectedValue = anomaly.dailyExpectedValues[idx];
                                 } 
+                                else if (anomaly.dayOfWeekBaselines && row.DATE) {
+                                  const dayOfWeek = formatDayOfWeek(row.DATE);
+                                  expectedValue = anomaly.dayOfWeekBaselines[dayOfWeek] || (anomaly.mean / anomaly.rows.length);
+                                }
                                 else {
                                   expectedValue = anomaly.mean / anomaly.rows.length;
                                 }
@@ -132,6 +156,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                                 return (
                                   <tr key={idx} className="border-b last:border-b-0 border-muted">
                                     <td className="py-2 text-left font-medium">{row.DATE}</td>
+                                    <td className="py-2 text-left">{formatDayOfWeek(row.DATE)}</td>
                                     <td className="py-2 text-right">{Math.round(actualValue).toLocaleString()}</td>
                                     <td className="py-2 text-right">{Math.round(expectedValue).toLocaleString()}</td>
                                     <td className={`py-2 text-right ${dailyColorClass}`}>
@@ -145,9 +170,65 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                         </div>
                       </div>
                     )}
+                    
+                    {anomalyPeriod === "weekly" && anomaly.dayOfWeekDistribution && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium mb-2">Day of week distribution:</p>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Shows how the actual distribution compares to historical pattern
+                        </p>
+                        <div className="h-[180px] mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={Object.keys(anomaly.dayOfWeekDistribution).map(day => ({
+                                day,
+                                actual: anomaly.dayOfWeekDistribution[day].actual,
+                                expected: anomaly.dayOfWeekDistribution[day].expected,
+                              }))}
+                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <XAxis dataKey="day" />
+                              <YAxis />
+                              <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                              <Bar name="Expected %" dataKey="expected" fill="#4ade80" opacity={0.7} />
+                              <Bar name="Actual %" dataKey="actual" fill="#f43f5e" opacity={0.7} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="chart">
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={anomalies.map(anomaly => ({
+                    name: anomaly.campaign.length > 20 
+                      ? anomaly.campaign.substring(0, 20) + '...' 
+                      : anomaly.campaign,
+                    actual: anomaly.actualValue,
+                    expected: anomaly.mean,
+                    date: anomaly.DATE,
+                  }))}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: number, name: string, props: any) => {
+                      if (name === "actual") return [`Actual: ${value.toLocaleString()}`, `${props.payload.date}`];
+                      return [`Expected: ${value.toLocaleString()}`, `${props.payload.date}`];
+                    }}
+                  />
+                  <Bar name="expected" dataKey="expected" fill="#4ade80" opacity={0.6} />
+                  <Bar name="actual" dataKey="actual" fill="#f43f5e" opacity={0.8} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </TabsContent>
         </Tabs>
