@@ -316,49 +316,68 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Calculate how many days between start and end
-      const daysBetween = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      console.log(`Days between: ${daysBetween}`);
+      // Adjust for timezone differences - ensure our endDate is the true last day
+      const trueEndDate = new Date(endDate);
+      trueEndDate.setHours(23, 59, 59, 999);
 
-      // Calculate how many full 7-day periods we can have
-      const maxPeriods = Math.ceil(daysBetween / 7);
-      const numPeriods = Math.min(maxPeriods, 6); // Allow up to 6 periods maximum
-      
-      console.log(`Days between: ${daysBetween}, Max periods: ${maxPeriods}, Will show: ${numPeriods}`);
-      
-      // Initialize all periods
+      // Create periods from the most recent date
       const periods: WeeklyData[] = [];
       
-      // Start from the end date and work backwards
-      const periodEnd = new Date(endDate);
-      periodEnd.setHours(0, 0, 0, 0);
+      // Calculate period 1 (most recent 7 days): ends on the latest date, starts 6 days before
+      const period1End = new Date(trueEndDate);
+      const period1Start = new Date(period1End);
+      period1Start.setDate(period1End.getDate() - 6);
       
-      for (let i = 0; i < numPeriods; i++) {
-        // Calculate the end date for this period (going backwards from the most recent date)
-        const thisEnd = new Date(periodEnd);
-        thisEnd.setDate(thisEnd.getDate() - (i * 7));
-        
-        // Calculate the start date (7 days before the end date of this period)
-        const thisStart = new Date(thisEnd);
-        thisStart.setDate(thisEnd.getDate() - 6);
-        
-        // Skip periods that start before our data's start date
-        if (thisStart < startDate) {
-          console.log(`Skipping period ${i} - starts before data range`);
-          continue;
-        }
-
-        console.log(`Adding period ${i}: ${thisStart.toISOString()} - ${thisEnd.toISOString()}`);
-        
+      // Calculate period 2 (previous 7 days): ends the day before period 1 starts, starts 7 days before that
+      const period2End = new Date(period1Start);
+      period2End.setDate(period2End.getDate() - 1);
+      const period2Start = new Date(period2End);
+      period2Start.setDate(period2End.getDate() - 6);
+      
+      // Calculate period 3 (7 days before that): ends the day before period 2 starts, starts 7 days before that
+      const period3End = new Date(period2Start);
+      period3End.setDate(period3End.getDate() - 1);
+      const period3Start = new Date(period3End);
+      period3Start.setDate(period3End.getDate() - 6);
+      
+      // Only add periods that include dates from our dataset
+      if (period1Start <= trueEndDate) {
         periods.push({
-          periodStart: thisStart.toISOString().split('T')[0],
-          periodEnd: thisEnd.toISOString().split('T')[0],
+          periodStart: period1Start.toISOString().split('T')[0],
+          periodEnd: period1End.toISOString().split('T')[0],
           IMPRESSIONS: 0,
           CLICKS: 0,
           REVENUE: 0,
           ROAS: 0,
           count: 0
         });
+        console.log(`Adding period 1 (most recent): ${period1Start.toISOString().split('T')[0]} - ${period1End.toISOString().split('T')[0]}`);
+      }
+      
+      if (period2Start <= trueEndDate && period2End >= startDate) {
+        periods.push({
+          periodStart: period2Start.toISOString().split('T')[0],
+          periodEnd: period2End.toISOString().split('T')[0],
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0
+        });
+        console.log(`Adding period 2 (previous): ${period2Start.toISOString().split('T')[0]} - ${period2End.toISOString().split('T')[0]}`);
+      }
+      
+      if (period3Start <= trueEndDate && period3End >= startDate) {
+        periods.push({
+          periodStart: period3Start.toISOString().split('T')[0],
+          periodEnd: period3End.toISOString().split('T')[0],
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0
+        });
+        console.log(`Adding period 3 (earlier): ${period3Start.toISOString().split('T')[0]} - ${period3End.toISOString().split('T')[0]}`);
       }
       
       // Calculate metrics for each period
