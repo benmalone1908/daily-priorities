@@ -1,6 +1,7 @@
 
 
 
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -291,7 +292,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Extract all dates from the data and find the most recent date
+      // Extract all dates from the data
       const allDates = filteredData
         .map(row => {
           try {
@@ -310,11 +311,13 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Find the most recent date
-      const mostRecentDate = new Date(Math.max.apply(null, allDates.map(date => date.getTime())));
-      const startDate = new Date(Math.min.apply(null, allDates.map(date => date.getTime())));
+      // Find the most recent date using timestamp comparison
+      const mostRecentDateTimestamp = Math.max(...allDates.map(date => date.getTime()));
+      const mostRecentDate = new Date(mostRecentDateTimestamp);
+      const startDate = new Date(Math.min(...allDates.map(date => date.getTime())));
 
       console.log(`Date range: ${startDate.toISOString()} to ${mostRecentDate.toISOString()}`);
+      console.log(`Most recent date is: ${mostRecentDate.toLocaleDateString()}`);
       
       // Normalize the end date to end of day
       mostRecentDate.setHours(23, 59, 59, 999);
@@ -325,7 +328,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       // Period 1: Most recent 7 days
       const period1End = new Date(mostRecentDate);
       const period1Start = new Date(period1End);
-      period1Start.setDate(period1End.getDate() - 6); // Start 6 days before
+      period1Start.setDate(period1End.getDate() - 6); // Start 6 days before (7 days total)
       
       // Period 2: Previous 7 days
       const period2End = new Date(period1Start);
@@ -339,12 +342,12 @@ const Dashboard = ({ data }: DashboardProps) => {
       const period3Start = new Date(period3End);
       period3Start.setDate(period3End.getDate() - 6); // Start 6 days before
       
-      console.log(`Period 1: ${period1Start.toISOString().split('T')[0]} to ${period1End.toISOString().split('T')[0]}`);
-      console.log(`Period 2: ${period2Start.toISOString().split('T')[0]} to ${period2End.toISOString().split('T')[0]}`);
-      console.log(`Period 3: ${period3Start.toISOString().split('T')[0]} to ${period3End.toISOString().split('T')[0]}`);
+      console.log(`Period 1: ${period1Start.toLocaleDateString()} to ${period1End.toLocaleDateString()}`);
+      console.log(`Period 2: ${period2Start.toLocaleDateString()} to ${period2End.toLocaleDateString()}`);
+      console.log(`Period 3: ${period3Start.toLocaleDateString()} to ${period3End.toLocaleDateString()}`);
       
       // Only add periods that are within our data range
-      if (period1End >= startDate && period1Start <= mostRecentDate) {
+      if (period1Start <= mostRecentDate) {
         periods.push({
           periodStart: period1Start.toISOString().split('T')[0],
           periodEnd: period1End.toISOString().split('T')[0],
@@ -354,10 +357,10 @@ const Dashboard = ({ data }: DashboardProps) => {
           ROAS: 0,
           count: 0
         });
-        console.log(`Adding period 1 (most recent): ${period1Start.toISOString().split('T')[0]} - ${period1End.toISOString().split('T')[0]}`);
+        console.log(`Adding period 1 (most recent): ${period1Start.toLocaleDateString()} - ${period1End.toLocaleDateString()}`);
       }
       
-      if (period2End >= startDate && period2Start <= mostRecentDate) {
+      if (period2Start <= mostRecentDate) {
         periods.push({
           periodStart: period2Start.toISOString().split('T')[0],
           periodEnd: period2End.toISOString().split('T')[0],
@@ -367,10 +370,10 @@ const Dashboard = ({ data }: DashboardProps) => {
           ROAS: 0,
           count: 0
         });
-        console.log(`Adding period 2 (previous): ${period2Start.toISOString().split('T')[0]} - ${period2End.toISOString().split('T')[0]}`);
+        console.log(`Adding period 2 (previous): ${period2Start.toLocaleDateString()} - ${period2End.toLocaleDateString()}`);
       }
       
-      if (period3End >= startDate && period3Start <= mostRecentDate) {
+      if (period3Start <= mostRecentDate) {
         periods.push({
           periodStart: period3Start.toISOString().split('T')[0],
           periodEnd: period3End.toISOString().split('T')[0],
@@ -380,10 +383,10 @@ const Dashboard = ({ data }: DashboardProps) => {
           ROAS: 0,
           count: 0
         });
-        console.log(`Adding period 3 (earlier): ${period3Start.toISOString().split('T')[0]} - ${period3End.toISOString().split('T')[0]}`);
+        console.log(`Adding period 3 (earlier): ${period3Start.toLocaleDateString()} - ${period3End.toLocaleDateString()}`);
       }
       
-      // Calculate metrics for each period
+      // Calculate metrics for each period - reset the summing logic
       filteredData.forEach(row => {
         try {
           if (!row.DATE) return;
@@ -391,13 +394,15 @@ const Dashboard = ({ data }: DashboardProps) => {
           const rowDate = new Date(row.DATE);
           if (isNaN(rowDate.getTime())) return;
           
-          rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
+          // Normalize to start of day
+          rowDate.setHours(0, 0, 0, 0);
           
           // Check which period this row belongs to
           for (let i = 0; i < periods.length; i++) {
-            const periodStart = new Date(periods[i].periodStart);
-            const periodEnd = new Date(periods[i].periodEnd);
+            const periodStart = new Date(periods[i].periodStart + 'T00:00:00');
+            const periodEnd = new Date(periods[i].periodEnd + 'T23:59:59');
             
+            // Include the row if it falls within the date range (inclusive)
             if (rowDate >= periodStart && rowDate <= periodEnd) {
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
               periods[i].CLICKS += Number(row.CLICKS) || 0;
@@ -416,9 +421,9 @@ const Dashboard = ({ data }: DashboardProps) => {
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
 
-      console.log(`Generated ${periods.length} weekly periods`);
+      console.log(`Generated ${periods.length} weekly periods with metrics:`);
       periods.forEach((p, i) => {
-        console.log(`Period ${i}: ${p.periodStart} - ${p.periodEnd}, Impressions: ${p.IMPRESSIONS}, Clicks: ${p.CLICKS}`);
+        console.log(`Period ${i}: ${p.periodStart} - ${p.periodEnd}, Impressions: ${p.IMPRESSIONS}, Clicks: ${p.CLICKS}, Revenue: ${p.REVENUE}`);
       });
 
       return periods;
@@ -531,7 +536,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                 Daily
               </ToggleGroupItem>
               <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-sm">
-                Week-over-Week
+                Weekly
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -725,8 +730,9 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatNumber(period.IMPRESSIONS)}
                     </p>
-                    {idx > 0 && (() => {
-                      const comparison = getMetricComparison('IMPRESSIONS', weeklyData[idx-1], period);
+                    {/* Only show trend for idx > 0 (not for the oldest period) */}
+                    {idx < weeklyData.length - 1 && (() => {
+                      const comparison = getMetricComparison('IMPRESSIONS', weeklyData[idx], weeklyData[idx+1]);
                       return (
                         <div className={`flex items-center ${comparison.colorClass}`}>
                           {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -758,8 +764,9 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatNumber(period.CLICKS)}
                     </p>
-                    {idx > 0 && (() => {
-                      const comparison = getMetricComparison('CLICKS', weeklyData[idx-1], period);
+                    {/* Only show trend for idx > 0 (not for the oldest period) */}
+                    {idx < weeklyData.length - 1 && (() => {
+                      const comparison = getMetricComparison('CLICKS', weeklyData[idx], weeklyData[idx+1]);
                       return (
                         <div className={`flex items-center ${comparison.colorClass}`}>
                           {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -791,8 +798,9 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatRevenue(period.REVENUE)}
                     </p>
-                    {idx > 0 && (() => {
-                      const comparison = getMetricComparison('REVENUE', weeklyData[idx-1], period);
+                    {/* Only show trend for idx > 0 (not for the oldest period) */}
+                    {idx < weeklyData.length - 1 && (() => {
+                      const comparison = getMetricComparison('REVENUE', weeklyData[idx], weeklyData[idx+1]);
                       return (
                         <div className={`flex items-center ${comparison.colorClass}`}>
                           {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -824,8 +832,9 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatROAS(period.ROAS)}
                     </p>
-                    {idx > 0 && (() => {
-                      const comparison = getMetricComparison('ROAS', weeklyData[idx-1], period);
+                    {/* Only show trend for idx > 0 (not for the oldest period) */}
+                    {idx < weeklyData.length - 1 && (() => {
+                      const comparison = getMetricComparison('ROAS', weeklyData[idx], weeklyData[idx+1]);
                       return (
                         <div className={`flex items-center ${comparison.colorClass}`}>
                           {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -913,4 +922,3 @@ const MetricCard = ({
 };
 
 export default Dashboard;
-
