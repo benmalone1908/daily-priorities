@@ -82,13 +82,12 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                   let dateRangeInfo = "";
                   if (hasDetails) {
                     try {
-                      // Sort rows by date to get first and last date
-                      const sortedRows = [...anomaly.rows].sort((a, b) => {
-                        return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
-                      });
+                      // Get the actual dates directly from the rows data without adjustments
+                      const dates = anomaly.rows.map((row: any) => new Date(row.DATE));
                       
-                      const firstDate = new Date(sortedRows[0].DATE);
-                      const lastDate = new Date(sortedRows[sortedRows.length - 1].DATE);
+                      // Find the earliest and latest dates
+                      const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
+                      const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
                       
                       // Format dates as MM/DD
                       const formatDate = (date: Date) => {
