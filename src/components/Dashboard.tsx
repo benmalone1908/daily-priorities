@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -692,7 +693,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <h5 className="mb-2 text-sm font-medium text-muted-foreground">
                     {idx === 0 ? "Most Recent 7 Days" : 
                      idx === 1 ? "Previous 7 Days" : 
-                     `Week ${idx + 1}`}
+                     `${idx + 1} Weeks Ago`}
                   </h5>
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold">
@@ -725,7 +726,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <h5 className="mb-2 text-sm font-medium text-muted-foreground">
                     {idx === 0 ? "Most Recent 7 Days" : 
                      idx === 1 ? "Previous 7 Days" : 
-                     `Week ${idx + 1}`}
+                     `${idx + 1} Weeks Ago`}
                   </h5>
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold">
@@ -758,7 +759,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <h5 className="mb-2 text-sm font-medium text-muted-foreground">
                     {idx === 0 ? "Most Recent 7 Days" : 
                      idx === 1 ? "Previous 7 Days" : 
-                     `Week ${idx + 1}`}
+                     `${idx + 1} Weeks Ago`}
                   </h5>
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold">
@@ -791,7 +792,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <h5 className="mb-2 text-sm font-medium text-muted-foreground">
                     {idx === 0 ? "Most Recent 7 Days" : 
                      idx === 1 ? "Previous 7 Days" : 
-                     `Week ${idx + 1}`}
+                     `${idx + 1} Weeks Ago`}
                   </h5>
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold">
