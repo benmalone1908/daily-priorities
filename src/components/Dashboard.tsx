@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -67,7 +68,12 @@ const Dashboard = ({ data }: DashboardProps) => {
 
         const campaignAnomalies = campaignRows.filter((row) => {
           const value = Number(row[metric]) || 0;
-          return Math.abs(value - mean) > threshold;
+          
+          // Calculate deviation percentage
+          const deviationPercent = ((value - mean) / mean) * 100;
+          
+          // Only include anomalies with more than 10% deviation (either direction)
+          return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
         }).map(row => ({
           ...row,
           campaign,
