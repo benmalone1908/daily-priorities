@@ -315,31 +315,46 @@ const Dashboard = ({ data }: DashboardProps) => {
       const endDate = new Date(allDates[allDates.length - 1]);
 
       console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
-      // Create periods by determining the last complete day and working backward
-      // For this example, we're assuming the last day in the dataset is Feb 27, 2025
       
-      // Normalize the end date to the end of day to ensure we capture all data
+      // Ensure the endDate is normalized to the end of day
       const trueEndDate = new Date(endDate);
       trueEndDate.setHours(23, 59, 59, 999);
       
       const periods: WeeklyData[] = [];
       
-      // Create the periods properly aligned with the actual data:
-      // Most recent period: Feb 21-27, 2025
-      const period1End = new Date(2025, 1, 27); // Feb 27, 2025
-      const period1Start = new Date(2025, 1, 21); // Feb 21, 2025
+      // Dynamically create periods based on the actual data range
+      // Find the most recent Saturday in the data (or the endDate if it's already a Saturday)
+      const lastDay = new Date(trueEndDate);
+      // Adjust to the nearest Saturday (day 6) if not already a Saturday
+      if (lastDay.getDay() !== 6) {
+        // If not Saturday, find the last Saturday
+        lastDay.setDate(lastDay.getDate() - ((lastDay.getDay() + 1) % 7));
+      }
       
-      // Previous period: Feb 14-20, 2025
-      const period2End = new Date(2025, 1, 20); // Feb 20, 2025
-      const period2Start = new Date(2025, 1, 14); // Feb 14, 2025
+      // Create three 7-day periods starting from the most recent Saturday and going backward
+      // Period 1: Last 7 days (ending on Saturday)
+      const period1End = new Date(lastDay);
+      const period1Start = new Date(period1End);
+      period1Start.setDate(period1End.getDate() - 6); // Start 6 days before (Sunday)
       
-      // Earlier period: Feb 7-13, 2025
-      const period3End = new Date(2025, 1, 13); // Feb 13, 2025
-      const period3Start = new Date(2025, 1, 7); // Feb 7, 2025
+      // Period 2: Previous 7 days
+      const period2End = new Date(period1Start);
+      period2End.setDate(period2End.getDate() - 1); // End day before period 1 starts
+      const period2Start = new Date(period2End);
+      period2Start.setDate(period2End.getDate() - 6); // Start 6 days before
       
-      // Only add periods that are within our data range
-      if (period1Start <= trueEndDate && period1End >= startDate) {
+      // Period 3: 7 days before that
+      const period3End = new Date(period2Start);
+      period3End.setDate(period3End.getDate() - 1); // End day before period 2 starts
+      const period3Start = new Date(period3End);
+      period3Start.setDate(period3End.getDate() - 6); // Start 6 days before
+      
+      console.log(`Period 1: ${period1Start.toISOString().split('T')[0]} to ${period1End.toISOString().split('T')[0]}`);
+      console.log(`Period 2: ${period2Start.toISOString().split('T')[0]} to ${period2End.toISOString().split('T')[0]}`);
+      console.log(`Period 3: ${period3Start.toISOString().split('T')[0]} to ${period3End.toISOString().split('T')[0]}`);
+      
+      // Only add periods that are within our data range (at least partially)
+      if (period1End >= startDate && period1Start <= trueEndDate) {
         periods.push({
           periodStart: period1Start.toISOString().split('T')[0],
           periodEnd: period1End.toISOString().split('T')[0],
@@ -352,7 +367,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 1 (most recent): ${period1Start.toISOString().split('T')[0]} - ${period1End.toISOString().split('T')[0]}`);
       }
       
-      if (period2Start <= trueEndDate && period2End >= startDate) {
+      if (period2End >= startDate && period2Start <= trueEndDate) {
         periods.push({
           periodStart: period2Start.toISOString().split('T')[0],
           periodEnd: period2End.toISOString().split('T')[0],
@@ -365,7 +380,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 2 (previous): ${period2Start.toISOString().split('T')[0]} - ${period2End.toISOString().split('T')[0]}`);
       }
       
-      if (period3Start <= trueEndDate && period3End >= startDate) {
+      if (period3End >= startDate && period3Start <= trueEndDate) {
         periods.push({
           periodStart: period3Start.toISOString().split('T')[0],
           periodEnd: period3End.toISOString().split('T')[0],
