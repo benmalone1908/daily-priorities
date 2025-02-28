@@ -73,12 +73,43 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                   const colorClasses = getColorClasses(anomaly.deviation);
                   const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-'));
                   
+                  // Check if the rows array exists and has data
+                  const hasDetails = anomalyPeriod === "weekly" && 
+                                    Array.isArray(anomaly.rows) && 
+                                    anomaly.rows.length > 0;
+                  
+                  // Extract date range from rows for weekly anomalies
+                  let dateRangeInfo = "";
+                  if (hasDetails) {
+                    try {
+                      // Sort rows by date to get first and last date
+                      const sortedRows = [...anomaly.rows].sort((a, b) => {
+                        return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+                      });
+                      
+                      const firstDate = new Date(sortedRows[0].DATE);
+                      const lastDate = new Date(sortedRows[sortedRows.length - 1].DATE);
+                      
+                      // Format dates as MM/DD
+                      const formatDate = (date: Date) => {
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      };
+                      
+                      dateRangeInfo = `(${formatDate(firstDate)} - ${formatDate(lastDate)})`;
+                    } catch (error) {
+                      console.error("Error formatting date range:", error);
+                    }
+                  }
+                  
                   return (
                     <div key={index} className="p-4 border rounded-lg">
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-medium text-lg">{anomaly.campaign}</h3>
-                          <p className="text-muted-foreground">{anomaly.DATE}</p>
+                          <p className="text-muted-foreground">
+                            {anomaly.DATE}
+                            {dateRangeInfo && <span className="ml-1 text-xs">{dateRangeInfo}</span>}
+                          </p>
                         </div>
                         <div className={`px-3 py-1 rounded-full ${colorClasses}`}>
                           <span className="text-sm font-medium">
@@ -98,7 +129,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                         </div>
                       </div>
                       
-                      {anomalyPeriod === "weekly" && Array.isArray(anomaly.rows) && (
+                      {hasDetails && (
                         <div className="mt-4">
                           <p className="text-sm font-medium mb-2">Daily breakdown:</p>
                           <div className="bg-muted/50 p-2 rounded text-sm">
