@@ -2,6 +2,7 @@
 
 
 
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -314,19 +315,27 @@ const Dashboard = ({ data }: DashboardProps) => {
       // Find the most recent date using timestamp comparison
       const mostRecentDateTimestamp = Math.max(...allDates.map(date => date.getTime()));
       const mostRecentDate = new Date(mostRecentDateTimestamp);
+      
+      // Find the start date (earliest date in data)
       const startDate = new Date(Math.min(...allDates.map(date => date.getTime())));
 
       console.log(`Date range: ${startDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       console.log(`Most recent date is: ${mostRecentDate.toLocaleDateString()}`);
       
-      // Normalize the end date to end of day
+      // Ensure most recent date is set to the end of the day (11:59:59 PM)
       mostRecentDate.setHours(23, 59, 59, 999);
       
-      const periods: WeeklyData[] = [];
+      // Calculate the correct period start dates by working backwards from the most recent date
+      // First, find the end of the week containing the most recent date
+      const lastDayOfWeek = new Date(mostRecentDate);
+      // If we're not already at the end of the week (Saturday), move to the next Saturday
+      if (lastDayOfWeek.getDay() !== 6) {
+        lastDayOfWeek.setDate(lastDayOfWeek.getDate() + (6 - lastDayOfWeek.getDay()));
+      }
       
-      // Create three 7-day periods starting from the most recent date and going backward
-      // Period 1: Most recent 7 days
-      const period1End = new Date(mostRecentDate);
+      // Create three 7-day periods:
+      // Period 1: Most recent 7 days (ending with the last Saturday)
+      const period1End = new Date(lastDayOfWeek);
       const period1Start = new Date(period1End);
       period1Start.setDate(period1End.getDate() - 6); // Start 6 days before (7 days total)
       
@@ -346,8 +355,10 @@ const Dashboard = ({ data }: DashboardProps) => {
       console.log(`Period 2: ${period2Start.toLocaleDateString()} to ${period2End.toLocaleDateString()}`);
       console.log(`Period 3: ${period3Start.toLocaleDateString()} to ${period3End.toLocaleDateString()}`);
       
+      const periods: WeeklyData[] = [];
+      
       // Only add periods that are within our data range
-      if (period1Start <= mostRecentDate) {
+      if (period1Start.getTime() >= startDate.getTime()) {
         periods.push({
           periodStart: period1Start.toISOString().split('T')[0],
           periodEnd: period1End.toISOString().split('T')[0],
@@ -360,7 +371,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 1 (most recent): ${period1Start.toLocaleDateString()} - ${period1End.toLocaleDateString()}`);
       }
       
-      if (period2Start <= mostRecentDate) {
+      if (period2Start.getTime() >= startDate.getTime()) {
         periods.push({
           periodStart: period2Start.toISOString().split('T')[0],
           periodEnd: period2End.toISOString().split('T')[0],
@@ -373,7 +384,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 2 (previous): ${period2Start.toLocaleDateString()} - ${period2End.toLocaleDateString()}`);
       }
       
-      if (period3Start <= mostRecentDate) {
+      if (period3Start.getTime() >= startDate.getTime()) {
         periods.push({
           periodStart: period3Start.toISOString().split('T')[0],
           periodEnd: period3End.toISOString().split('T')[0],
@@ -386,7 +397,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 3 (earlier): ${period3Start.toLocaleDateString()} - ${period3End.toLocaleDateString()}`);
       }
       
-      // Calculate metrics for each period - reset the summing logic
+      // Calculate metrics for each period
       filteredData.forEach(row => {
         try {
           if (!row.DATE) return;
@@ -394,13 +405,15 @@ const Dashboard = ({ data }: DashboardProps) => {
           const rowDate = new Date(row.DATE);
           if (isNaN(rowDate.getTime())) return;
           
-          // Normalize to start of day
+          // Normalize to midnight of the day for comparison
           rowDate.setHours(0, 0, 0, 0);
           
           // Check which period this row belongs to
           for (let i = 0; i < periods.length; i++) {
-            const periodStart = new Date(periods[i].periodStart + 'T00:00:00');
-            const periodEnd = new Date(periods[i].periodEnd + 'T23:59:59');
+            const periodStart = new Date(periods[i].periodStart);
+            const periodEnd = new Date(periods[i].periodEnd);
+            periodStart.setHours(0, 0, 0, 0);
+            periodEnd.setHours(23, 59, 59, 999);
             
             // Include the row if it falls within the date range (inclusive)
             if (rowDate >= periodStart && rowDate <= periodEnd) {
@@ -730,18 +743,20 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatNumber(period.IMPRESSIONS)}
                     </p>
-                    {/* Only show trend for idx > 0 (not for the oldest period) */}
-                    {idx < weeklyData.length - 1 && (() => {
-                      const comparison = getMetricComparison('IMPRESSIONS', weeklyData[idx], weeklyData[idx+1]);
-                      return (
-                        <div className={`flex items-center ${comparison.colorClass}`}>
-                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="ml-1 text-sm">
-                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Only show trend for idx < weeklyData.length - 1 (not for the oldest period) */}
+                    {idx > 0 && (
+                      (() => {
+                        const comparison = getMetricComparison('IMPRESSIONS', weeklyData[idx-1], weeklyData[idx]);
+                        return (
+                          <div className={`flex items-center ${comparison.colorClass}`}>
+                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <span className="ml-1 text-sm">
+                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
@@ -764,18 +779,20 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatNumber(period.CLICKS)}
                     </p>
-                    {/* Only show trend for idx > 0 (not for the oldest period) */}
-                    {idx < weeklyData.length - 1 && (() => {
-                      const comparison = getMetricComparison('CLICKS', weeklyData[idx], weeklyData[idx+1]);
-                      return (
-                        <div className={`flex items-center ${comparison.colorClass}`}>
-                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="ml-1 text-sm">
-                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Only show trend for idx < weeklyData.length - 1 (not for the oldest period) */}
+                    {idx > 0 && (
+                      (() => {
+                        const comparison = getMetricComparison('CLICKS', weeklyData[idx-1], weeklyData[idx]);
+                        return (
+                          <div className={`flex items-center ${comparison.colorClass}`}>
+                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <span className="ml-1 text-sm">
+                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
@@ -798,18 +815,20 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatRevenue(period.REVENUE)}
                     </p>
-                    {/* Only show trend for idx > 0 (not for the oldest period) */}
-                    {idx < weeklyData.length - 1 && (() => {
-                      const comparison = getMetricComparison('REVENUE', weeklyData[idx], weeklyData[idx+1]);
-                      return (
-                        <div className={`flex items-center ${comparison.colorClass}`}>
-                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="ml-1 text-sm">
-                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Only show trend for idx < weeklyData.length - 1 (not for the oldest period) */}
+                    {idx > 0 && (
+                      (() => {
+                        const comparison = getMetricComparison('REVENUE', weeklyData[idx-1], weeklyData[idx]);
+                        return (
+                          <div className={`flex items-center ${comparison.colorClass}`}>
+                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <span className="ml-1 text-sm">
+                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
@@ -832,18 +851,20 @@ const Dashboard = ({ data }: DashboardProps) => {
                     <p className="text-2xl font-bold">
                       {formatROAS(period.ROAS)}
                     </p>
-                    {/* Only show trend for idx > 0 (not for the oldest period) */}
-                    {idx < weeklyData.length - 1 && (() => {
-                      const comparison = getMetricComparison('ROAS', weeklyData[idx], weeklyData[idx+1]);
-                      return (
-                        <div className={`flex items-center ${comparison.colorClass}`}>
-                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span className="ml-1 text-sm">
-                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Only show trend for idx < weeklyData.length - 1 (not for the oldest period) */}
+                    {idx > 0 && (
+                      (() => {
+                        const comparison = getMetricComparison('ROAS', weeklyData[idx-1], weeklyData[idx]);
+                        return (
+                          <div className={`flex items-center ${comparison.colorClass}`}>
+                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                            <span className="ml-1 text-sm">
+                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })()
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
@@ -922,3 +943,4 @@ const MetricCard = ({
 };
 
 export default Dashboard;
+
