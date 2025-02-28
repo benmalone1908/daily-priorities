@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -100,37 +101,47 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                       <div className="mt-4">
                         <p className="text-sm font-medium mb-2">Daily breakdown:</p>
                         <div className="bg-muted/50 p-2 rounded text-sm">
-                          {anomaly.rows.map((row: any, idx: number) => {
-                            const actualValue = Number(row[metric]);
-                            
-                            let expectedValue;
-                            
-                            if (anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]) {
-                              expectedValue = anomaly.dailyExpectedValues[idx];
-                            } 
-                            else {
-                              expectedValue = anomaly.mean / anomaly.rows.length;
-                            }
-                            
-                            const dailyDeviation = expectedValue !== 0 
-                              ? ((actualValue - expectedValue) / expectedValue) * 100 
-                              : 0;
-                            
-                            const dailyColorClass = getColorClasses(dailyDeviation).split(' ').find(c => c.startsWith('text-'));
-                            
-                            return (
-                              <div key={idx} className="flex justify-between py-1 border-b last:border-b-0 border-muted">
-                                <span className="font-medium">{row.DATE}</span>
-                                <div className="flex gap-4">
-                                  <span>Actual: {Math.round(actualValue).toLocaleString()}</span>
-                                  <span>Expected: {Math.round(expectedValue).toLocaleString()}</span>
-                                  <span className={dailyColorClass}>
-                                    {dailyDeviation > 0 ? "+" : ""}{dailyDeviation.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-muted">
+                                <th className="text-left py-2 font-medium">Date</th>
+                                <th className="text-right py-2 font-medium">Actual</th>
+                                <th className="text-right py-2 font-medium">Expected</th>
+                                <th className="text-right py-2 font-medium">Deviation</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {anomaly.rows.map((row: any, idx: number) => {
+                                const actualValue = Number(row[metric]);
+                                
+                                let expectedValue;
+                                
+                                if (anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]) {
+                                  expectedValue = anomaly.dailyExpectedValues[idx];
+                                } 
+                                else {
+                                  expectedValue = anomaly.mean / anomaly.rows.length;
+                                }
+                                
+                                const dailyDeviation = expectedValue !== 0 
+                                  ? ((actualValue - expectedValue) / expectedValue) * 100 
+                                  : 0;
+                                
+                                const dailyColorClass = getColorClasses(dailyDeviation).split(' ').find(c => c.startsWith('text-'));
+                                
+                                return (
+                                  <tr key={idx} className="border-b last:border-b-0 border-muted">
+                                    <td className="py-2 text-left font-medium">{row.DATE}</td>
+                                    <td className="py-2 text-right">{Math.round(actualValue).toLocaleString()}</td>
+                                    <td className="py-2 text-right">{Math.round(expectedValue).toLocaleString()}</td>
+                                    <td className={`py-2 text-right ${dailyColorClass}`}>
+                                      {dailyDeviation > 0 ? "+" : ""}{dailyDeviation.toFixed(1)}%
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     )}
