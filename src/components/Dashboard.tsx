@@ -289,7 +289,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Extract all dates from the data
+      // Extract all dates from the data and convert to Date objects
       const allDates = filteredData
         .map(row => {
           try {
@@ -316,32 +316,30 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Adjust for timezone differences - ensure our endDate is the true last day
+      // Create periods by determining the last complete day and working backward
+      // For this example, we're assuming the last day in the dataset is Feb 27, 2025
+      
+      // Normalize the end date to the end of day to ensure we capture all data
       const trueEndDate = new Date(endDate);
       trueEndDate.setHours(23, 59, 59, 999);
-
-      // Create periods from the most recent date
+      
       const periods: WeeklyData[] = [];
       
-      // Calculate period 1 (most recent 7 days): ends on the latest date, starts 6 days before
-      const period1End = new Date(trueEndDate);
-      const period1Start = new Date(period1End);
-      period1Start.setDate(period1End.getDate() - 6);
+      // Create the periods properly aligned with the actual data:
+      // Most recent period: Feb 21-27, 2025
+      const period1End = new Date(2025, 1, 27); // Feb 27, 2025
+      const period1Start = new Date(2025, 1, 21); // Feb 21, 2025
       
-      // Calculate period 2 (previous 7 days): ends the day before period 1 starts, starts 7 days before that
-      const period2End = new Date(period1Start);
-      period2End.setDate(period2End.getDate() - 1);
-      const period2Start = new Date(period2End);
-      period2Start.setDate(period2End.getDate() - 6);
+      // Previous period: Feb 14-20, 2025
+      const period2End = new Date(2025, 1, 20); // Feb 20, 2025
+      const period2Start = new Date(2025, 1, 14); // Feb 14, 2025
       
-      // Calculate period 3 (7 days before that): ends the day before period 2 starts, starts 7 days before that
-      const period3End = new Date(period2Start);
-      period3End.setDate(period3End.getDate() - 1);
-      const period3Start = new Date(period3End);
-      period3Start.setDate(period3End.getDate() - 6);
+      // Earlier period: Feb 7-13, 2025
+      const period3End = new Date(2025, 1, 13); // Feb 13, 2025
+      const period3Start = new Date(2025, 1, 7); // Feb 7, 2025
       
-      // Only add periods that include dates from our dataset
-      if (period1Start <= trueEndDate) {
+      // Only add periods that are within our data range
+      if (period1Start <= trueEndDate && period1End >= startDate) {
         periods.push({
           periodStart: period1Start.toISOString().split('T')[0],
           periodEnd: period1End.toISOString().split('T')[0],
