@@ -113,7 +113,7 @@ const Dashboard = ({ data }: DashboardProps) => {
             allAnomalies = [...allAnomalies, ...campaignAnomalies];
           });
         } else {
-          // Week-over-week anomaly detection - IMPROVED LOGIC
+          // Week-over-week anomaly detection - IMPROVED LOGIC (v2)
           Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
             if (!campaignRows.length) return;
             
@@ -133,7 +133,7 @@ const Dashboard = ({ data }: DashboardProps) => {
             }, new Date(0));
             
             // Group rows by week with reference to the most recent date
-            const weeklyData: Record<string, WeeklyAggregation> = {};
+            const weeklyData: Record<number, WeeklyAggregation> = {};
             
             campaignRows.forEach(row => {
               if (!row.DATE) return;
@@ -146,17 +146,14 @@ const Dashboard = ({ data }: DashboardProps) => {
                 const dayDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
                 const weekNumber = Math.floor(dayDiff / 7);
                 
-                // Use weekNumber as the key
-                const weekKey = `week-${weekNumber}`;
-                
-                if (!weeklyData[weekKey]) {
+                if (!weeklyData[weekNumber]) {
                   const periodEnd = new Date(mostRecentDate);
                   periodEnd.setDate(periodEnd.getDate() - (weekNumber * 7));
                   
                   const periodStart = new Date(periodEnd);
                   periodStart.setDate(periodEnd.getDate() - 6);
                   
-                  weeklyData[weekKey] = {
+                  weeklyData[weekNumber] = {
                     weekStart: `${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
                     weekNumber,
                     [metric]: 0,
@@ -164,8 +161,8 @@ const Dashboard = ({ data }: DashboardProps) => {
                   };
                 }
                 
-                weeklyData[weekKey][metric] += Number(row[metric]) || 0;
-                weeklyData[weekKey].rows.push(row);
+                weeklyData[weekNumber][metric] += Number(row[metric]) || 0;
+                weeklyData[weekNumber].rows.push(row);
               } catch (err) {
                 console.error("Error processing week grouping:", err);
               }
@@ -175,50 +172,88 @@ const Dashboard = ({ data }: DashboardProps) => {
             const weeklyValues = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
-            // Calculate mean and standard deviation for this metric across all weeks
-            const weeklyMetricValues = weeklyValues.map(week => week[metric]);
-            const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
-            const stdDev = Math.sqrt(
-              weeklyMetricValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / weeklyMetricValues.length
-            );
-            
-            // Lower the threshold for weekly anomalies to catch more significant patterns
-            // For weekly data, we want to be more sensitive to changes
-            const threshold = stdDev * 1.5;
-            
-            // Check each week for anomalies
-            weeklyValues.forEach(week => {
-              try {
-                const value = week[metric];
-                const weekNumber = week.weekNumber;
+            // Compare each week with the previous week (week to week comparison)
+            // This specifically looks at consecutive weeks for anomalies
+            for (let i = 0; i < weeklyValues.length - 1; i++) {
+              const currentWeek = weeklyValues[i];
+              const previousWeek = weeklyValues[i + 1];
+              
+              // Skip very incomplete weeks (less than 3 days of data)
+              if (currentWeek.rows.length < 3 || previousWeek.rows.length < 3) continue;
+              
+              const currentValue = currentWeek[metric];
+              const previousValue = previousWeek[metric];
+              
+              // Calculate week-over-week percentage change
+              const percentChange = ((currentValue - previousValue) / previousValue) * 100;
+              
+              // Detect significant week-over-week changes (more than 15% change)
+              // Lowered threshold to catch more significant patterns
+              if (Math.abs(percentChange) > 15) {
+                const weekLabel = currentWeek.weekStart;
                 
-                // Skip very incomplete weeks (less than 3 days of data)
+                allAnomalies.push({
+                  campaign,
+                  DATE: weekLabel,
+                  mean: previousValue, // Use previous week's value as the baseline
+                  actualValue: currentValue,
+                  deviation: percentChange,
+                  periodType: "weekly",
+                  rows: currentWeek.rows,
+                  weekNumber: currentWeek.weekNumber,
+                  comparedTo: previousWeek.weekStart // Add info about which week this is compared to
+                });
+              }
+            }
+            
+            // Also compare to the overall average (for detecting long-term anomalies)
+            // This can catch weeks that are anomalous compared to the overall trend
+            if (weeklyValues.length >= 3) {
+              // Calculate mean and standard deviation across all available weeks
+              const allWeekValues = weeklyValues.map(week => week[metric]);
+              const mean = allWeekValues.reduce((a, b) => a + b, 0) / allWeekValues.length;
+              const stdDev = Math.sqrt(
+                allWeekValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / allWeekValues.length
+              );
+              
+              // Lower threshold for weekly trend anomalies
+              const threshold = stdDev * 1.2;
+              
+              // Check each week against the overall average
+              weeklyValues.forEach(week => {
+                // Skip weeks we've already analyzed in the week-over-week comparison
+                // or weeks with too little data
                 if (week.rows.length < 3) return;
                 
-                // Calculate deviation percentage
-                const deviationPercent = ((value - mean) / mean) * 100;
+                const value = week[metric];
+                const deviationFromAvg = ((value - mean) / mean) * 100;
                 
-                // Adjusted criteria for weekly anomalies:
-                // - Reduced threshold multiplier
-                // - Lowered minimum deviation percentage
-                if (Math.abs(deviationPercent) > 8 && Math.abs(value - mean) > threshold) {
-                  const weekLabel = week.weekStart;
+                // Only detect significant deviations from the overall average
+                if (Math.abs(deviationFromAvg) > 15 && Math.abs(value - mean) > threshold) {
+                  // Check if we already have this week in the anomalies list
+                  const alreadyDetected = allAnomalies.some(
+                    a => a.campaign === campaign && 
+                         a.periodType === "weekly" && 
+                         a.weekNumber === week.weekNumber
+                  );
                   
-                  allAnomalies.push({
-                    campaign,
-                    DATE: weekLabel,
-                    mean,
-                    actualValue: value,
-                    deviation: deviationPercent,
-                    periodType: "weekly",
-                    rows: week.rows,
-                    weekNumber
-                  });
+                  // Only add if not already detected
+                  if (!alreadyDetected) {
+                    allAnomalies.push({
+                      campaign,
+                      DATE: week.weekStart,
+                      mean: mean,
+                      actualValue: value,
+                      deviation: deviationFromAvg,
+                      periodType: "weekly",
+                      rows: week.rows,
+                      weekNumber: week.weekNumber,
+                      comparedTo: "overall average" // Indicate this is compared to the overall average
+                    });
+                  }
                 }
-              } catch (err) {
-                console.error("Error processing week for anomalies:", err);
-              }
-            });
+              });
+            }
           });
         }
 
@@ -887,6 +922,11 @@ const MetricCard = ({
                     {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
                   </span>
                 </div>
+                {anomaly.comparedTo && (
+                  <div className="text-xs text-muted-foreground">
+                    Compared to: {anomaly.comparedTo}
+                  </div>
+                )}
               </div>
             );
           })}
