@@ -289,38 +289,39 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Sort data by date (ascending)
-      const sortedData = [...filteredData].sort((a, b) => {
-        try {
-          return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
-        } catch (err) {
-          console.error("Error sorting data by date:", err);
-          return 0;
-        }
-      });
+      // Extract all dates from the data
+      const allDates = filteredData
+        .map(row => {
+          try {
+            if (!row.DATE) return null;
+            const date = new Date(row.DATE);
+            return isNaN(date.getTime()) ? null : date;
+          } catch (err) {
+            console.error("Error parsing date:", err);
+            return null;
+          }
+        })
+        .filter(Boolean) as Date[];
 
-      // Get date range
-      if (!sortedData[0]?.DATE || !sortedData[sortedData.length - 1]?.DATE) {
-        console.log("Invalid date data");
+      // Sort dates to find the earliest and latest dates
+      allDates.sort((a, b) => a.getTime() - b.getTime());
+
+      if (allDates.length === 0) {
+        console.log("No valid dates found in data");
         return [];
       }
 
-      const startDate = new Date(sortedData[0].DATE);
-      const endDate = new Date(sortedData[sortedData.length - 1].DATE);
+      const startDate = new Date(allDates[0]);
+      const endDate = new Date(allDates[allDates.length - 1]);
 
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        console.log("Invalid date conversion");
-        return [];
-      }
+      console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Group all days into 7-day periods
-      // We'll start from the most recent date and work backwards
-      const endOfRecentPeriod = new Date(endDate);
-      endOfRecentPeriod.setHours(0, 0, 0, 0);
-      
+      // Calculate how many days between start and end
+      const daysBetween = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      console.log(`Days between: ${daysBetween}`);
+
       // Calculate how many full 7-day periods we can have
-      const daysBetween = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const maxPeriods = Math.floor(daysBetween / 7) + 1; // +1 to include partial periods
+      const maxPeriods = Math.ceil(daysBetween / 7);
       const numPeriods = Math.min(maxPeriods, 6); // Allow up to 6 periods maximum
       
       console.log(`Days between: ${daysBetween}, Max periods: ${maxPeriods}, Will show: ${numPeriods}`);
@@ -328,26 +329,30 @@ const Dashboard = ({ data }: DashboardProps) => {
       // Initialize all periods
       const periods: WeeklyData[] = [];
       
+      // Start from the end date and work backwards
+      const periodEnd = new Date(endDate);
+      periodEnd.setHours(0, 0, 0, 0);
+      
       for (let i = 0; i < numPeriods; i++) {
-        // End date of this period
-        const periodEnd = new Date(endOfRecentPeriod);
-        periodEnd.setDate(periodEnd.getDate() - (i * 7));
+        // Calculate the end date for this period (going backwards from the most recent date)
+        const thisEnd = new Date(periodEnd);
+        thisEnd.setDate(thisEnd.getDate() - (i * 7));
         
-        // Start date of this period (7 days earlier)
-        const periodStart = new Date(periodEnd);
-        periodStart.setDate(periodEnd.getDate() - 6);
+        // Calculate the start date (7 days before the end date of this period)
+        const thisStart = new Date(thisEnd);
+        thisStart.setDate(thisEnd.getDate() - 6);
         
-        // Skip periods that start before our data
-        if (periodStart < startDate) {
+        // Skip periods that start before our data's start date
+        if (thisStart < startDate) {
           console.log(`Skipping period ${i} - starts before data range`);
           continue;
         }
 
-        console.log(`Adding period ${i}: ${periodStart.toISOString()} - ${periodEnd.toISOString()}`);
+        console.log(`Adding period ${i}: ${thisStart.toISOString()} - ${thisEnd.toISOString()}`);
         
         periods.push({
-          periodStart: periodStart.toISOString().split('T')[0],
-          periodEnd: periodEnd.toISOString().split('T')[0],
+          periodStart: thisStart.toISOString().split('T')[0],
+          periodEnd: thisEnd.toISOString().split('T')[0],
           IMPRESSIONS: 0,
           CLICKS: 0,
           REVENUE: 0,
