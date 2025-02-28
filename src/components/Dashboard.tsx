@@ -24,11 +24,19 @@ interface DashboardProps {
 
 interface WeeklyData {
   periodStart: string;
+  periodEnd: string;  // Added period end date for clarity
   IMPRESSIONS: number;
   CLICKS: number;
   REVENUE: number;
   ROAS: number;
   count: number;
+}
+
+// Interface for weekly aggregated data
+interface WeeklyAggregation {
+  weekStart: string;
+  [metric: string]: any;
+  rows: any[];
 }
 
 type AnomalyPeriod = "daily" | "weekly";
@@ -95,7 +103,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         // Week-over-week anomaly detection
         Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
           // Group rows by week
-          const weeklyData = campaignRows.reduce((weeks, row) => {
+          const weeklyData = campaignRows.reduce<Record<string, WeeklyAggregation>>((weeks, row) => {
             const date = new Date(row.DATE);
             // Get the week start (Sunday)
             const weekStart = new Date(date);
@@ -114,7 +122,7 @@ const Dashboard = ({ data }: DashboardProps) => {
             weeks[weekKey].rows.push(row);
             
             return weeks;
-          }, {} as Record<string, any>);
+          }, {});
           
           const weeklyValues = Object.values(weeklyData);
           
@@ -205,17 +213,35 @@ const Dashboard = ({ data }: DashboardProps) => {
       ? data 
       : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
 
-    const sortedData = [...filteredData].sort((a, b) => 
-      new Date(b.DATE).getTime() - new Date(a.DATE).getTime()
-    );
-
-    if (sortedData.length === 0) return [];
-
-    const mostRecentDate = new Date(sortedData[0].DATE);
+    // Find the most recent date in the data
+    let mostRecentDate: Date;
+    if (filteredData.length > 0) {
+      const dates = filteredData.map(row => new Date(row.DATE));
+      mostRecentDate = new Date(Math.max(...dates.map(date => date.getTime())));
+    } else {
+      mostRecentDate = new Date(); // Use current date if no data
+    }
     
+    // Calculate the end of the most recent complete 7-day period (yesterday)
+    const endOfRecentPeriod = new Date(mostRecentDate);
+    endOfRecentPeriod.setHours(0, 0, 0, 0); // Set to start of the day
+    
+    // Calculate the start of the most recent complete 7-day period (7 days before yesterday)
+    const startOfRecentPeriod = new Date(endOfRecentPeriod);
+    startOfRecentPeriod.setDate(endOfRecentPeriod.getDate() - 6); // 7 day period includes the end date
+    
+    // Calculate the start and end of the previous 7-day period
+    const endOfPreviousPeriod = new Date(startOfRecentPeriod);
+    endOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 1);
+    
+    const startOfPreviousPeriod = new Date(endOfPreviousPeriod);
+    startOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 6);
+    
+    // Initialize the periods with their correct date ranges
     const periods: WeeklyData[] = [
       {
-        periodStart: mostRecentDate.toISOString().split('T')[0],
+        periodStart: startOfRecentPeriod.toISOString().split('T')[0],
+        periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
         IMPRESSIONS: 0,
         CLICKS: 0,
         REVENUE: 0,
@@ -223,7 +249,8 @@ const Dashboard = ({ data }: DashboardProps) => {
         count: 0
       },
       {
-        periodStart: new Date(mostRecentDate.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        periodStart: startOfPreviousPeriod.toISOString().split('T')[0],
+        periodEnd: endOfPreviousPeriod.toISOString().split('T')[0],
         IMPRESSIONS: 0,
         CLICKS: 0,
         REVENUE: 0,
@@ -232,16 +259,20 @@ const Dashboard = ({ data }: DashboardProps) => {
       }
     ];
 
-    sortedData.forEach(row => {
+    // Assign data to appropriate period
+    filteredData.forEach(row => {
       const rowDate = new Date(row.DATE);
-      const daysDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (24 * 60 * 60 * 1000));
+      rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
       
-      if (daysDiff < 7) {
+      // Check if the date falls within the recent period
+      if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
         periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
         periods[0].CLICKS += Number(row.CLICKS) || 0;
         periods[0].REVENUE += Number(row.REVENUE) || 0;
         periods[0].count += 1;
-      } else if (daysDiff < 14) {
+      } 
+      // Check if the date falls within the previous period
+      else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
         periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
         periods[1].CLICKS += Number(row.CLICKS) || 0;
         periods[1].REVENUE += Number(row.REVENUE) || 0;
@@ -501,8 +532,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
               <Card className="p-4">
@@ -511,8 +541,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatNumber(weeklyData[1].IMPRESSIONS)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
                 </p>
               </Card>
             </div>
@@ -539,8 +568,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
               <Card className="p-4">
@@ -549,8 +577,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatNumber(weeklyData[1].CLICKS)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
                 </p>
               </Card>
             </div>
@@ -577,8 +604,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
               <Card className="p-4">
@@ -587,8 +613,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatRevenue(weeklyData[1].REVENUE)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
                 </p>
               </Card>
             </div>
@@ -615,8 +640,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[0].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
               <Card className="p-4">
@@ -625,8 +649,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatROAS(weeklyData[1].ROAS)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {' '}
-                  {formatDate(new Date(new Date(weeklyData[1].periodStart).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString())}
+                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
                 </p>
               </Card>
             </div>
