@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -288,7 +289,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Extract all dates from the data and convert to Date objects
+      // Extract all dates from the data and find the most recent date
       const allDates = filteredData
         .map(row => {
           try {
@@ -302,21 +303,18 @@ const Dashboard = ({ data }: DashboardProps) => {
         })
         .filter(Boolean) as Date[];
 
-      // Sort dates to find the earliest and latest dates
-      allDates.sort((a, b) => a.getTime() - b.getTime());
-
       if (allDates.length === 0) {
         console.log("No valid dates found in data");
         return [];
       }
 
-      const startDate = new Date(allDates[0]);
-      const endDate = new Date(allDates[allDates.length - 1]);
+      // Find the most recent date
+      const mostRecentDate = new Date(Math.max.apply(null, allDates.map(date => date.getTime())));
+      const startDate = new Date(Math.min.apply(null, allDates.map(date => date.getTime())));
 
-      console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(`Date range: ${startDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       
       // Normalize the end date to end of day
-      const mostRecentDate = new Date(endDate);
       mostRecentDate.setHours(23, 59, 59, 999);
       
       const periods: WeeklyData[] = [];
