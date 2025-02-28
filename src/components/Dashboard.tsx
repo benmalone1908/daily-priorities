@@ -1,3 +1,4 @@
+<lov-code>
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -18,6 +19,7 @@ import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import FileUpload from "./FileUpload";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface DashboardProps {
   data: any[];
@@ -881,6 +883,4 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       {historicalData.length > 0 && (
         <Card className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <
+          <div className="flex items-
