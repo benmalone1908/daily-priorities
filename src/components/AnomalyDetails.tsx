@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,12 +100,32 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                       <div className="mt-4">
                         <p className="text-sm font-medium mb-2">Daily breakdown:</p>
                         <div className="bg-muted/50 p-2 rounded text-sm">
-                          {anomaly.rows.map((row: any, idx: number) => (
-                            <div key={idx} className="flex justify-between py-1">
-                              <span>{row.DATE}</span>
-                              <span>{metric}: {Number(row[metric]).toLocaleString()}</span>
-                            </div>
-                          ))}
+                          {anomaly.rows.map((row: any, idx: number) => {
+                            const actualValue = Number(row[metric]);
+                            
+                            const expectedValue = anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]
+                              ? anomaly.dailyExpectedValues[idx]
+                              : (actualValue / (1 + anomaly.deviation / 100));
+                            
+                            const deviation = expectedValue !== 0 
+                              ? ((actualValue - expectedValue) / expectedValue) * 100 
+                              : 0;
+                            
+                            const dailyColorClass = getColorClasses(deviation).split(' ').find(c => c.startsWith('text-'));
+                            
+                            return (
+                              <div key={idx} className="flex justify-between py-1 border-b last:border-b-0 border-muted">
+                                <span className="font-medium">{row.DATE}</span>
+                                <div className="flex gap-4">
+                                  <span>Actual: {Math.round(actualValue).toLocaleString()}</span>
+                                  <span>Expected: {Math.round(expectedValue).toLocaleString()}</span>
+                                  <span className={dailyColorClass}>
+                                    {deviation > 0 ? "+" : ""}{deviation.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
