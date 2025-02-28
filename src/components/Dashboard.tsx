@@ -747,9 +747,6 @@ const Dashboard = ({ data }: DashboardProps) => {
                       })()
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
-                  </p>
                 </Card>
               ))}
             </div>
@@ -783,9 +780,6 @@ const Dashboard = ({ data }: DashboardProps) => {
                       })()
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
-                  </p>
                 </Card>
               ))}
             </div>
@@ -819,9 +813,6 @@ const Dashboard = ({ data }: DashboardProps) => {
                       })()
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
-                  </p>
                 </Card>
               ))}
             </div>
@@ -855,9 +846,6 @@ const Dashboard = ({ data }: DashboardProps) => {
                       })()
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
-                  </p>
                 </Card>
               ))}
             </div>
