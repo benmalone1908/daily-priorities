@@ -36,7 +36,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
           </TabsList>
           
           <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 180px)" }}>
-            <TabsContent value="table">
+            <TabsContent value="table" className="m-0">
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
@@ -67,7 +67,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
               </Table>
             </TabsContent>
             
-            <TabsContent value="details">
+            <TabsContent value="details" className="m-0">
               <div className="space-y-6">
                 {anomalies.map((anomaly, index) => {
                   const colorClasses = getColorClasses(anomaly.deviation);
