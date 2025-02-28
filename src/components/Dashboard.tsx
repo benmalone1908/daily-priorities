@@ -1,4 +1,4 @@
-
+<lov-code>
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -62,7 +62,7 @@ const Dashboard = ({ data }: DashboardProps) => {
     
     try {
       // Group historical data by campaign and day of week
-      const campaignDayMetrics: Record<string, Record<string, number[]>> = {};
+      const campaignDayMetrics: Record<string, Record<string, Record<string, number[]>>> = {};
       
       historicalData.forEach(row => {
         if (!row.DATE || !row["CAMPAIGN ORDER NAME"]) return;
@@ -88,6 +88,9 @@ const Dashboard = ({ data }: DashboardProps) => {
         
         // Add metrics to respective arrays
         ["IMPRESSIONS", "CLICKS", "REVENUE"].forEach(metric => {
+          if (!campaignDayMetrics[campaign][dayOfWeek][metric]) {
+            campaignDayMetrics[campaign][dayOfWeek][metric] = [];
+          }
           campaignDayMetrics[campaign][dayOfWeek][metric].push(Number(row[metric]) || 0);
         });
       });
@@ -125,7 +128,7 @@ const Dashboard = ({ data }: DashboardProps) => {
     
     try {
       // First, group data by campaign and week
-      const campaignWeeks: Record<string, any[][]> = {};
+      const campaignWeeks: Record<string, Record<string, any[]>> = {};
       
       historicalData.forEach(row => {
         if (!row.DATE || !row["CAMPAIGN ORDER NAME"]) return;
@@ -815,6 +818,12 @@ const Dashboard = ({ data }: DashboardProps) => {
     fill: '#64748b'
   };
 
+  // Add a function to handle historical data upload
+  const handleHistoricalDataUpload = (data: any[]) => {
+    setHistoricalData(data);
+    console.log(`Loaded ${data.length} historical data rows for day-of-week analysis`);
+  };
+
   if (!anomalies) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -822,12 +831,6 @@ const Dashboard = ({ data }: DashboardProps) => {
       </div>
     );
   }
-  
-  // Add a function to handle historical data upload
-  const handleHistoricalDataUpload = (data: any[]) => {
-    setHistoricalData(data);
-    console.log(`Loaded ${data.length} historical data rows for day-of-week analysis`);
-  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -877,107 +880,4 @@ const Dashboard = ({ data }: DashboardProps) => {
               Upload historical data to enable day-of-week based anomaly detection
             </p>
           </div>
-          <FileUpload onDataLoaded={handleHistoricalDataUpload} />
-        </Card>
-      )}
-
-      {historicalData.length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold">Historical Data</h3>
-              <p className="text-sm text-muted-foreground">
-                {historicalData.length} historical data points loaded for day-of-week analysis
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setHistoricalData([])}
-              className="text-sm"
-            >
-              Clear Historical Data
-            </Button>
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-};
-
-interface MetricCardProps {
-  title: string;
-  anomalies: any[];
-  metric: string;
-  anomalyPeriod: AnomalyPeriod;
-}
-
-const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
-  const [expandedAnomaly, setExpandedAnomaly] = useState<number | null>(null);
-
-  const toggleAnomaly = (index: number) => {
-    if (expandedAnomaly === index) {
-      setExpandedAnomaly(null);
-    } else {
-      setExpandedAnomaly(index);
-    }
-  };
-
-  return (
-    <Card className={cn("p-6", anomalies.length === 0 ? "opacity-60" : "")}>
-      <h3 className="text-lg font-medium">{title}</h3>
-      
-      {anomalies.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-32 mt-4">
-          <p className="text-muted-foreground text-center">No {anomalyPeriod} anomalies detected</p>
-        </div>
-      ) : (
-        <div className="space-y-4 mt-4">
-          {anomalies.slice(0, 3).map((anomaly, index) => (
-            <div key={index} className="border rounded-md p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-medium">{anomaly.campaign}</p>
-                  <p className="text-sm text-muted-foreground">{anomaly.DATE}</p>
-                </div>
-                <div className={cn(
-                  "flex items-center font-medium",
-                  getColorClasses(anomaly.deviation)
-                )}>
-                  {anomaly.deviation > 0 ? (
-                    <TrendingUp className="h-4 w-4 mr-1" /> 
-                  ) : (
-                    <TrendingDown className="h-4 w-4 mr-1" />
-                  )}
-                  <span>{Math.abs(Math.round(anomaly.deviation))}%</span>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => toggleAnomaly(index)}
-                className="text-sm text-primary hover:underline flex items-center"
-              >
-                {expandedAnomaly === index ? "Hide details" : "Show details"}
-              </button>
-              
-              {expandedAnomaly === index && (
-                <AnomalyDetails 
-                  anomaly={anomaly}
-                  metric={metric}
-                  periodType={anomaly.periodType}
-                />
-              )}
-            </div>
-          ))}
-          
-          {anomalies.length > 3 && (
-            <p className="text-sm text-center text-muted-foreground mt-2">
-              + {anomalies.length - 3} more anomalies
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-};
-
-export default Dashboard;
+          <FileUpload onDataLoaded={handleHistoricalDataUpload}
