@@ -103,15 +103,20 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                           {anomaly.rows.map((row: any, idx: number) => {
                             const actualValue = Number(row[metric]);
                             
-                            const expectedValue = anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]
-                              ? anomaly.dailyExpectedValues[idx]
-                              : (actualValue / (1 + anomaly.deviation / 100));
+                            let expectedValue;
                             
-                            const deviation = expectedValue !== 0 
+                            if (anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]) {
+                              expectedValue = anomaly.dailyExpectedValues[idx];
+                            } 
+                            else {
+                              expectedValue = anomaly.mean / anomaly.rows.length;
+                            }
+                            
+                            const dailyDeviation = expectedValue !== 0 
                               ? ((actualValue - expectedValue) / expectedValue) * 100 
                               : 0;
                             
-                            const dailyColorClass = getColorClasses(deviation).split(' ').find(c => c.startsWith('text-'));
+                            const dailyColorClass = getColorClasses(dailyDeviation).split(' ').find(c => c.startsWith('text-'));
                             
                             return (
                               <div key={idx} className="flex justify-between py-1 border-b last:border-b-0 border-muted">
@@ -120,7 +125,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                                   <span>Actual: {Math.round(actualValue).toLocaleString()}</span>
                                   <span>Expected: {Math.round(expectedValue).toLocaleString()}</span>
                                   <span className={dailyColorClass}>
-                                    {deviation > 0 ? "+" : ""}{deviation.toFixed(1)}%
+                                    {dailyDeviation > 0 ? "+" : ""}{dailyDeviation.toFixed(1)}%
                                   </span>
                                 </div>
                               </div>
