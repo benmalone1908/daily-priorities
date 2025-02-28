@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -316,26 +315,17 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
       
-      // Ensure the endDate is normalized to the end of day
-      const trueEndDate = new Date(endDate);
-      trueEndDate.setHours(23, 59, 59, 999);
+      // Normalize the end date to end of day
+      const mostRecentDate = new Date(endDate);
+      mostRecentDate.setHours(23, 59, 59, 999);
       
       const periods: WeeklyData[] = [];
       
-      // Dynamically create periods based on the actual data range
-      // Find the most recent Saturday in the data (or the endDate if it's already a Saturday)
-      const lastDay = new Date(trueEndDate);
-      // Adjust to the nearest Saturday (day 6) if not already a Saturday
-      if (lastDay.getDay() !== 6) {
-        // If not Saturday, find the last Saturday
-        lastDay.setDate(lastDay.getDate() - ((lastDay.getDay() + 1) % 7));
-      }
-      
-      // Create three 7-day periods starting from the most recent Saturday and going backward
-      // Period 1: Last 7 days (ending on Saturday)
-      const period1End = new Date(lastDay);
+      // Create three 7-day periods starting from the most recent date and going backward
+      // Period 1: Most recent 7 days
+      const period1End = new Date(mostRecentDate);
       const period1Start = new Date(period1End);
-      period1Start.setDate(period1End.getDate() - 6); // Start 6 days before (Sunday)
+      period1Start.setDate(period1End.getDate() - 6); // Start 6 days before
       
       // Period 2: Previous 7 days
       const period2End = new Date(period1Start);
@@ -353,8 +343,8 @@ const Dashboard = ({ data }: DashboardProps) => {
       console.log(`Period 2: ${period2Start.toISOString().split('T')[0]} to ${period2End.toISOString().split('T')[0]}`);
       console.log(`Period 3: ${period3Start.toISOString().split('T')[0]} to ${period3End.toISOString().split('T')[0]}`);
       
-      // Only add periods that are within our data range (at least partially)
-      if (period1End >= startDate && period1Start <= trueEndDate) {
+      // Only add periods that are within our data range
+      if (period1End >= startDate && period1Start <= mostRecentDate) {
         periods.push({
           periodStart: period1Start.toISOString().split('T')[0],
           periodEnd: period1End.toISOString().split('T')[0],
@@ -367,7 +357,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 1 (most recent): ${period1Start.toISOString().split('T')[0]} - ${period1End.toISOString().split('T')[0]}`);
       }
       
-      if (period2End >= startDate && period2Start <= trueEndDate) {
+      if (period2End >= startDate && period2Start <= mostRecentDate) {
         periods.push({
           periodStart: period2Start.toISOString().split('T')[0],
           periodEnd: period2End.toISOString().split('T')[0],
@@ -380,7 +370,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         console.log(`Adding period 2 (previous): ${period2Start.toISOString().split('T')[0]} - ${period2End.toISOString().split('T')[0]}`);
       }
       
-      if (period3End >= startDate && period3Start <= trueEndDate) {
+      if (period3End >= startDate && period3Start <= mostRecentDate) {
         periods.push({
           periodStart: period3Start.toISOString().split('T')[0],
           periodEnd: period3End.toISOString().split('T')[0],
@@ -521,7 +511,6 @@ const Dashboard = ({ data }: DashboardProps) => {
     fill: '#64748b'
   };
 
-  // Ensure we have valid data structures before rendering
   if (!anomalies) {
     return (
       <div className="flex items-center justify-center h-64">
