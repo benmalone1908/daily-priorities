@@ -16,6 +16,7 @@ import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface DashboardProps {
   data: any[];
@@ -30,9 +31,12 @@ interface WeeklyData {
   count: number;
 }
 
+type AnomalyPeriod = "daily" | "weekly";
+
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
+  const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
     if (!data.length) return [];
@@ -57,33 +61,105 @@ const Dashboard = ({ data }: DashboardProps) => {
     metrics.forEach((metric) => {
       let allAnomalies: any[] = [];
 
-      Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
-        const values = campaignRows.map((row) => Number(row[metric]) || 0);
-        const mean = values.reduce((a, b) => a + b, 0) / values.length;
-        const stdDev = Math.sqrt(
-          values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
-        );
+      if (anomalyPeriod === "daily") {
+        // Daily anomaly detection (existing logic)
+        Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
+          const values = campaignRows.map((row) => Number(row[metric]) || 0);
+          const mean = values.reduce((a, b) => a + b, 0) / values.length;
+          const stdDev = Math.sqrt(
+            values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
+          );
 
-        const threshold = stdDev * 2;
+          const threshold = stdDev * 2;
 
-        const campaignAnomalies = campaignRows.filter((row) => {
-          const value = Number(row[metric]) || 0;
+          const campaignAnomalies = campaignRows.filter((row) => {
+            const value = Number(row[metric]) || 0;
+            
+            // Calculate deviation percentage
+            const deviationPercent = ((value - mean) / mean) * 100;
+            
+            // Only include anomalies with more than 10% deviation (either direction)
+            return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
+          }).map(row => ({
+            ...row,
+            campaign,
+            mean,
+            actualValue: Number(row[metric]) || 0,
+            deviation: ((Number(row[metric]) || 0) - mean) / mean * 100,
+            periodType: "daily"
+          }));
+
+          allAnomalies = [...allAnomalies, ...campaignAnomalies];
+        });
+      } else {
+        // Week-over-week anomaly detection
+        Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
+          // Group rows by week
+          const weeklyData = campaignRows.reduce((weeks, row) => {
+            const date = new Date(row.DATE);
+            // Get the week start (Sunday)
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            const weekKey = weekStart.toISOString().split('T')[0];
+            
+            if (!weeks[weekKey]) {
+              weeks[weekKey] = {
+                weekStart: weekKey,
+                [metric]: 0,
+                rows: []
+              };
+            }
+            
+            weeks[weekKey][metric] += Number(row[metric]) || 0;
+            weeks[weekKey].rows.push(row);
+            
+            return weeks;
+          }, {} as Record<string, any>);
           
-          // Calculate deviation percentage
-          const deviationPercent = ((value - mean) / mean) * 100;
+          const weeklyValues = Object.values(weeklyData);
           
-          // Only include anomalies with more than 10% deviation (either direction)
-          return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
-        }).map(row => ({
-          ...row,
-          campaign,
-          mean,
-          actualValue: Number(row[metric]) || 0,
-          deviation: ((Number(row[metric]) || 0) - mean) / mean * 100
-        }));
-
-        allAnomalies = [...allAnomalies, ...campaignAnomalies];
-      });
+          // We need at least 3 weeks of data for meaningful week-over-week analysis
+          if (weeklyValues.length < 3) return;
+          
+          const weeklyMetricValues = weeklyValues.map(week => week[metric]);
+          const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
+          const stdDev = Math.sqrt(
+            weeklyMetricValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / weeklyMetricValues.length
+          );
+          
+          const threshold = stdDev * 2;
+          
+          // Sort weeks by date (newest first)
+          const sortedWeeks = weeklyValues.sort((a, b) => 
+            new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
+          );
+          
+          // Check each week against the mean
+          sortedWeeks.forEach((week, index) => {
+            // Skip the most recent week if it's incomplete
+            if (index === 0 && new Date().getDay() < 5) return;
+            
+            const value = week[metric];
+            const deviationPercent = ((value - mean) / mean) * 100;
+            
+            if (Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold) {
+              const weekStart = new Date(week.weekStart);
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekStart.getDate() + 6);
+              
+              allAnomalies.push({
+                campaign,
+                DATE: `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
+                mean,
+                actualValue: value,
+                deviation: deviationPercent,
+                periodType: "weekly",
+                rows: week.rows
+              });
+            }
+          });
+        });
+      }
 
       results[metric] = {
         anomalies: allAnomalies.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation))
@@ -91,7 +167,7 @@ const Dashboard = ({ data }: DashboardProps) => {
     });
 
     return results;
-  }, [data]);
+  }, [data, anomalyPeriod]);
 
   const getAggregatedData = (campaign: string) => {
     const filteredData = campaign === "all" 
@@ -228,22 +304,41 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard
-          title="Impression Anomalies"
-          anomalies={anomalies.IMPRESSIONS.anomalies}
-          metric="IMPRESSIONS"
-        />
-        <MetricCard
-          title="Click Anomalies"
-          anomalies={anomalies.CLICKS.anomalies}
-          metric="CLICKS"
-        />
-        <MetricCard
-          title="Revenue Anomalies"
-          anomalies={anomalies.REVENUE.anomalies}
-          metric="REVENUE"
-        />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">Anomaly period:</span>
+            <ToggleGroup type="single" value={anomalyPeriod} onValueChange={(value) => value && setAnomalyPeriod(value as AnomalyPeriod)}>
+              <ToggleGroupItem value="daily" aria-label="Daily anomalies" className="text-sm">
+                Daily
+              </ToggleGroupItem>
+              <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-sm">
+                Week-over-Week
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <MetricCard
+            title="Impression Anomalies"
+            anomalies={anomalies.IMPRESSIONS.anomalies}
+            metric="IMPRESSIONS"
+            anomalyPeriod={anomalyPeriod}
+          />
+          <MetricCard
+            title="Click Anomalies"
+            anomalies={anomalies.CLICKS.anomalies}
+            metric="CLICKS"
+            anomalyPeriod={anomalyPeriod}
+          />
+          <MetricCard
+            title="Revenue Anomalies"
+            anomalies={anomalies.REVENUE.anomalies}
+            metric="REVENUE"
+            anomalyPeriod={anomalyPeriod}
+          />
+        </div>
       </div>
 
       <Card className="p-6">
@@ -549,11 +644,13 @@ const Dashboard = ({ data }: DashboardProps) => {
 const MetricCard = ({
   title,
   anomalies,
-  metric
+  metric,
+  anomalyPeriod
 }: {
   title: string;
   anomalies: any[];
   metric: string;
+  anomalyPeriod: AnomalyPeriod;
 }) => {
   const topAnomalyColor = anomalies.length > 0 ? getColorClasses(anomalies[0].deviation) : '';
   
@@ -577,7 +674,11 @@ const MetricCard = ({
               <AlertTriangle className="w-4 h-4 mr-2" />
               <span>Top anomalies:</span>
             </div>
-            <AnomalyDetails anomalies={anomalies} metric={metric} />
+            <AnomalyDetails 
+              anomalies={anomalies} 
+              metric={metric} 
+              anomalyPeriod={anomalyPeriod}
+            />
           </div>
           {anomalies.slice(0, 2).map((anomaly, idx) => {
             const colorClasses = getColorClasses(anomaly.deviation);
@@ -585,7 +686,7 @@ const MetricCard = ({
               <div key={idx} className="text-sm space-y-1">
                 <div className="font-medium">{anomaly.campaign}</div>
                 <div className="text-muted-foreground">
-                  Date: {anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
+                  {anomalyPeriod === "weekly" ? "Week of: " : "Date: "}{anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
                   <span className={colorClasses.split(' ').find(c => c.startsWith('text-'))}>
                     {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
                   </span>
