@@ -113,89 +113,106 @@ const Dashboard = ({ data }: DashboardProps) => {
             allAnomalies = [...allAnomalies, ...campaignAnomalies];
           });
         } else {
-          // Week-over-week anomaly detection
+          // Week-over-week anomaly detection - IMPROVED LOGIC
           Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
             if (!campaignRows.length) return;
             
-            // Group rows by week
-            const weeklyData = campaignRows.reduce<Record<string, WeeklyAggregation>>((weeks, row) => {
-              if (!row.DATE) return weeks;
+            // Find the most recent date
+            const mostRecentDate = campaignRows.reduce((latest, row) => {
+              if (!row.DATE) return latest;
               
               try {
-                const date = new Date(row.DATE);
-                if (isNaN(date.getTime())) return weeks;
+                const rowDate = new Date(row.DATE);
+                if (isNaN(rowDate.getTime())) return latest;
                 
-                // Get the week start (Sunday)
-                const weekStart = new Date(date);
-                weekStart.setDate(date.getDate() - date.getDay());
-                const weekKey = weekStart.toISOString().split('T')[0];
+                return rowDate > latest ? rowDate : latest;
+              } catch (err) {
+                console.error("Error comparing dates:", err);
+                return latest;
+              }
+            }, new Date(0));
+            
+            // Group rows by week with reference to the most recent date
+            const weeklyData: Record<string, WeeklyAggregation> = {};
+            
+            campaignRows.forEach(row => {
+              if (!row.DATE) return;
+              
+              try {
+                const rowDate = new Date(row.DATE);
+                if (isNaN(rowDate.getTime())) return;
                 
-                if (!weeks[weekKey]) {
-                  weeks[weekKey] = {
-                    weekStart: weekKey,
+                // Calculate which week period this belongs to (0 = current, 1 = previous, etc.)
+                const dayDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
+                const weekNumber = Math.floor(dayDiff / 7);
+                
+                // Use weekNumber as the key
+                const weekKey = `week-${weekNumber}`;
+                
+                if (!weeklyData[weekKey]) {
+                  const periodEnd = new Date(mostRecentDate);
+                  periodEnd.setDate(periodEnd.getDate() - (weekNumber * 7));
+                  
+                  const periodStart = new Date(periodEnd);
+                  periodStart.setDate(periodEnd.getDate() - 6);
+                  
+                  weeklyData[weekKey] = {
+                    weekStart: `${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
+                    weekNumber,
                     [metric]: 0,
                     rows: []
                   };
                 }
                 
-                weeks[weekKey][metric] += Number(row[metric]) || 0;
-                weeks[weekKey].rows.push(row);
+                weeklyData[weekKey][metric] += Number(row[metric]) || 0;
+                weeklyData[weekKey].rows.push(row);
               } catch (err) {
-                console.error("Error processing date in weekly grouping:", err);
+                console.error("Error processing week grouping:", err);
               }
-              
-              return weeks;
-            }, {});
+            });
             
+            // Convert to array and ensure we have at least 2 weeks of data
             const weeklyValues = Object.values(weeklyData);
-            
-            // We need at least 2 weeks of data for meaningful week-over-week analysis
             if (weeklyValues.length < 2) return;
             
+            // Calculate mean and standard deviation for this metric across all weeks
             const weeklyMetricValues = weeklyValues.map(week => week[metric]);
             const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
             const stdDev = Math.sqrt(
               weeklyMetricValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / weeklyMetricValues.length
             );
             
-            const threshold = stdDev * 2;
+            // Lower the threshold for weekly anomalies to catch more significant patterns
+            // For weekly data, we want to be more sensitive to changes
+            const threshold = stdDev * 1.5;
             
-            // Sort weeks by date (newest first)
-            const sortedWeeks = [...weeklyValues].sort((a, b) => {
+            // Check each week for anomalies
+            weeklyValues.forEach(week => {
               try {
-                return new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime();
-              } catch (err) {
-                console.error("Error sorting weeks:", err);
-                return 0;
-              }
-            });
-            
-            // Check each week against the mean
-            sortedWeeks.forEach((week, index) => {
-              try {
-                // Skip the most recent week if it's incomplete
-                if (index === 0 && new Date().getDay() < 5) return;
-                
                 const value = week[metric];
-                if (typeof value !== 'number') return;
+                const weekNumber = week.weekNumber;
                 
+                // Skip very incomplete weeks (less than 3 days of data)
+                if (week.rows.length < 3) return;
+                
+                // Calculate deviation percentage
                 const deviationPercent = ((value - mean) / mean) * 100;
                 
-                if (Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold) {
-                  const weekStart = new Date(week.weekStart);
-                  if (isNaN(weekStart.getTime())) return;
-                  
-                  const weekEnd = new Date(weekStart);
-                  weekEnd.setDate(weekStart.getDate() + 6);
+                // Adjusted criteria for weekly anomalies:
+                // - Reduced threshold multiplier
+                // - Lowered minimum deviation percentage
+                if (Math.abs(deviationPercent) > 8 && Math.abs(value - mean) > threshold) {
+                  const weekLabel = week.weekStart;
                   
                   allAnomalies.push({
                     campaign,
-                    DATE: `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
+                    DATE: weekLabel,
                     mean,
                     actualValue: value,
                     deviation: deviationPercent,
                     periodType: "weekly",
-                    rows: week.rows
+                    rows: week.rows,
+                    weekNumber
                   });
                 }
               } catch (err) {
