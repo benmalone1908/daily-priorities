@@ -21,23 +21,23 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       <DialogTrigger asChild>
         <Button variant="ghost" className="h-7 px-2">View all</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>{metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies</DialogTitle>
           <DialogDescription>
             Showing {anomalies.length} {anomalyPeriod} anomalies detected in the data
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="table">
-          <TabsList className="mb-4">
+        <Tabs defaultValue="table" className="flex-1 flex flex-col">
+          <TabsList className="sticky top-[72px] bg-background z-10 mb-4">
             <TabsTrigger value="table">Table View</TabsTrigger>
             <TabsTrigger value="details">Detailed View</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="table">
+          <TabsContent value="table" className="flex-1 overflow-y-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                   <TableHead>Campaign</TableHead>
                   <TableHead>{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
@@ -66,7 +66,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
             </Table>
           </TabsContent>
           
-          <TabsContent value="details">
+          <TabsContent value="details" className="flex-1 overflow-y-auto">
             <div className="space-y-6">
               {anomalies.map((anomaly, index) => {
                 const colorClasses = getColorClasses(anomaly.deviation);
