@@ -47,194 +47,276 @@ const Dashboard = ({ data }: DashboardProps) => {
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
-    if (!data.length) return [];
+    if (!data || !data.length) return [];
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
   }, [data]);
 
   const anomalies = useMemo(() => {
-    if (!data.length) return null;
+    if (!data || !data.length) return {
+      IMPRESSIONS: { anomalies: [] },
+      CLICKS: { anomalies: [] },
+      REVENUE: { anomalies: [] }
+    };
 
-    const campaignData: Record<string, any[]> = {};
-    data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"];
-      if (!campaignData[campaignName]) {
-        campaignData[campaignName] = [];
-      }
-      campaignData[campaignName].push(row);
-    });
+    try {
+      const campaignData: Record<string, any[]> = {};
+      data.forEach(row => {
+        if (!row || typeof row !== 'object') return;
+        
+        const campaignName = row["CAMPAIGN ORDER NAME"];
+        if (!campaignName) return;
+        
+        if (!campaignData[campaignName]) {
+          campaignData[campaignName] = [];
+        }
+        campaignData[campaignName].push(row);
+      });
 
-    const metrics = ["IMPRESSIONS", "CLICKS", "REVENUE"];
-    const results: Record<string, any> = {};
+      const metrics = ["IMPRESSIONS", "CLICKS", "REVENUE"];
+      const results: Record<string, any> = {};
 
-    metrics.forEach((metric) => {
-      let allAnomalies: any[] = [];
+      metrics.forEach((metric) => {
+        let allAnomalies: any[] = [];
 
-      if (anomalyPeriod === "daily") {
-        // Daily anomaly detection (existing logic)
-        Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
-          const values = campaignRows.map((row) => Number(row[metric]) || 0);
-          const mean = values.reduce((a, b) => a + b, 0) / values.length;
-          const stdDev = Math.sqrt(
-            values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
-          );
+        if (anomalyPeriod === "daily") {
+          // Daily anomaly detection
+          Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
+            if (!campaignRows.length) return;
+            
+            const values = campaignRows.map((row) => Number(row[metric]) || 0);
+            if (!values.length) return;
+            
+            const mean = values.reduce((a, b) => a + b, 0) / values.length;
+            const stdDev = Math.sqrt(
+              values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
+            );
 
-          const threshold = stdDev * 2;
+            const threshold = stdDev * 2;
 
-          const campaignAnomalies = campaignRows.filter((row) => {
-            const value = Number(row[metric]) || 0;
-            
-            // Calculate deviation percentage
-            const deviationPercent = ((value - mean) / mean) * 100;
-            
-            // Only include anomalies with more than 10% deviation (either direction)
-            return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
-          }).map(row => ({
-            ...row,
-            campaign,
-            mean,
-            actualValue: Number(row[metric]) || 0,
-            deviation: ((Number(row[metric]) || 0) - mean) / mean * 100,
-            periodType: "daily"
-          }));
-
-          allAnomalies = [...allAnomalies, ...campaignAnomalies];
-        });
-      } else {
-        // Week-over-week anomaly detection
-        Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
-          // Group rows by week
-          const weeklyData = campaignRows.reduce<Record<string, WeeklyAggregation>>((weeks, row) => {
-            const date = new Date(row.DATE);
-            // Get the week start (Sunday)
-            const weekStart = new Date(date);
-            weekStart.setDate(date.getDate() - date.getDay());
-            const weekKey = weekStart.toISOString().split('T')[0];
-            
-            if (!weeks[weekKey]) {
-              weeks[weekKey] = {
-                weekStart: weekKey,
-                [metric]: 0,
-                rows: []
-              };
-            }
-            
-            weeks[weekKey][metric] += Number(row[metric]) || 0;
-            weeks[weekKey].rows.push(row);
-            
-            return weeks;
-          }, {});
-          
-          const weeklyValues = Object.values(weeklyData);
-          
-          // We need at least 2 weeks of data for meaningful week-over-week analysis
-          // Changed from 3 to 2 to handle smaller datasets
-          if (weeklyValues.length < 2) return;
-          
-          const weeklyMetricValues = weeklyValues.map(week => week[metric]);
-          const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
-          const stdDev = Math.sqrt(
-            weeklyMetricValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / weeklyMetricValues.length
-          );
-          
-          const threshold = stdDev * 2;
-          
-          // Sort weeks by date (newest first)
-          const sortedWeeks = weeklyValues.sort((a, b) => 
-            new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
-          );
-          
-          // Check each week against the mean
-          sortedWeeks.forEach((week, index) => {
-            // Skip the most recent week if it's incomplete
-            if (index === 0 && new Date().getDay() < 5) return;
-            
-            const value = week[metric];
-            const deviationPercent = ((value - mean) / mean) * 100;
-            
-            if (Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold) {
-              const weekStart = new Date(week.weekStart);
-              const weekEnd = new Date(weekStart);
-              weekEnd.setDate(weekStart.getDate() + 6);
+            const campaignAnomalies = campaignRows.filter((row) => {
+              const value = Number(row[metric]) || 0;
               
-              allAnomalies.push({
-                campaign,
-                DATE: `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
-                mean,
-                actualValue: value,
-                deviation: deviationPercent,
-                periodType: "weekly",
-                rows: week.rows
-              });
-            }
+              // Calculate deviation percentage
+              const deviationPercent = ((value - mean) / mean) * 100;
+              
+              // Only include anomalies with more than 10% deviation (either direction)
+              return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
+            }).map(row => ({
+              ...row,
+              campaign,
+              mean,
+              actualValue: Number(row[metric]) || 0,
+              deviation: ((Number(row[metric]) || 0) - mean) / mean * 100,
+              periodType: "daily"
+            }));
+
+            allAnomalies = [...allAnomalies, ...campaignAnomalies];
           });
-        });
-      }
+        } else {
+          // Week-over-week anomaly detection
+          Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
+            if (!campaignRows.length) return;
+            
+            // Group rows by week
+            const weeklyData = campaignRows.reduce<Record<string, WeeklyAggregation>>((weeks, row) => {
+              if (!row.DATE) return weeks;
+              
+              try {
+                const date = new Date(row.DATE);
+                if (isNaN(date.getTime())) return weeks;
+                
+                // Get the week start (Sunday)
+                const weekStart = new Date(date);
+                weekStart.setDate(date.getDate() - date.getDay());
+                const weekKey = weekStart.toISOString().split('T')[0];
+                
+                if (!weeks[weekKey]) {
+                  weeks[weekKey] = {
+                    weekStart: weekKey,
+                    [metric]: 0,
+                    rows: []
+                  };
+                }
+                
+                weeks[weekKey][metric] += Number(row[metric]) || 0;
+                weeks[weekKey].rows.push(row);
+              } catch (err) {
+                console.error("Error processing date in weekly grouping:", err);
+              }
+              
+              return weeks;
+            }, {});
+            
+            const weeklyValues = Object.values(weeklyData);
+            
+            // We need at least 2 weeks of data for meaningful week-over-week analysis
+            if (weeklyValues.length < 2) return;
+            
+            const weeklyMetricValues = weeklyValues.map(week => week[metric]);
+            const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
+            const stdDev = Math.sqrt(
+              weeklyMetricValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / weeklyMetricValues.length
+            );
+            
+            const threshold = stdDev * 2;
+            
+            // Sort weeks by date (newest first)
+            const sortedWeeks = [...weeklyValues].sort((a, b) => {
+              try {
+                return new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime();
+              } catch (err) {
+                console.error("Error sorting weeks:", err);
+                return 0;
+              }
+            });
+            
+            // Check each week against the mean
+            sortedWeeks.forEach((week, index) => {
+              try {
+                // Skip the most recent week if it's incomplete
+                if (index === 0 && new Date().getDay() < 5) return;
+                
+                const value = week[metric];
+                if (typeof value !== 'number') return;
+                
+                const deviationPercent = ((value - mean) / mean) * 100;
+                
+                if (Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold) {
+                  const weekStart = new Date(week.weekStart);
+                  if (isNaN(weekStart.getTime())) return;
+                  
+                  const weekEnd = new Date(weekStart);
+                  weekEnd.setDate(weekStart.getDate() + 6);
+                  
+                  allAnomalies.push({
+                    campaign,
+                    DATE: `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
+                    mean,
+                    actualValue: value,
+                    deviation: deviationPercent,
+                    periodType: "weekly",
+                    rows: week.rows
+                  });
+                }
+              } catch (err) {
+                console.error("Error processing week for anomalies:", err);
+              }
+            });
+          });
+        }
 
-      results[metric] = {
-        anomalies: allAnomalies.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation))
+        results[metric] = {
+          anomalies: allAnomalies.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation))
+        };
+      });
+
+      return results;
+    } catch (error) {
+      console.error("Error in anomaly detection:", error);
+      // Return empty anomalies in case of error
+      return {
+        IMPRESSIONS: { anomalies: [] },
+        CLICKS: { anomalies: [] },
+        REVENUE: { anomalies: [] }
       };
-    });
-
-    return results;
+    }
   }, [data, anomalyPeriod]);
 
   const getAggregatedData = (campaign: string) => {
-    const filteredData = campaign === "all" 
-      ? data 
-      : data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+    try {
+      if (!data || !data.length) return [];
+      
+      const filteredData = campaign === "all" 
+        ? data 
+        : data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
 
-    const dateGroups = filteredData.reduce((acc, row) => {
-      const date = row.DATE;
-      if (!acc[date]) {
-        acc[date] = {
-          DATE: date,
-          IMPRESSIONS: 0,
-          CLICKS: 0,
-          REVENUE: 0
-        };
-      }
-      acc[date].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-      acc[date].CLICKS += Number(row.CLICKS) || 0;
-      acc[date].REVENUE += Number(row.REVENUE) || 0;
-      return acc;
-    }, {});
+      if (!filteredData.length) return [];
 
-    return Object.values(dateGroups).sort((a: any, b: any) => 
-      new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
-    );
+      const dateGroups = filteredData.reduce((acc, row) => {
+        if (!row || !row.DATE) return acc;
+        
+        const date = row.DATE;
+        if (!acc[date]) {
+          acc[date] = {
+            DATE: date,
+            IMPRESSIONS: 0,
+            CLICKS: 0,
+            REVENUE: 0
+          };
+        }
+        acc[date].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        acc[date].CLICKS += Number(row.CLICKS) || 0;
+        acc[date].REVENUE += Number(row.REVENUE) || 0;
+        return acc;
+      }, {});
+
+      return Object.values(dateGroups).sort((a: any, b: any) => {
+        try {
+          return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+        } catch (err) {
+          return 0;
+        }
+      });
+    } catch (error) {
+      console.error("Error in getAggregatedData:", error);
+      return [];
+    }
   };
 
   const calculateROAS = (revenue: number, impressions: number): number => {
-    const spend = (impressions * 15) / 1000; // $15 CPM
-    return spend > 0 ? revenue / spend : 0;
+    try {
+      const spend = (impressions * 15) / 1000; // $15 CPM
+      return spend > 0 ? revenue / spend : 0;
+    } catch (error) {
+      console.error("Error calculating ROAS:", error);
+      return 0;
+    }
   };
 
   const getWeeklyData = () => {
     try {
+      if (!data || !data.length) {
+        console.log("No data available");
+        return [];
+      }
+
       const filteredData = selectedMetricsCampaign === "all" 
         ? data 
         : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
 
-      // If there's no data, return empty array
       if (!filteredData.length) {
-        console.log("No data available for weekly comparison");
+        console.log("No filtered data available");
         return [];
       }
 
       // Sort data by date (ascending)
-      const sortedData = [...filteredData].sort((a, b) => 
-        new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
-      );
+      const sortedData = [...filteredData].sort((a, b) => {
+        try {
+          return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+        } catch (err) {
+          console.error("Error sorting data by date:", err);
+          return 0;
+        }
+      });
 
       // Get date range
+      if (!sortedData[0].DATE || !sortedData[sortedData.length - 1].DATE) {
+        console.log("Invalid date data");
+        return [];
+      }
+
       const startDate = new Date(sortedData[0].DATE);
       const endDate = new Date(sortedData[sortedData.length - 1].DATE);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.log("Invalid date conversion");
+        return [];
+      }
 
       // Calculate most recent complete week
       const mostRecentDate = new Date(endDate);
       
       // Find the start of the most recent complete week
-      // This will be the most recent Sunday that is at least 7 days from the earliest date
       const endOfRecentPeriod = new Date(mostRecentDate);
       endOfRecentPeriod.setHours(0, 0, 0, 0);
       
@@ -265,12 +347,20 @@ const Dashboard = ({ data }: DashboardProps) => {
         
         // Calculate metrics for the period
         filteredData.forEach(row => {
-          const rowDate = new Date(row.DATE);
-          if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
-            period.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-            period.CLICKS += Number(row.CLICKS) || 0;
-            period.REVENUE += Number(row.REVENUE) || 0;
-            period.count += 1;
+          try {
+            if (!row.DATE) return;
+            
+            const rowDate = new Date(row.DATE);
+            if (isNaN(rowDate.getTime())) return;
+            
+            if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
+              period.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+              period.CLICKS += Number(row.CLICKS) || 0;
+              period.REVENUE += Number(row.REVENUE) || 0;
+              period.count += 1;
+            }
+          } catch (err) {
+            console.error("Error processing row for period metrics:", err);
           }
         });
         
@@ -303,22 +393,30 @@ const Dashboard = ({ data }: DashboardProps) => {
 
       // Calculate metrics for each period
       filteredData.forEach(row => {
-        const rowDate = new Date(row.DATE);
-        rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
-        
-        // Check if the date falls within the recent period
-        if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
-          periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-          periods[0].CLICKS += Number(row.CLICKS) || 0;
-          periods[0].REVENUE += Number(row.REVENUE) || 0;
-          periods[0].count += 1;
-        } 
-        // Check if the date falls within the previous period
-        else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
-          periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-          periods[1].CLICKS += Number(row.CLICKS) || 0;
-          periods[1].REVENUE += Number(row.REVENUE) || 0;
-          periods[1].count += 1;
+        try {
+          if (!row.DATE) return;
+          
+          const rowDate = new Date(row.DATE);
+          if (isNaN(rowDate.getTime())) return;
+          
+          rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
+          
+          // Check if the date falls within the recent period
+          if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
+            periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+            periods[0].CLICKS += Number(row.CLICKS) || 0;
+            periods[0].REVENUE += Number(row.REVENUE) || 0;
+            periods[0].count += 1;
+          } 
+          // Check if the date falls within the previous period
+          else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
+            periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+            periods[1].CLICKS += Number(row.CLICKS) || 0;
+            periods[1].REVENUE += Number(row.REVENUE) || 0;
+            periods[1].count += 1;
+          }
+        } catch (err) {
+          console.error("Error processing row for period comparison:", err);
         }
       });
 
@@ -338,40 +436,73 @@ const Dashboard = ({ data }: DashboardProps) => {
   const revenueData = useMemo(() => getAggregatedData(selectedRevenueCampaign), [data, selectedRevenueCampaign]);
 
   const formatNumber = (value: number) => {
-    return value.toLocaleString();
+    try {
+      return value.toLocaleString();
+    } catch (error) {
+      console.error("Error formatting number:", error);
+      return "0";
+    }
   };
 
   const formatRevenue = (value: number) => {
-    return `$${Math.round(value).toLocaleString()}`;
+    try {
+      return `$${Math.round(value).toLocaleString()}`;
+    } catch (error) {
+      console.error("Error formatting revenue:", error);
+      return "$0";
+    }
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Invalid Date";
+    }
   };
 
   const getMetricComparison = (metric: string, recentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
-    const currentValue = recentPeriod[metric];
-    const previousValue = previousPeriod ? previousPeriod[metric] : 0;
-    
-    // Avoid division by zero
-    const percentChange = previousValue !== 0 
-      ? ((currentValue - previousValue) / previousValue) * 100 
-      : currentValue > 0 ? 100 : 0;
+    try {
+      const currentValue = recentPeriod[metric as keyof WeeklyData] as number;
+      const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData] as number) : 0;
       
-    const colorClasses = getColorClasses(percentChange);
-    
-    return {
-      currentValue,
-      previousValue,
-      percentChange,
-      colorClass: colorClasses.split(' ').find(c => c.startsWith('text-')),
-      increased: percentChange > 0
-    };
+      // Avoid division by zero
+      const percentChange = previousValue !== 0 
+        ? ((currentValue - previousValue) / previousValue) * 100 
+        : currentValue > 0 ? 100 : 0;
+        
+      const colorClasses = getColorClasses(percentChange);
+      const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-')) || '';
+      
+      return {
+        currentValue,
+        previousValue,
+        percentChange,
+        colorClass,
+        increased: percentChange > 0
+      };
+    } catch (error) {
+      console.error("Error calculating metric comparison:", error);
+      return {
+        currentValue: 0,
+        previousValue: 0,
+        percentChange: 0,
+        colorClass: '',
+        increased: false
+      };
+    }
   };
 
   const formatROAS = (value: number) => {
-    return value.toFixed(2);
+    try {
+      return value.toFixed(2);
+    } catch (error) {
+      console.error("Error formatting ROAS:", error);
+      return "0.00";
+    }
   };
 
   const axisStyle = {
@@ -383,7 +514,14 @@ const Dashboard = ({ data }: DashboardProps) => {
     fill: '#64748b'
   };
 
-  if (!anomalies) return null;
+  // Ensure we have valid data structures before rendering
+  if (!anomalies) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">No anomaly data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -405,19 +543,19 @@ const Dashboard = ({ data }: DashboardProps) => {
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
             title="Impression Anomalies"
-            anomalies={anomalies.IMPRESSIONS.anomalies}
+            anomalies={anomalies.IMPRESSIONS?.anomalies || []}
             metric="IMPRESSIONS"
             anomalyPeriod={anomalyPeriod}
           />
           <MetricCard
             title="Click Anomalies"
-            anomalies={anomalies.CLICKS.anomalies}
+            anomalies={anomalies.CLICKS?.anomalies || []}
             metric="CLICKS"
             anomalyPeriod={anomalyPeriod}
           />
           <MetricCard
             title="Revenue Anomalies"
-            anomalies={anomalies.REVENUE.anomalies}
+            anomalies={anomalies.REVENUE?.anomalies || []}
             metric="REVENUE"
             anomalyPeriod={anomalyPeriod}
           />
@@ -440,51 +578,57 @@ const Dashboard = ({ data }: DashboardProps) => {
           </Select>
         </div>
         <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={metricsData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="DATE" 
-                style={axisStyle}
-              />
-              <YAxis 
-                yAxisId="left"
-                orientation="left"
-                stroke="#4ade80"
-                label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                tickFormatter={formatNumber}
-                style={axisStyle}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#f59e0b"
-                label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
-                tickFormatter={formatNumber}
-                style={axisStyle}
-              />
-              <Tooltip 
-                formatter={(value: number, name: string) => [formatNumber(value), name]}
-                contentStyle={{ fontSize: '0.75rem' }}
-              />
-              <Bar
-                yAxisId="left"
-                dataKey="IMPRESSIONS"
-                fill="#4ade80"
-                opacity={0.8}
-                name="Impressions"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="CLICKS"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                dot={false}
-                name="Clicks"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+          {metricsData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={metricsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="DATE" 
+                  style={axisStyle}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#4ade80"
+                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#f59e0b"
+                  label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [formatNumber(value), name]}
+                  contentStyle={{ fontSize: '0.75rem' }}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  opacity={0.8}
+                  name="Impressions"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="CLICKS"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Clicks"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No data available for the selected campaign</p>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -504,54 +648,60 @@ const Dashboard = ({ data }: DashboardProps) => {
           </Select>
         </div>
         <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="DATE" 
-                style={axisStyle}
-              />
-              <YAxis 
-                yAxisId="left"
-                orientation="left"
-                stroke="#4ade80"
-                label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                tickFormatter={formatNumber}
-                style={axisStyle}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#ef4444"
-                label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
-                tickFormatter={formatRevenue}
-                style={axisStyle}
-              />
-              <Tooltip 
-                formatter={(value: number, name: string) => {
-                  if (name === "Revenue") return [formatRevenue(value), name];
-                  return [formatNumber(value), name];
-                }}
-                contentStyle={{ fontSize: '0.75rem' }}
-              />
-              <Bar
-                yAxisId="left"
-                dataKey="IMPRESSIONS"
-                fill="#4ade80"
-                opacity={0.8}
-                name="Impressions"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="REVENUE"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={false}
-                name="Revenue"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+          {revenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="DATE" 
+                  style={axisStyle}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#4ade80"
+                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#ef4444"
+                  label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
+                  tickFormatter={formatRevenue}
+                  style={axisStyle}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === "Revenue") return [formatRevenue(value), name];
+                    return [formatNumber(value), name];
+                  }}
+                  contentStyle={{ fontSize: '0.75rem' }}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  opacity={0.8}
+                  name="Impressions"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="REVENUE"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Revenue"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No revenue data available for the selected campaign</p>
+            </div>
+          )}
         </div>
       </Card>
 

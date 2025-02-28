@@ -16,53 +16,82 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
     const file = acceptedFiles[0];
     
     if (file) {
-      Papa.parse(file, {
-        complete: (results) => {
-          // Ensure headers is an array of strings
-          const headers = results.data[0] as string[];
-          const requiredHeaders = [
-            "DATE",
-            "CAMPAIGN ORDER NAME",
-            "IMPRESSIONS",
-            "CLICKS",
-            "TRANSACTIONS",
-            "REVENUE",
-            "SPEND"
-          ];
-
-          // Convert headers to uppercase for case-insensitive comparison
-          const upperHeaders = headers.map(header => String(header).toUpperCase());
-          
-          const missingHeaders = requiredHeaders.filter(
-            (header) => !upperHeaders.includes(header)
-          );
-
-          if (missingHeaders.length > 0) {
-            toast.error(`Missing required headers: ${missingHeaders.join(", ")}`);
-            return;
-          }
-
-          // Process the data to ensure numerical values are properly parsed
-          const processedData = results.data.slice(1).map(row => {
-            const processed: any = {};
-            headers.forEach((header, index) => {
-              const value = row[index];
-              // Convert numerical fields to numbers
-              if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
-                processed[header] = Number(value) || 0;
-              } else {
-                processed[header] = value;
+      try {
+        Papa.parse(file, {
+          complete: (results) => {
+            try {
+              // Ensure we have data
+              if (!results.data || !Array.isArray(results.data) || results.data.length < 2) {
+                toast.error("Invalid CSV format or empty file");
+                return;
               }
-            });
-            return processed;
-          });
+              
+              // Ensure headers is an array of strings
+              const headers = results.data[0] as string[];
+              const requiredHeaders = [
+                "DATE",
+                "CAMPAIGN ORDER NAME",
+                "IMPRESSIONS",
+                "CLICKS",
+                "TRANSACTIONS",
+                "REVENUE",
+                "SPEND"
+              ];
 
-          onDataLoaded(processedData);
-          toast.success("Data loaded successfully!");
-        },
-        header: false, // Changed to false so we can handle headers manually
-        skipEmptyLines: true,
-      });
+              // Convert headers to uppercase for case-insensitive comparison
+              const upperHeaders = headers.map(header => String(header).toUpperCase());
+              
+              const missingHeaders = requiredHeaders.filter(
+                (header) => !upperHeaders.includes(header)
+              );
+
+              if (missingHeaders.length > 0) {
+                toast.error(`Missing required headers: ${missingHeaders.join(", ")}`);
+                return;
+              }
+
+              // Process the data to ensure numerical values are properly parsed
+              const processedData = results.data.slice(1).map(row => {
+                if (!Array.isArray(row) || row.length !== headers.length) {
+                  return null; // Skip malformed rows
+                }
+                
+                const processed: any = {};
+                headers.forEach((header, index) => {
+                  const value = row[index];
+                  // Convert numerical fields to numbers
+                  if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
+                    processed[header] = Number(value) || 0;
+                  } else {
+                    processed[header] = value;
+                  }
+                });
+                return processed;
+              }).filter(row => row !== null); // Remove null rows
+              
+              if (processedData.length === 0) {
+                toast.error("No valid data rows found in CSV");
+                return;
+              }
+
+              onDataLoaded(processedData);
+              toast.success("Data loaded successfully!");
+            } catch (err) {
+              console.error("Error processing CSV data:", err);
+              toast.error("Error processing CSV data");
+            }
+          },
+          error: (error) => {
+            console.error("CSV parsing error:", error);
+            toast.error(`CSV parsing error: ${error.message}`);
+          },
+          header: false, // Changed to false so we can handle headers manually
+          skipEmptyLines: true,
+        });
+      } catch (err) {
+        console.error("Error parsing CSV:", err);
+        toast.error("Failed to parse CSV file");
+      }
     }
   }, [onDataLoaded]);
 
