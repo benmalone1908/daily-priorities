@@ -313,84 +313,44 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Calculate most recent complete week
-      const mostRecentDate = new Date(endDate);
-      
-      // Find the start of the most recent complete week
-      const endOfRecentPeriod = new Date(mostRecentDate);
+      // Group all days into 7-day periods
+      // We'll start from the most recent date and work backwards
+      const endOfRecentPeriod = new Date(endDate);
       endOfRecentPeriod.setHours(0, 0, 0, 0);
       
-      // Find the last complete 7-day period (ending at endOfRecentPeriod)
-      const startOfRecentPeriod = new Date(endOfRecentPeriod);
-      startOfRecentPeriod.setDate(endOfRecentPeriod.getDate() - 6);
+      // Calculate how many full 7-day periods we can have
+      const daysBetween = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const maxPeriods = Math.floor(daysBetween / 7) + 1; // +1 to include partial periods
+      const numPeriods = Math.min(maxPeriods, 4); // Limit to 4 periods maximum
       
-      // Calculate previous period
-      const endOfPreviousPeriod = new Date(startOfRecentPeriod);
-      endOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 1);
+      console.log(`Days between: ${daysBetween}, Max periods: ${maxPeriods}, Will show: ${numPeriods}`);
       
-      const startOfPreviousPeriod = new Date(endOfPreviousPeriod);
-      startOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 6);
+      // Initialize all periods
+      const periods: WeeklyData[] = [];
       
-      // Ensure previous period is within our data range
-      if (startOfPreviousPeriod < startDate) {
-        console.log("Previous period is before our data range");
-        // If there's only enough data for one period, just return that one
-        const period: WeeklyData = {
-          periodStart: startOfRecentPeriod.toISOString().split('T')[0],
-          periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
+      for (let i = 0; i < numPeriods; i++) {
+        // End date of this period
+        const periodEnd = new Date(endOfRecentPeriod);
+        periodEnd.setDate(periodEnd.getDate() - (i * 7));
+        
+        // Start date of this period (7 days earlier)
+        const periodStart = new Date(periodEnd);
+        periodStart.setDate(periodEnd.getDate() - 6);
+        
+        // Skip periods that start before our data
+        if (periodStart < startDate) continue;
+        
+        periods.push({
+          periodStart: periodStart.toISOString().split('T')[0],
+          periodEnd: periodEnd.toISOString().split('T')[0],
           IMPRESSIONS: 0,
           CLICKS: 0,
           REVENUE: 0,
           ROAS: 0,
           count: 0
-        };
-        
-        // Calculate metrics for the period
-        filteredData.forEach(row => {
-          try {
-            if (!row.DATE) return;
-            
-            const rowDate = new Date(row.DATE);
-            if (isNaN(rowDate.getTime())) return;
-            
-            if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
-              period.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-              period.CLICKS += Number(row.CLICKS) || 0;
-              period.REVENUE += Number(row.REVENUE) || 0;
-              period.count += 1;
-            }
-          } catch (err) {
-            console.error("Error processing row for period metrics:", err);
-          }
         });
-        
-        period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
-        
-        return [period];
       }
       
-      // Initialize the periods with their correct date ranges
-      const periods: WeeklyData[] = [
-        {
-          periodStart: startOfRecentPeriod.toISOString().split('T')[0],
-          periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
-          IMPRESSIONS: 0,
-          CLICKS: 0,
-          REVENUE: 0,
-          ROAS: 0,
-          count: 0
-        },
-        {
-          periodStart: startOfPreviousPeriod.toISOString().split('T')[0],
-          periodEnd: endOfPreviousPeriod.toISOString().split('T')[0],
-          IMPRESSIONS: 0,
-          CLICKS: 0,
-          REVENUE: 0,
-          ROAS: 0,
-          count: 0
-        }
-      ];
-
       // Calculate metrics for each period
       filteredData.forEach(row => {
         try {
@@ -401,28 +361,28 @@ const Dashboard = ({ data }: DashboardProps) => {
           
           rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
           
-          // Check if the date falls within the recent period
-          if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
-            periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-            periods[0].CLICKS += Number(row.CLICKS) || 0;
-            periods[0].REVENUE += Number(row.REVENUE) || 0;
-            periods[0].count += 1;
-          } 
-          // Check if the date falls within the previous period
-          else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
-            periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-            periods[1].CLICKS += Number(row.CLICKS) || 0;
-            periods[1].REVENUE += Number(row.REVENUE) || 0;
-            periods[1].count += 1;
+          // Check which period this row belongs to
+          for (let i = 0; i < periods.length; i++) {
+            const periodStart = new Date(periods[i].periodStart);
+            const periodEnd = new Date(periods[i].periodEnd);
+            
+            if (rowDate >= periodStart && rowDate <= periodEnd) {
+              periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+              periods[i].CLICKS += Number(row.CLICKS) || 0;
+              periods[i].REVENUE += Number(row.REVENUE) || 0;
+              periods[i].count += 1;
+              break; // Each row can only belong to one period
+            }
           }
         } catch (err) {
-          console.error("Error processing row for period comparison:", err);
+          console.error("Error processing row for period metrics:", err);
         }
       });
 
-      // Calculate ROAS for both periods
-      periods[0].ROAS = calculateROAS(periods[0].REVENUE, periods[0].IMPRESSIONS);
-      periods[1].ROAS = calculateROAS(periods[1].REVENUE, periods[1].IMPRESSIONS);
+      // Calculate ROAS for all periods
+      periods.forEach(period => {
+        period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
+      });
 
       return periods;
     } catch (error) {
@@ -464,9 +424,9 @@ const Dashboard = ({ data }: DashboardProps) => {
     }
   };
 
-  const getMetricComparison = (metric: string, recentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
+  const getMetricComparison = (metric: string, currentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
     try {
-      const currentValue = recentPeriod[metric as keyof WeeklyData] as number;
+      const currentValue = currentPeriod[metric as keyof WeeklyData] as number;
       const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData] as number) : 0;
       
       // Avoid division by zero
@@ -715,153 +675,133 @@ const Dashboard = ({ data }: DashboardProps) => {
             {/* Impressions Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">
-                    {formatNumber(weeklyData[0].IMPRESSIONS)}
-                  </p>
-                  {weeklyData.length >= 2 && (() => {
-                    const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
-                    return (
-                      <div className={`flex items-center ${comparison.colorClass}`}>
-                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span className="ml-1 text-sm">
-                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
-                </p>
-              </Card>
-              {weeklyData.length >= 2 && (
-                <Card className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                  <p className="mb-1 text-2xl font-bold">
-                    {formatNumber(weeklyData[1].IMPRESSIONS)}
-                  </p>
+              {weeklyData.map((period, idx) => (
+                <Card key={`impressions-${idx}`} className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                    {idx === 0 ? "Most Recent 7 Days" : 
+                     idx === 1 ? "Previous 7 Days" : 
+                     `Week ${idx + 1}`}
+                  </h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold">
+                      {formatNumber(period.IMPRESSIONS)}
+                    </p>
+                    {idx > 0 && (() => {
+                      const comparison = getMetricComparison('IMPRESSIONS', weeklyData[idx-1], period);
+                      return (
+                        <div className={`flex items-center ${comparison.colorClass}`}>
+                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span className="ml-1 text-sm">
+                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
                   </p>
                 </Card>
-              )}
+              ))}
             </div>
 
             {/* Clicks Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">
-                    {formatNumber(weeklyData[0].CLICKS)}
-                  </p>
-                  {weeklyData.length >= 2 && (() => {
-                    const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
-                    return (
-                      <div className={`flex items-center ${comparison.colorClass}`}>
-                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span className="ml-1 text-sm">
-                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
-                </p>
-              </Card>
-              {weeklyData.length >= 2 && (
-                <Card className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                  <p className="mb-1 text-2xl font-bold">
-                    {formatNumber(weeklyData[1].CLICKS)}
-                  </p>
+              {weeklyData.map((period, idx) => (
+                <Card key={`clicks-${idx}`} className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                    {idx === 0 ? "Most Recent 7 Days" : 
+                     idx === 1 ? "Previous 7 Days" : 
+                     `Week ${idx + 1}`}
+                  </h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold">
+                      {formatNumber(period.CLICKS)}
+                    </p>
+                    {idx > 0 && (() => {
+                      const comparison = getMetricComparison('CLICKS', weeklyData[idx-1], period);
+                      return (
+                        <div className={`flex items-center ${comparison.colorClass}`}>
+                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span className="ml-1 text-sm">
+                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
                   </p>
                 </Card>
-              )}
+              ))}
             </div>
 
             {/* Revenue Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">
-                    {formatRevenue(weeklyData[0].REVENUE)}
-                  </p>
-                  {weeklyData.length >= 2 && (() => {
-                    const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
-                    return (
-                      <div className={`flex items-center ${comparison.colorClass}`}>
-                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span className="ml-1 text-sm">
-                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
-                </p>
-              </Card>
-              {weeklyData.length >= 2 && (
-                <Card className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                  <p className="mb-1 text-2xl font-bold">
-                    {formatRevenue(weeklyData[1].REVENUE)}
-                  </p>
+              {weeklyData.map((period, idx) => (
+                <Card key={`revenue-${idx}`} className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                    {idx === 0 ? "Most Recent 7 Days" : 
+                     idx === 1 ? "Previous 7 Days" : 
+                     `Week ${idx + 1}`}
+                  </h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold">
+                      {formatRevenue(period.REVENUE)}
+                    </p>
+                    {idx > 0 && (() => {
+                      const comparison = getMetricComparison('REVENUE', weeklyData[idx-1], period);
+                      return (
+                        <div className={`flex items-center ${comparison.colorClass}`}>
+                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span className="ml-1 text-sm">
+                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
                   </p>
                 </Card>
-              )}
+              ))}
             </div>
 
             {/* ROAS Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Most Recent 7 Days</h5>
-                <div className="flex items-center gap-2">
-                  <p className="text-2xl font-bold">
-                    {formatROAS(weeklyData[0].ROAS)}
-                  </p>
-                  {weeklyData.length >= 2 && (() => {
-                    const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
-                    return (
-                      <div className={`flex items-center ${comparison.colorClass}`}>
-                        {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span className="ml-1 text-sm">
-                          {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
-                </p>
-              </Card>
-              {weeklyData.length >= 2 && (
-                <Card className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                  <p className="mb-1 text-2xl font-bold">
-                    {formatROAS(weeklyData[1].ROAS)}
-                  </p>
+              {weeklyData.map((period, idx) => (
+                <Card key={`roas-${idx}`} className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                    {idx === 0 ? "Most Recent 7 Days" : 
+                     idx === 1 ? "Previous 7 Days" : 
+                     `Week ${idx + 1}`}
+                  </h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold">
+                      {formatROAS(period.ROAS)}
+                    </p>
+                    {idx > 0 && (() => {
+                      const comparison = getMetricComparison('ROAS', weeklyData[idx-1], period);
+                      return (
+                        <div className={`flex items-center ${comparison.colorClass}`}>
+                          {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span className="ml-1 text-sm">
+                            {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                    {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
                   </p>
                 </Card>
-              )}
+              ))}
             </div>
           </div>
         ) : (
