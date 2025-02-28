@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -300,7 +299,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       });
 
       // Get date range
-      if (!sortedData[0].DATE || !sortedData[sortedData.length - 1].DATE) {
+      if (!sortedData[0]?.DATE || !sortedData[sortedData.length - 1]?.DATE) {
         console.log("Invalid date data");
         return [];
       }
@@ -321,7 +320,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       // Calculate how many full 7-day periods we can have
       const daysBetween = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       const maxPeriods = Math.floor(daysBetween / 7) + 1; // +1 to include partial periods
-      const numPeriods = Math.min(maxPeriods, 4); // Limit to 4 periods maximum
+      const numPeriods = Math.min(maxPeriods, 6); // Allow up to 6 periods maximum
       
       console.log(`Days between: ${daysBetween}, Max periods: ${maxPeriods}, Will show: ${numPeriods}`);
       
@@ -338,7 +337,12 @@ const Dashboard = ({ data }: DashboardProps) => {
         periodStart.setDate(periodEnd.getDate() - 6);
         
         // Skip periods that start before our data
-        if (periodStart < startDate) continue;
+        if (periodStart < startDate) {
+          console.log(`Skipping period ${i} - starts before data range`);
+          continue;
+        }
+
+        console.log(`Adding period ${i}: ${periodStart.toISOString()} - ${periodEnd.toISOString()}`);
         
         periods.push({
           periodStart: periodStart.toISOString().split('T')[0],
@@ -382,6 +386,11 @@ const Dashboard = ({ data }: DashboardProps) => {
       // Calculate ROAS for all periods
       periods.forEach(period => {
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
+      });
+
+      console.log(`Generated ${periods.length} weekly periods`);
+      periods.forEach((p, i) => {
+        console.log(`Period ${i}: ${p.periodStart} - ${p.periodEnd}, Impressions: ${p.IMPRESSIONS}, Clicks: ${p.CLICKS}`);
       });
 
       return periods;
@@ -668,6 +677,9 @@ const Dashboard = ({ data }: DashboardProps) => {
       <Card className="p-6">
         <div className="mb-6">
           <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+          </p>
         </div>
 
         {weeklyData.length >= 1 ? (
