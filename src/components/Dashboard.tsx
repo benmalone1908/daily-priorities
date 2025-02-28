@@ -126,8 +126,9 @@ const Dashboard = ({ data }: DashboardProps) => {
           
           const weeklyValues = Object.values(weeklyData);
           
-          // We need at least 3 weeks of data for meaningful week-over-week analysis
-          if (weeklyValues.length < 3) return;
+          // We need at least 2 weeks of data for meaningful week-over-week analysis
+          // Changed from 3 to 2 to handle smaller datasets
+          if (weeklyValues.length < 2) return;
           
           const weeklyMetricValues = weeklyValues.map(week => week[metric]);
           const mean = weeklyMetricValues.reduce((a, b) => a + b, 0) / weeklyMetricValues.length;
@@ -209,81 +210,127 @@ const Dashboard = ({ data }: DashboardProps) => {
   };
 
   const getWeeklyData = () => {
-    const filteredData = selectedMetricsCampaign === "all" 
-      ? data 
-      : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
+    try {
+      const filteredData = selectedMetricsCampaign === "all" 
+        ? data 
+        : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedMetricsCampaign);
 
-    // Find the most recent date in the data
-    let mostRecentDate: Date;
-    if (filteredData.length > 0) {
-      const dates = filteredData.map(row => new Date(row.DATE));
-      mostRecentDate = new Date(Math.max(...dates.map(date => date.getTime())));
-    } else {
-      mostRecentDate = new Date(); // Use current date if no data
-    }
-    
-    // Calculate the end of the most recent complete 7-day period (yesterday)
-    const endOfRecentPeriod = new Date(mostRecentDate);
-    endOfRecentPeriod.setHours(0, 0, 0, 0); // Set to start of the day
-    
-    // Calculate the start of the most recent complete 7-day period (7 days before yesterday)
-    const startOfRecentPeriod = new Date(endOfRecentPeriod);
-    startOfRecentPeriod.setDate(endOfRecentPeriod.getDate() - 6); // 7 day period includes the end date
-    
-    // Calculate the start and end of the previous 7-day period
-    const endOfPreviousPeriod = new Date(startOfRecentPeriod);
-    endOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 1);
-    
-    const startOfPreviousPeriod = new Date(endOfPreviousPeriod);
-    startOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 6);
-    
-    // Initialize the periods with their correct date ranges
-    const periods: WeeklyData[] = [
-      {
-        periodStart: startOfRecentPeriod.toISOString().split('T')[0],
-        periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
-        IMPRESSIONS: 0,
-        CLICKS: 0,
-        REVENUE: 0,
-        ROAS: 0,
-        count: 0
-      },
-      {
-        periodStart: startOfPreviousPeriod.toISOString().split('T')[0],
-        periodEnd: endOfPreviousPeriod.toISOString().split('T')[0],
-        IMPRESSIONS: 0,
-        CLICKS: 0,
-        REVENUE: 0,
-        ROAS: 0,
-        count: 0
+      // If there's no data, return empty array
+      if (!filteredData.length) {
+        console.log("No data available for weekly comparison");
+        return [];
       }
-    ];
 
-    // Assign data to appropriate period
-    filteredData.forEach(row => {
-      const rowDate = new Date(row.DATE);
-      rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
+      // Sort data by date (ascending)
+      const sortedData = [...filteredData].sort((a, b) => 
+        new Date(a.DATE).getTime() - new Date(b.DATE).getTime()
+      );
+
+      // Get date range
+      const startDate = new Date(sortedData[0].DATE);
+      const endDate = new Date(sortedData[sortedData.length - 1].DATE);
+
+      // Calculate most recent complete week
+      const mostRecentDate = new Date(endDate);
       
-      // Check if the date falls within the recent period
-      if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
-        periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        periods[0].CLICKS += Number(row.CLICKS) || 0;
-        periods[0].REVENUE += Number(row.REVENUE) || 0;
-        periods[0].count += 1;
-      } 
-      // Check if the date falls within the previous period
-      else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
-        periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        periods[1].CLICKS += Number(row.CLICKS) || 0;
-        periods[1].REVENUE += Number(row.REVENUE) || 0;
-        periods[1].count += 1;
+      // Find the start of the most recent complete week
+      // This will be the most recent Sunday that is at least 7 days from the earliest date
+      const endOfRecentPeriod = new Date(mostRecentDate);
+      endOfRecentPeriod.setHours(0, 0, 0, 0);
+      
+      // Find the last complete 7-day period (ending at endOfRecentPeriod)
+      const startOfRecentPeriod = new Date(endOfRecentPeriod);
+      startOfRecentPeriod.setDate(endOfRecentPeriod.getDate() - 6);
+      
+      // Calculate previous period
+      const endOfPreviousPeriod = new Date(startOfRecentPeriod);
+      endOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 1);
+      
+      const startOfPreviousPeriod = new Date(endOfPreviousPeriod);
+      startOfPreviousPeriod.setDate(endOfPreviousPeriod.getDate() - 6);
+      
+      // Ensure previous period is within our data range
+      if (startOfPreviousPeriod < startDate) {
+        console.log("Previous period is before our data range");
+        // If there's only enough data for one period, just return that one
+        const period: WeeklyData = {
+          periodStart: startOfRecentPeriod.toISOString().split('T')[0],
+          periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0
+        };
+        
+        // Calculate metrics for the period
+        filteredData.forEach(row => {
+          const rowDate = new Date(row.DATE);
+          if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
+            period.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+            period.CLICKS += Number(row.CLICKS) || 0;
+            period.REVENUE += Number(row.REVENUE) || 0;
+            period.count += 1;
+          }
+        });
+        
+        period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
+        
+        return [period];
       }
-    });
+      
+      // Initialize the periods with their correct date ranges
+      const periods: WeeklyData[] = [
+        {
+          periodStart: startOfRecentPeriod.toISOString().split('T')[0],
+          periodEnd: endOfRecentPeriod.toISOString().split('T')[0],
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0
+        },
+        {
+          periodStart: startOfPreviousPeriod.toISOString().split('T')[0],
+          periodEnd: endOfPreviousPeriod.toISOString().split('T')[0],
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0
+        }
+      ];
 
-    periods[0].ROAS = calculateROAS(periods[0].REVENUE, periods[0].IMPRESSIONS);
-    periods[1].ROAS = calculateROAS(periods[1].REVENUE, periods[1].IMPRESSIONS);
+      // Calculate metrics for each period
+      filteredData.forEach(row => {
+        const rowDate = new Date(row.DATE);
+        rowDate.setHours(0, 0, 0, 0); // Normalize to start of day
+        
+        // Check if the date falls within the recent period
+        if (rowDate >= startOfRecentPeriod && rowDate <= endOfRecentPeriod) {
+          periods[0].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+          periods[0].CLICKS += Number(row.CLICKS) || 0;
+          periods[0].REVENUE += Number(row.REVENUE) || 0;
+          periods[0].count += 1;
+        } 
+        // Check if the date falls within the previous period
+        else if (rowDate >= startOfPreviousPeriod && rowDate <= endOfPreviousPeriod) {
+          periods[1].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+          periods[1].CLICKS += Number(row.CLICKS) || 0;
+          periods[1].REVENUE += Number(row.REVENUE) || 0;
+          periods[1].count += 1;
+        }
+      });
 
-    return periods;
+      // Calculate ROAS for both periods
+      periods[0].ROAS = calculateROAS(periods[0].REVENUE, periods[0].IMPRESSIONS);
+      periods[1].ROAS = calculateROAS(periods[1].REVENUE, periods[1].IMPRESSIONS);
+
+      return periods;
+    } catch (error) {
+      console.error("Error in getWeeklyData:", error);
+      return [];
+    }
   };
 
   const weeklyData = useMemo(() => getWeeklyData(), [data, selectedMetricsCampaign]);
@@ -305,8 +352,13 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   const getMetricComparison = (metric: string, recentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
     const currentValue = recentPeriod[metric];
-    const previousValue = previousPeriod[metric];
-    const percentChange = ((currentValue - previousValue) / previousValue) * 100;
+    const previousValue = previousPeriod ? previousPeriod[metric] : 0;
+    
+    // Avoid division by zero
+    const percentChange = previousValue !== 0 
+      ? ((currentValue - previousValue) / previousValue) * 100 
+      : currentValue > 0 ? 100 : 0;
+      
     const colorClasses = getColorClasses(percentChange);
     
     return {
@@ -508,7 +560,7 @@ const Dashboard = ({ data }: DashboardProps) => {
           <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
         </div>
 
-        {weeklyData.length >= 2 ? (
+        {weeklyData.length >= 1 ? (
           <div className="grid gap-8 md:grid-cols-4">
             {/* Impressions Comparison */}
             <div className="space-y-4">
@@ -519,7 +571,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <p className="text-2xl font-bold">
                     {formatNumber(weeklyData[0].IMPRESSIONS)}
                   </p>
-                  {(() => {
+                  {weeklyData.length >= 2 && (() => {
                     const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
                     return (
                       <div className={`flex items-center ${comparison.colorClass}`}>
@@ -535,15 +587,17 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                <p className="mb-1 text-2xl font-bold">
-                  {formatNumber(weeklyData[1].IMPRESSIONS)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
-                </p>
-              </Card>
+              {weeklyData.length >= 2 && (
+                <Card className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                  <p className="mb-1 text-2xl font-bold">
+                    {formatNumber(weeklyData[1].IMPRESSIONS)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                  </p>
+                </Card>
+              )}
             </div>
 
             {/* Clicks Comparison */}
@@ -555,7 +609,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <p className="text-2xl font-bold">
                     {formatNumber(weeklyData[0].CLICKS)}
                   </p>
-                  {(() => {
+                  {weeklyData.length >= 2 && (() => {
                     const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
                     return (
                       <div className={`flex items-center ${comparison.colorClass}`}>
@@ -571,15 +625,17 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                <p className="mb-1 text-2xl font-bold">
-                  {formatNumber(weeklyData[1].CLICKS)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
-                </p>
-              </Card>
+              {weeklyData.length >= 2 && (
+                <Card className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                  <p className="mb-1 text-2xl font-bold">
+                    {formatNumber(weeklyData[1].CLICKS)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                  </p>
+                </Card>
+              )}
             </div>
 
             {/* Revenue Comparison */}
@@ -591,7 +647,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <p className="text-2xl font-bold">
                     {formatRevenue(weeklyData[0].REVENUE)}
                   </p>
-                  {(() => {
+                  {weeklyData.length >= 2 && (() => {
                     const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
                     return (
                       <div className={`flex items-center ${comparison.colorClass}`}>
@@ -607,15 +663,17 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                <p className="mb-1 text-2xl font-bold">
-                  {formatRevenue(weeklyData[1].REVENUE)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
-                </p>
-              </Card>
+              {weeklyData.length >= 2 && (
+                <Card className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                  <p className="mb-1 text-2xl font-bold">
+                    {formatRevenue(weeklyData[1].REVENUE)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                  </p>
+                </Card>
+              )}
             </div>
 
             {/* ROAS Comparison */}
@@ -627,7 +685,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                   <p className="text-2xl font-bold">
                     {formatROAS(weeklyData[0].ROAS)}
                   </p>
-                  {(() => {
+                  {weeklyData.length >= 2 && (() => {
                     const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
                     return (
                       <div className={`flex items-center ${comparison.colorClass}`}>
@@ -643,15 +701,17 @@ const Dashboard = ({ data }: DashboardProps) => {
                   {formatDate(weeklyData[0].periodStart)} - {formatDate(weeklyData[0].periodEnd)}
                 </p>
               </Card>
-              <Card className="p-4">
-                <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
-                <p className="mb-1 text-2xl font-bold">
-                  {formatROAS(weeklyData[1].ROAS)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
-                </p>
-              </Card>
+              {weeklyData.length >= 2 && (
+                <Card className="p-4">
+                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">Previous 7 Days</h5>
+                  <p className="mb-1 text-2xl font-bold">
+                    {formatROAS(weeklyData[1].ROAS)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(weeklyData[1].periodStart)} - {formatDate(weeklyData[1].periodEnd)}
+                  </p>
+                </Card>
+              )}
             </div>
           </div>
         ) : (
