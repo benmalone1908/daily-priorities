@@ -1,147 +1,121 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertTriangle } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getColorClasses } from "@/utils/anomalyColors";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-
-type AnomalyPeriod = "daily" | "weekly";
-
-interface Anomaly {
-  campaign: string;
-  DATE: string;
-  actualValue: number;
-  mean: number;
-  deviation: number;
-  periodType?: AnomalyPeriod;
-}
 
 interface AnomalyDetailsProps {
-  anomalies: Anomaly[];
+  anomalies: any[];
   metric: string;
-  anomalyPeriod: AnomalyPeriod;
+  anomalyPeriod: "daily" | "weekly";
 }
 
 const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProps) => {
-  const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
-  const [localAnomalyPeriod, setLocalAnomalyPeriod] = useState<AnomalyPeriod>(anomalyPeriod);
-
-  // Get unique campaigns
-  const campaigns = Array.from(new Set(anomalies.map(a => a.campaign))).sort();
-  
-  // Filter anomalies by period type if specified
-  const filteredByPeriodAnomalies = anomalies.filter(
-    a => a.periodType === undefined || a.periodType === localAnomalyPeriod
-  );
-  
-  // Group anomalies by campaign
-  const anomaliesByCampaign = filteredByPeriodAnomalies.reduce((acc, anomaly) => {
-    if (!acc[anomaly.campaign]) {
-      acc[anomaly.campaign] = [];
-    }
-    acc[anomaly.campaign].push(anomaly);
-    return acc;
-  }, {} as Record<string, Anomaly[]>);
-
-  // Filter campaigns based on selection
-  const filteredCampaigns = selectedCampaign === "all" 
-    ? Object.entries(anomaliesByCampaign)
-    : Object.entries(anomaliesByCampaign).filter(([campaign]) => campaign === selectedCampaign);
+  if (!anomalies || anomalies.length === 0) {
+    return null;
+  }
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="text-sm text-blue-500 hover:underline">
-          View all {filteredByPeriodAnomalies.length} anomalies →
-        </button>
+        <Button variant="ghost" className="h-7 px-2">View all</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <DialogTitle>{metric} Anomalies Detail</DialogTitle>
-              <ToggleGroup 
-                type="single" 
-                value={localAnomalyPeriod} 
-                onValueChange={(value) => value && setLocalAnomalyPeriod(value as AnomalyPeriod)}
-                className="bg-muted/50 p-1 rounded-md"
-              >
-                <ToggleGroupItem value="daily" aria-label="Daily anomalies" className="text-xs">
-                  Daily
-                </ToggleGroupItem>
-                <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-xs">
-                  Week-over-Week
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DialogTitle>{metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies</DialogTitle>
+          <DialogDescription>
+            Showing {anomalies.length} {anomalyPeriod} anomalies detected in the data
+          </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[60vh] mt-4">
-          <div className="space-y-6">
-            {filteredCampaigns.length > 0 ? (
-              filteredCampaigns.map(([campaign, campaignAnomalies]) => (
-                <Card key={campaign} className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
+
+        <Tabs defaultValue="table">
+          <TabsList className="mb-4">
+            <TabsTrigger value="table">Table View</TabsTrigger>
+            <TabsTrigger value="details">Detailed View</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="table">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Expected</TableHead>
+                  <TableHead>Deviation</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {anomalies.map((anomaly, index) => {
+                  const colorClass = getColorClasses(anomaly.deviation).split(' ').find(c => c.startsWith('text-'));
+                  
+                  return (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{anomaly.campaign}</TableCell>
+                      <TableCell>{anomaly.DATE}</TableCell>
+                      <TableCell>{Math.round(anomaly.actualValue).toLocaleString()}</TableCell>
+                      <TableCell>{Math.round(anomaly.mean).toLocaleString()}</TableCell>
+                      <TableCell className={colorClass}>
+                        {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TabsContent>
+          
+          <TabsContent value="details">
+            <div className="space-y-6">
+              {anomalies.map((anomaly, index) => {
+                const colorClasses = getColorClasses(anomaly.deviation);
+                const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-'));
+                
+                return (
+                  <div key={index} className="p-4 border rounded-lg">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold">{campaign}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {campaignAnomalies.length} anomal{campaignAnomalies.length === 1 ? 'y' : 'ies'} detected
-                        </p>
+                        <h3 className="font-medium text-lg">{anomaly.campaign}</h3>
+                        <p className="text-muted-foreground">{anomaly.DATE}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full ${colorClasses}`}>
+                        <span className="text-sm font-medium">
+                          {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                        </span>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      {campaignAnomalies.map((anomaly, idx) => {
-                        const colorClasses = getColorClasses(anomaly.deviation);
-                        return (
-                          <div 
-                            key={idx} 
-                            className={`text-sm rounded-lg p-3 space-y-1 border ${colorClasses}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className={`w-4 h-4 ${colorClasses.split(' ').find(c => c.startsWith('text-'))}`} />
-                              <span className="font-medium text-gray-900">
-                                {localAnomalyPeriod === "weekly" ? "Week of: " : "Date: "}{anomaly.DATE}
-                              </span>
-                            </div>
-                            <div className="pl-6 space-y-1">
-                              <p className="text-gray-900">Value: {anomaly.actualValue.toLocaleString()}</p>
-                              <p className="text-gray-900">
-                                {localAnomalyPeriod === "weekly" ? "Average Weekly" : "Campaign Average"}: {Math.round(anomaly.mean).toLocaleString()}
-                              </p>
-                              <p className={`font-medium ${colorClasses.split(' ').find(c => c.startsWith('text-'))}`}>
-                                Deviation: {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Actual Value</p>
+                        <p className="text-xl font-bold">{Math.round(anomaly.actualValue).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Expected (Mean)</p>
+                        <p className="text-xl font-bold">{Math.round(anomaly.mean).toLocaleString()}</p>
+                      </div>
                     </div>
+                    
+                    {anomalyPeriod === "weekly" && Array.isArray(anomaly.rows) && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium mb-2">Daily breakdown:</p>
+                        <div className="bg-muted/50 p-2 rounded text-sm">
+                          {anomaly.rows.map((row: any, idx: number) => (
+                            <div key={idx} className="flex justify-between py-1">
+                              <span>{row.DATE}</span>
+                              <span>{metric}: {Number(row[metric]).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </Card>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10">
-                <AlertTriangle className="w-10 h-10 text-muted mb-4" />
-                <p className="text-muted-foreground">No anomalies found for this period type.</p>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

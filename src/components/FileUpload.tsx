@@ -17,6 +17,8 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
     
     if (file) {
       try {
+        toast.info("Processing CSV file...");
+        
         Papa.parse(file, {
           complete: (results) => {
             try {
@@ -26,8 +28,16 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 return;
               }
               
-              // Ensure headers is an array of strings
+              console.log("CSV parse results:", results);
+              
+              // Ensure headers are provided and properly formatted
               const headers = results.data[0] as string[];
+              if (!Array.isArray(headers) || headers.length === 0) {
+                toast.error("Invalid or missing headers in CSV");
+                return;
+              }
+              
+              // Required headers from the CSV
               const requiredHeaders = [
                 "DATE",
                 "CAMPAIGN ORDER NAME",
@@ -50,43 +60,102 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 return;
               }
 
+              // Map header indices for quicker access
+              const headerIndexMap = headers.reduce((map, header, index) => {
+                map[header.toUpperCase()] = index;
+                return map;
+              }, {} as Record<string, number>);
+
               // Process the data to ensure numerical values are properly parsed
-              const processedData = results.data.slice(1).map(row => {
-                if (!Array.isArray(row) || row.length !== headers.length) {
-                  return null; // Skip malformed rows
+              const processedData = results.data.slice(1).map((row, rowIndex) => {
+                if (!Array.isArray(row)) {
+                  console.warn(`Row ${rowIndex + 1} is not an array:`, row);
+                  return null;
                 }
                 
-                const processed: any = {};
+                if (row.length !== headers.length) {
+                  console.warn(`Row ${rowIndex + 1} has ${row.length} values, expected ${headers.length}`);
+                  return null;
+                }
+                
+                // Check if row has any content
+                if (row.every(cell => cell === null || cell === undefined || cell === "")) {
+                  console.warn(`Row ${rowIndex + 1} is empty`);
+                  return null;
+                }
+                
+                const processed: Record<string, any> = {};
+                
+                // Process each header
                 headers.forEach((header, index) => {
                   const value = row[index];
+                  
+                  if (header.toUpperCase() === "DATE") {
+                    // Ensure dates are valid
+                    try {
+                      const date = new Date(value);
+                      if (isNaN(date.getTime())) {
+                        console.warn(`Invalid date in row ${rowIndex + 1}: ${value}`);
+                        processed[header] = ""; // Use empty string for invalid date
+                      } else {
+                        processed[header] = date.toISOString().split('T')[0]; // Store as YYYY-MM-DD
+                      }
+                    } catch (e) {
+                      console.warn(`Error parsing date in row ${rowIndex + 1}:`, e);
+                      processed[header] = ""; // Use empty string for invalid date
+                    }
+                  } 
                   // Convert numerical fields to numbers
-                  if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
+                  else if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
                     processed[header] = Number(value) || 0;
-                  } else {
-                    processed[header] = value;
+                  } 
+                  else {
+                    processed[header] = String(value || "");
                   }
                 });
+                
+                // Final validation - ensure we have a valid date and campaign name
+                if (!processed.DATE || !processed["CAMPAIGN ORDER NAME"]) {
+                  console.warn(`Row ${rowIndex + 1} missing DATE or CAMPAIGN ORDER NAME`);
+                  return null;
+                }
+                
                 return processed;
-              }).filter(row => row !== null); // Remove null rows
+              }).filter((row): row is Record<string, any> => row !== null);
               
               if (processedData.length === 0) {
                 toast.error("No valid data rows found in CSV");
                 return;
               }
 
+              console.log(`Processed ${processedData.length} valid rows`);
+              
+              // Sort data by date (ascending) for consistency
+              processedData.sort((a, b) => {
+                try {
+                  return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+                } catch (e) {
+                  return 0;
+                }
+              });
+              
               onDataLoaded(processedData);
-              toast.success("Data loaded successfully!");
+              toast.success(`Successfully loaded ${processedData.length} rows from ${file.name}`);
             } catch (err) {
               console.error("Error processing CSV data:", err);
-              toast.error("Error processing CSV data");
+              toast.error("Error processing CSV data. Check console for details.");
             }
           },
           error: (error) => {
             console.error("CSV parsing error:", error);
             toast.error(`CSV parsing error: ${error.message}`);
           },
-          header: false, // Changed to false so we can handle headers manually
+          header: false, // We'll handle headers manually for better control
           skipEmptyLines: true,
+          transformHeader: (header) => {
+            // Trim whitespace from headers
+            return header.trim();
+          }
         });
       } catch (err) {
         console.error("Error parsing CSV:", err);
