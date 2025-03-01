@@ -25,28 +25,22 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
     setSelectedAnomaly(null);
   };
 
-  // Function to render the detailed view for a specific anomaly
   const renderAnomalyDetail = (anomaly: any) => {
     const colorClasses = getColorClasses(anomaly.deviation);
     const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-'));
     
-    // Check if the rows array exists and has data
     const hasDetails = anomalyPeriod === "weekly" && 
                       Array.isArray(anomaly.rows) && 
                       anomaly.rows.length > 0;
     
-    // Extract date range from rows for weekly anomalies
     let dateRangeInfo = "";
     if (hasDetails) {
       try {
-        // Get the actual dates directly from the rows data without adjustments
         const dates = anomaly.rows.map((row: any) => new Date(row.DATE));
         
-        // Find the earliest and latest dates
         const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
         
-        // Format dates as MM/DD
         const formatDate = (date: Date) => {
           return `${date.getMonth() + 1}/${date.getDate()}`;
         };
@@ -189,10 +183,9 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
         </DialogContent>
       </Dialog>
 
-      {/* Nested Dialog for Detailed View */}
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
-          <DialogContent className="max-w-[850px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-[1000px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Anomaly Details</DialogTitle>
               <DialogDescription>
