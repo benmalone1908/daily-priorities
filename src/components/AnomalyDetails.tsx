@@ -186,7 +186,15 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
 
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
-          <DialogContent className="max-w-[1000px] max-h-[80vh] overflow-y-auto" style={{ maxWidth: "1000px", width: "1000px" }}>
+          <DialogContent 
+            className="max-h-[80vh] overflow-y-auto" 
+            style={{ 
+              width: "1000px", 
+              maxWidth: "1000px !important",
+              minWidth: "1000px",
+              transform: "translate(-50%, -50%)"
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Anomaly Details</DialogTitle>
               <DialogDescription>
