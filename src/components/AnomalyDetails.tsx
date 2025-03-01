@@ -53,10 +53,10 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
     }
     
     return (
-      <div className="p-3 border rounded-lg text-sm">
+      <div className="p-3 border rounded-lg text-xs">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="font-medium text-base">{anomaly.campaign}</h3>
+            <h3 className="font-medium text-sm">{anomaly.campaign}</h3>
             <p className="text-muted-foreground text-xs">
               {anomaly.DATE}
               {dateRangeInfo && <span className="ml-1 text-xs">{dateRangeInfo}</span>}
@@ -72,11 +72,11 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Actual Value</p>
-            <p className="text-base font-bold">{Math.round(anomaly.actualValue).toLocaleString()}</p>
+            <p className="text-sm font-bold">{Math.round(anomaly.actualValue).toLocaleString()}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Expected (Mean)</p>
-            <p className="text-base font-bold">{Math.round(anomaly.mean).toLocaleString()}</p>
+            <p className="text-sm font-bold">{Math.round(anomaly.mean).toLocaleString()}</p>
           </div>
         </div>
         
@@ -163,11 +163,14 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                 {anomalies.map((anomaly, index) => {
                   const colorClass = getColorClasses(anomaly.deviation).split(' ').find(c => c.startsWith('text-'));
                   
+                  // Determine if campaign name should be clickable
+                  const isCampaignClickable = anomalyPeriod === "weekly";
+                  
                   return (
                     <TableRow key={index}>
                       <TableCell 
-                        className="font-medium cursor-pointer hover:underline hover:text-primary text-xs"
-                        onClick={() => openDetails(anomaly)}
+                        className={`font-medium text-xs ${isCampaignClickable ? 'cursor-pointer hover:underline hover:text-primary' : ''}`}
+                        onClick={isCampaignClickable ? () => openDetails(anomaly) : undefined}
                       >
                         {anomaly.campaign}
                       </TableCell>
@@ -189,7 +192,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
           <DialogContent 
-            className="max-h-[80vh] overflow-y-auto text-sm" 
+            className="max-h-[80vh] overflow-y-auto text-xs" 
             style={{ 
               width: "1000px", 
               maxWidth: "1000px !important",
