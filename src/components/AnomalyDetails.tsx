@@ -53,44 +53,44 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
     }
     
     return (
-      <div className="p-4 border rounded-lg">
+      <div className="p-3 border rounded-lg text-sm">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="font-medium text-lg">{anomaly.campaign}</h3>
-            <p className="text-muted-foreground">
+            <h3 className="font-medium text-base">{anomaly.campaign}</h3>
+            <p className="text-muted-foreground text-xs">
               {anomaly.DATE}
               {dateRangeInfo && <span className="ml-1 text-xs">{dateRangeInfo}</span>}
             </p>
           </div>
-          <div className={`px-3 py-1 rounded-full ${colorClasses}`}>
-            <span className="text-sm font-medium">
+          <div className={`px-2 py-0.5 rounded-full ${colorClasses}`}>
+            <span className="text-xs font-medium">
               {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
             </span>
           </div>
         </div>
         
-        <div className="mt-4 grid grid-cols-2 gap-4">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">Actual Value</p>
-            <p className="text-xl font-bold">{Math.round(anomaly.actualValue).toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">Actual Value</p>
+            <p className="text-base font-bold">{Math.round(anomaly.actualValue).toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Expected (Mean)</p>
-            <p className="text-xl font-bold">{Math.round(anomaly.mean).toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">Expected (Mean)</p>
+            <p className="text-base font-bold">{Math.round(anomaly.mean).toLocaleString()}</p>
           </div>
         </div>
         
         {hasDetails && (
-          <div className="mt-4">
-            <p className="text-sm font-medium mb-2">Daily breakdown:</p>
-            <div className="bg-muted/50 p-2 rounded text-sm">
+          <div className="mt-3">
+            <p className="text-xs font-medium mb-1">Daily breakdown:</p>
+            <div className="bg-muted/50 p-1.5 rounded text-xs">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-muted">
-                    <th className="text-left py-2 font-medium">Date</th>
-                    <th className="text-right py-2 font-medium">Actual</th>
-                    <th className="text-right py-2 font-medium">Expected</th>
-                    <th className="text-right py-2 font-medium">Deviation</th>
+                    <th className="text-left py-1 font-medium">Date</th>
+                    <th className="text-right py-1 font-medium">Actual</th>
+                    <th className="text-right py-1 font-medium">Expected</th>
+                    <th className="text-right py-1 font-medium">Deviation</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -114,10 +114,10 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                     
                     return (
                       <tr key={idx} className="border-b last:border-b-0 border-muted">
-                        <td className="py-2 text-left font-medium">{row.DATE}</td>
-                        <td className="py-2 text-right">{Math.round(actualValue).toLocaleString()}</td>
-                        <td className="py-2 text-right">{Math.round(expectedValue).toLocaleString()}</td>
-                        <td className={`py-2 text-right ${dailyColorClass}`}>
+                        <td className="py-1 text-left font-medium">{row.DATE}</td>
+                        <td className="py-1 text-right">{Math.round(actualValue).toLocaleString()}</td>
+                        <td className="py-1 text-right">{Math.round(expectedValue).toLocaleString()}</td>
+                        <td className={`py-1 text-right ${dailyColorClass}`}>
                           {dailyDeviation > 0 ? "+" : ""}{dailyDeviation.toFixed(1)}%
                         </td>
                       </tr>
@@ -138,10 +138,12 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
         <DialogTrigger asChild>
           <Button variant="ghost" className="h-7 px-2">View all</Button>
         </DialogTrigger>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
-          <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
-            <DialogTitle>{metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden text-sm">
+          <DialogHeader className="sticky top-0 bg-background z-10 pb-3">
+            <DialogTitle className="text-base">
+              {metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies
+            </DialogTitle>
+            <DialogDescription className="text-xs">
               Showing {anomalies.length} {anomalyPeriod} anomalies detected in the data
             </DialogDescription>
           </DialogHeader>
@@ -150,11 +152,11 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead className="whitespace-nowrap">{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Expected</TableHead>
-                  <TableHead>Deviation</TableHead>
+                  <TableHead className="text-xs">Campaign</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
+                  <TableHead className="text-xs">Value</TableHead>
+                  <TableHead className="text-xs">Expected</TableHead>
+                  <TableHead className="text-xs">Deviation</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,15 +166,15 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                   return (
                     <TableRow key={index}>
                       <TableCell 
-                        className="font-medium cursor-pointer hover:underline hover:text-primary"
+                        className="font-medium cursor-pointer hover:underline hover:text-primary text-xs"
                         onClick={() => openDetails(anomaly)}
                       >
                         {anomaly.campaign}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{anomaly.DATE}</TableCell>
-                      <TableCell>{Math.round(anomaly.actualValue).toLocaleString()}</TableCell>
-                      <TableCell>{Math.round(anomaly.mean).toLocaleString()}</TableCell>
-                      <TableCell className={colorClass}>
+                      <TableCell className="whitespace-nowrap text-xs">{anomaly.DATE}</TableCell>
+                      <TableCell className="text-xs">{Math.round(anomaly.actualValue).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">{Math.round(anomaly.mean).toLocaleString()}</TableCell>
+                      <TableCell className={`text-xs ${colorClass}`}>
                         {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
                       </TableCell>
                     </TableRow>
@@ -187,7 +189,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
           <DialogContent 
-            className="max-h-[80vh] overflow-y-auto" 
+            className="max-h-[80vh] overflow-y-auto text-sm" 
             style={{ 
               width: "1000px", 
               maxWidth: "1000px !important",
@@ -196,8 +198,8 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
             }}
           >
             <DialogHeader>
-              <DialogTitle>Anomaly Details</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base">Anomaly Details</DialogTitle>
+              <DialogDescription className="text-xs">
                 Detailed view for {selectedAnomaly.campaign}
               </DialogDescription>
             </DialogHeader>
