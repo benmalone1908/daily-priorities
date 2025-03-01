@@ -1,10 +1,14 @@
+
 import { useState } from "react";
+import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
+import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const handleDataLoaded = (uploadedData: any[]) => {
     try {
@@ -68,6 +72,41 @@ const Index = () => {
     }
   };
 
+  const getFilteredData = () => {
+    if (!dateRange || !dateRange.from) {
+      return data;
+    }
+
+    return data.filter(row => {
+      try {
+        const rowDate = new Date(row.DATE);
+        if (isNaN(rowDate.getTime())) return false;
+        
+        // If only from date is selected
+        if (dateRange.from && !dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          return rowDate >= fromDate;
+        }
+        
+        // If both from and to dates are selected
+        if (dateRange.from && dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          const toDate = new Date(dateRange.to);
+          // Set toDate to end of day for inclusive filtering
+          toDate.setHours(23, 59, 59, 999);
+          return rowDate >= fromDate && rowDate <= toDate;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error("Error filtering by date:", error);
+        return false;
+      }
+    });
+  };
+
+  const filteredData = getFilteredData();
+
   return (
     <div className="container py-8 space-y-8">
       <div className="space-y-2 text-center animate-fade-in">
@@ -85,7 +124,17 @@ const Index = () => {
         </div>
       )}
 
-      {data.length > 0 && <Dashboard data={data} />}
+      {data.length > 0 && (
+        <>
+          <div className="max-w-sm mx-auto">
+            <DateRangePicker 
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+          </div>
+          <Dashboard data={filteredData} />
+        </>
+      )}
     </div>
   );
 };

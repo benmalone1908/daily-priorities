@@ -499,6 +499,31 @@ const Dashboard = ({ data }: DashboardProps) => {
     fill: '#64748b'
   };
 
+  const dataDateRange = () => {
+    if (!data || data.length === 0) return null;
+    
+    try {
+      const dates = data.map(row => new Date(row.DATE)).filter(d => !isNaN(d.getTime()));
+      if (dates.length === 0) return null;
+      
+      const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      
+      return {
+        from: minDate,
+        to: maxDate
+      };
+    } catch (error) {
+      console.error("Error calculating date range:", error);
+      return null;
+    }
+  };
+
+  const dateRange = dataDateRange();
+  const dateRangeText = dateRange 
+    ? `${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}`
+    : "All time";
+
   if (!anomalies) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -509,6 +534,13 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {dateRange && (
+        <div className="text-sm text-muted-foreground text-center">
+          Showing data for: <span className="font-medium">{dateRangeText}</span> 
+          ({data.length.toLocaleString()} records)
+        </div>
+      )}
+      
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
