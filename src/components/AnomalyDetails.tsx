@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -185,7 +186,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
 
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
-          <DialogContent className="max-w-[1000px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="!max-w-[1000px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Anomaly Details</DialogTitle>
               <DialogDescription>
