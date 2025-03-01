@@ -1,5 +1,4 @@
-
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -17,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DashboardProps {
   data: any[];
@@ -32,7 +32,6 @@ interface WeeklyData {
   count: number;
 }
 
-// Interface for weekly aggregated data
 interface WeeklyAggregation {
   weekStart: string;
   [metric: string]: any;
@@ -80,7 +79,6 @@ const Dashboard = ({ data }: DashboardProps) => {
         let allAnomalies: any[] = [];
 
         if (anomalyPeriod === "daily") {
-          // Daily anomaly detection
           Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
             if (!campaignRows.length) return;
             
@@ -97,10 +95,8 @@ const Dashboard = ({ data }: DashboardProps) => {
             const campaignAnomalies = campaignRows.filter((row) => {
               const value = Number(row[metric]) || 0;
               
-              // Calculate deviation percentage
               const deviationPercent = ((value - mean) / mean) * 100;
               
-              // Only include anomalies with more than 10% deviation (either direction)
               return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
             }).map(row => ({
               ...row,
@@ -114,11 +110,9 @@ const Dashboard = ({ data }: DashboardProps) => {
             allAnomalies = [...allAnomalies, ...campaignAnomalies];
           });
         } else {
-          // Week-over-week anomaly detection - IMPROVED LOGIC (v2)
           Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
             if (!campaignRows.length) return;
             
-            // Find the most recent date
             const mostRecentDate = campaignRows.reduce((latest, row) => {
               if (!row.DATE) return latest;
               
@@ -133,7 +127,6 @@ const Dashboard = ({ data }: DashboardProps) => {
               }
             }, new Date(0));
             
-            // Group rows by week with reference to the most recent date
             const weeklyData: Record<number, WeeklyAggregation> = {};
             
             campaignRows.forEach(row => {
@@ -143,7 +136,6 @@ const Dashboard = ({ data }: DashboardProps) => {
                 const rowDate = new Date(row.DATE);
                 if (isNaN(rowDate.getTime())) return;
                 
-                // Calculate which week period this belongs to (0 = current, 1 = previous, etc.)
                 const dayDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
                 const weekNumber = Math.floor(dayDiff / 7);
                 
@@ -169,76 +161,59 @@ const Dashboard = ({ data }: DashboardProps) => {
               }
             });
             
-            // Convert to array and ensure we have at least 2 weeks of data
             const weeklyValues = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
-            // Compare each week with the previous week (week to week comparison)
-            // This specifically looks at consecutive weeks for anomalies
             for (let i = 0; i < weeklyValues.length - 1; i++) {
               const currentWeek = weeklyValues[i];
               const previousWeek = weeklyValues[i + 1];
               
-              // Skip very incomplete weeks (less than 3 days of data)
               if (currentWeek.rows.length < 3 || previousWeek.rows.length < 3) continue;
               
               const currentValue = currentWeek[metric];
               const previousValue = previousWeek[metric];
               
-              // Calculate week-over-week percentage change
               const percentChange = ((currentValue - previousValue) / previousValue) * 100;
               
-              // Detect significant week-over-week changes (more than 15% change)
-              // Lowered threshold to catch more significant patterns
               if (Math.abs(percentChange) > 15) {
                 const weekLabel = currentWeek.weekStart;
                 
                 allAnomalies.push({
                   campaign,
                   DATE: weekLabel,
-                  mean: previousValue, // Use previous week's value as the baseline
+                  mean: previousValue,
                   actualValue: currentValue,
                   deviation: percentChange,
                   periodType: "weekly",
                   rows: currentWeek.rows,
                   weekNumber: currentWeek.weekNumber,
-                  comparedTo: previousWeek.weekStart // Add info about which week this is compared to
+                  comparedTo: previousWeek.weekStart
                 });
               }
             }
             
-            // Also compare to the overall average (for detecting long-term anomalies)
-            // This can catch weeks that are anomalous compared to the overall trend
             if (weeklyValues.length >= 3) {
-              // Calculate mean and standard deviation across all available weeks
               const allWeekValues = weeklyValues.map(week => week[metric]);
               const mean = allWeekValues.reduce((a, b) => a + b, 0) / allWeekValues.length;
               const stdDev = Math.sqrt(
                 allWeekValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / allWeekValues.length
               );
               
-              // Lower threshold for weekly trend anomalies
               const threshold = stdDev * 1.2;
               
-              // Check each week against the overall average
               weeklyValues.forEach(week => {
-                // Skip weeks we've already analyzed in the week-over-week comparison
-                // or weeks with too little data
                 if (week.rows.length < 3) return;
                 
                 const value = week[metric];
                 const deviationFromAvg = ((value - mean) / mean) * 100;
                 
-                // Only detect significant deviations from the overall average
                 if (Math.abs(deviationFromAvg) > 15 && Math.abs(value - mean) > threshold) {
-                  // Check if we already have this week in the anomalies list
                   const alreadyDetected = allAnomalies.some(
                     a => a.campaign === campaign && 
                          a.periodType === "weekly" && 
                          a.weekNumber === week.weekNumber
                   );
                   
-                  // Only add if not already detected
                   if (!alreadyDetected) {
                     allAnomalies.push({
                       campaign,
@@ -249,7 +224,7 @@ const Dashboard = ({ data }: DashboardProps) => {
                       periodType: "weekly",
                       rows: week.rows,
                       weekNumber: week.weekNumber,
-                      comparedTo: "overall average" // Indicate this is compared to the overall average
+                      comparedTo: "overall average"
                     });
                   }
                 }
@@ -266,7 +241,6 @@ const Dashboard = ({ data }: DashboardProps) => {
       return results;
     } catch (error) {
       console.error("Error in anomaly detection:", error);
-      // Return empty anomalies in case of error
       return {
         IMPRESSIONS: { anomalies: [] },
         CLICKS: { anomalies: [] },
@@ -318,7 +292,7 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   const calculateROAS = (revenue: number, impressions: number): number => {
     try {
-      const spend = (impressions * 15) / 1000; // $15 CPM
+      const spend = (impressions * 15) / 1000;
       return spend > 0 ? revenue / spend : 0;
     } catch (error) {
       console.error("Error calculating ROAS:", error);
@@ -342,7 +316,6 @@ const Dashboard = ({ data }: DashboardProps) => {
         return [];
       }
 
-      // Find the most recent date in the dataset
       const mostRecentDate = filteredData.reduce((latest, row) => {
         if (!row.DATE) return latest;
         
@@ -355,23 +328,36 @@ const Dashboard = ({ data }: DashboardProps) => {
           console.error("Error comparing dates:", err);
           return latest;
         }
-      }, new Date(0)); // Start with earliest possible date
+      }, new Date(0));
+
+      const earliestDate = filteredData.reduce((earliest, row) => {
+        if (!row.DATE) return earliest;
+        
+        try {
+          const rowDate = new Date(row.DATE);
+          if (isNaN(rowDate.getTime())) return earliest;
+          
+          return rowDate < earliest ? rowDate : earliest;
+        } catch (err) {
+          console.error("Error comparing dates:", err);
+          return earliest;
+        }
+      }, new Date());
+
+      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24));
+      const maxPeriods = Math.floor(totalDays / 7);
       
-      console.log(`Most recent date in dataset: ${mostRecentDate.toISOString().split('T')[0]}`);
-      
-      // Create three 7-day periods working backwards from the most recent date
+      const periodsToCreate = Math.min(maxPeriods, 12);
+
       const periods: WeeklyData[] = [];
-      
-      for (let i = 0; i < 3; i++) {
-        // Calculate period end (most recent date minus i * 7 days)
+
+      for (let i = 0; i < periodsToCreate; i++) {
         const periodEnd = new Date(mostRecentDate);
         periodEnd.setDate(periodEnd.getDate() - (i * 7));
         
-        // Calculate period start (7 days before period end)
         const periodStart = new Date(periodEnd);
         periodStart.setDate(periodEnd.getDate() - 6);
         
-        // Format dates as YYYY-MM-DD strings
         const periodStartStr = periodStart.toISOString().split('T')[0];
         const periodEndStr = periodEnd.toISOString().split('T')[0];
         
@@ -387,8 +373,7 @@ const Dashboard = ({ data }: DashboardProps) => {
         
         console.log(`Period ${i+1}: ${periodStartStr} to ${periodEndStr}`);
       }
-      
-      // Calculate metrics for each period
+
       filteredData.forEach(row => {
         try {
           if (!row.DATE) return;
@@ -396,21 +381,18 @@ const Dashboard = ({ data }: DashboardProps) => {
           const rowDate = new Date(row.DATE);
           if (isNaN(rowDate.getTime())) return;
           
-          // Normalize to midnight of the day for comparison
           const rowDateStr = rowDate.toISOString().split('T')[0];
           
-          // Check which period this row belongs to
           for (let i = 0; i < periods.length; i++) {
             const periodStart = periods[i].periodStart;
             const periodEnd = periods[i].periodEnd;
             
-            // Check if row date is within the period range (inclusive)
             if (rowDateStr >= periodStart && rowDateStr <= periodEnd) {
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
               periods[i].CLICKS += Number(row.CLICKS) || 0;
               periods[i].REVENUE += Number(row.REVENUE) || 0;
               periods[i].count += 1;
-              break; // Each row can only belong to one period
+              break;
             }
           }
         } catch (err) {
@@ -418,7 +400,6 @@ const Dashboard = ({ data }: DashboardProps) => {
         }
       });
 
-      // Calculate ROAS for all periods
       periods.forEach(period => {
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
@@ -474,7 +455,6 @@ const Dashboard = ({ data }: DashboardProps) => {
       const currentValue = currentPeriod[metric as keyof WeeklyData] as number;
       const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData] as number) : 0;
       
-      // Avoid division by zero
       const percentChange = previousValue !== 0 
         ? ((currentValue - previousValue) / previousValue) * 100 
         : currentValue > 0 ? 100 : 0;
@@ -732,136 +712,156 @@ const Dashboard = ({ data }: DashboardProps) => {
 
         {weeklyData.length >= 1 ? (
           <div className="grid gap-8 md:grid-cols-4">
-            {/* Impressions Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`impressions-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatNumber(period.IMPRESSIONS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
+              <ScrollArea className="h-[460px] pr-4">
+                <div className="space-y-4 pb-2">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`impressions-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatNumber(period.IMPRESSIONS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
 
-            {/* Clicks Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`clicks-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatNumber(period.CLICKS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
+              <ScrollArea className="h-[460px] pr-4">
+                <div className="space-y-4 pb-2">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`clicks-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatNumber(period.CLICKS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
 
-            {/* Revenue Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`revenue-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatRevenue(period.REVENUE)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
+              <ScrollArea className="h-[460px] pr-4">
+                <div className="space-y-4 pb-2">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`revenue-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatRevenue(period.REVENUE)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
 
-            {/* ROAS Comparison */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
-              {weeklyData.map((period, idx) => (
-                <Card key={`roas-${idx}`} className="p-4">
-                  <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                    {idx === 0 ? "Most Recent 7 Days" : 
-                     idx === 1 ? "Previous 7 Days" : 
-                     `${idx + 1} Weeks Ago`}
-                  </h5>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">
-                      {formatROAS(period.ROAS)}
-                    </p>
-                    {/* Only show comparison for idx > 0 (not the oldest period) */}
-                    {idx < weeklyData.length - 1 && (
-                      (() => {
-                        const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
-                        return (
-                          <div className={`flex items-center ${comparison.colorClass}`}>
-                            {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                            <span className="ml-1 text-sm">
-                              {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                </Card>
-              ))}
+              <ScrollArea className="h-[460px] pr-4">
+                <div className="space-y-4 pb-2">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`roas-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatROAS(period.ROAS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
             </div>
           </div>
         ) : (
