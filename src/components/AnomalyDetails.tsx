@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -157,7 +156,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                   <TableHead>Campaign</TableHead>
-                  <TableHead>{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
+                  <TableHead className="whitespace-nowrap">{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Expected</TableHead>
                   <TableHead>Deviation</TableHead>
@@ -175,7 +174,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
                       >
                         {anomaly.campaign}
                       </TableCell>
-                      <TableCell>{anomaly.DATE}</TableCell>
+                      <TableCell className="whitespace-nowrap">{anomaly.DATE}</TableCell>
                       <TableCell>{Math.round(anomaly.actualValue).toLocaleString()}</TableCell>
                       <TableCell>{Math.round(anomaly.mean).toLocaleString()}</TableCell>
                       <TableCell className={colorClass}>
@@ -193,7 +192,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       {/* Nested Dialog for Detailed View */}
       {selectedAnomaly && (
         <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-[850px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Anomaly Details</DialogTitle>
               <DialogDescription>
