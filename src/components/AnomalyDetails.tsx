@@ -138,7 +138,15 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
         <DialogTrigger asChild>
           <Button variant="ghost" className="h-7 px-2">View all</Button>
         </DialogTrigger>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden text-sm">
+        <DialogContent 
+          className="max-w-3xl max-h-[80vh] overflow-hidden text-sm"
+          style={{ 
+            width: "1000px", 
+            maxWidth: "1000px !important",
+            minWidth: "1000px",
+            transform: "translate(-50%, -50%)"
+          }}
+        >
           <DialogHeader className="sticky top-0 bg-background z-10 pb-3">
             <DialogTitle className="text-base">
               {metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies
@@ -194,9 +202,9 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
           <DialogContent 
             className="max-h-[80vh] overflow-y-auto text-xs" 
             style={{ 
-              width: "1000px", 
-              maxWidth: "1000px !important",
-              minWidth: "1000px",
+              width: "700px", 
+              maxWidth: "700px !important",
+              minWidth: "700px",
               transform: "translate(-50%, -50%)"
             }}
           >
