@@ -711,11 +711,11 @@ const Dashboard = ({ data }: DashboardProps) => {
         </div>
 
         {weeklyData.length >= 1 ? (
-          <div className="grid gap-8 md:grid-cols-4">
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
-              <ScrollArea className="h-[460px] pr-4">
-                <div className="space-y-4 pb-2">
+          <ScrollArea className="h-[460px]">
+            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
+                <div className="space-y-4">
                   {weeklyData.map((period, idx) => (
                     <Card key={`impressions-${idx}`} className="p-4">
                       <h5 className="mb-2 text-sm font-medium text-muted-foreground">
@@ -747,13 +747,11 @@ const Dashboard = ({ data }: DashboardProps) => {
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
-            </div>
+              </div>
 
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
-              <ScrollArea className="h-[460px] pr-4">
-                <div className="space-y-4 pb-2">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
+                <div className="space-y-4">
                   {weeklyData.map((period, idx) => (
                     <Card key={`clicks-${idx}`} className="p-4">
                       <h5 className="mb-2 text-sm font-medium text-muted-foreground">
@@ -785,13 +783,11 @@ const Dashboard = ({ data }: DashboardProps) => {
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
-            </div>
+              </div>
 
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-              <ScrollArea className="h-[460px] pr-4">
-                <div className="space-y-4 pb-2">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
+                <div className="space-y-4">
                   {weeklyData.map((period, idx) => (
                     <Card key={`revenue-${idx}`} className="p-4">
                       <h5 className="mb-2 text-sm font-medium text-muted-foreground">
@@ -823,13 +819,11 @@ const Dashboard = ({ data }: DashboardProps) => {
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
-            </div>
+              </div>
 
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
-              <ScrollArea className="h-[460px] pr-4">
-                <div className="space-y-4 pb-2">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
+                <div className="space-y-4">
                   {weeklyData.map((period, idx) => (
                     <Card key={`roas-${idx}`} className="p-4">
                       <h5 className="mb-2 text-sm font-medium text-muted-foreground">
@@ -861,9 +855,9 @@ const Dashboard = ({ data }: DashboardProps) => {
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
-          </div>
+          </ScrollArea>
         ) : (
           <p className="text-center text-muted-foreground">
             Not enough data for period comparison
