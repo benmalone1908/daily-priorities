@@ -51,8 +51,8 @@ const Dashboard = ({ data }: DashboardProps) => {
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
   }, [data]);
 
-  const anomalies = useMemo(() => {
-    if (!data || !data.length) return {
+  const detectAnomalies = (inputData: any[]) => {
+    if (!inputData || !inputData.length) return {
       IMPRESSIONS: { anomalies: [] },
       CLICKS: { anomalies: [] },
       REVENUE: { anomalies: [] }
@@ -60,7 +60,7 @@ const Dashboard = ({ data }: DashboardProps) => {
 
     try {
       const campaignData: Record<string, any[]> = {};
-      data.forEach(row => {
+      inputData.forEach(row => {
         if (!row || typeof row !== 'object') return;
         
         const campaignName = row["CAMPAIGN ORDER NAME"];
@@ -247,6 +247,10 @@ const Dashboard = ({ data }: DashboardProps) => {
         REVENUE: { anomalies: [] }
       };
     }
+  };
+
+  const anomalies = useMemo(() => {
+    return detectAnomalies(data);
   }, [data, anomalyPeriod]);
 
   const getAggregatedData = (campaign: string) => {
