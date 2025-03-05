@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, MousePointer, ShoppingCart, DollarSign } from "lucide-react";
+import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 
 interface CampaignSparkChartsProps {
@@ -69,124 +69,149 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="space-y-4">
       {campaignData.map((campaign) => (
         <Card key={campaign.name} className="overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base truncate" title={campaign.name}>
-              {campaign.name}
-            </CardTitle>
-            <CardDescription>
-              {campaign.timeSeriesData.length} days of data
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {/* Impressions */}
-              <div className="space-y-1">
-                <div className="flex items-center text-sm">
-                  <Eye className="mr-1 text-sky-500" size={14} />
-                  <span className="text-muted-foreground">Impressions</span>
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium truncate" title={campaign.name}>
+                    {campaign.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {campaign.timeSeriesData.length} days of data
+                  </p>
                 </div>
-                <div className="h-1"></div>
-                <ResponsiveContainer width="100%" height={40}>
-                  <LineChart data={campaign.timeSeriesData}>
-                    <Tooltip 
-                      formatter={(value: number) => [formatNumber(value), 'Impressions']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="impressions"
-                      stroke="#0EA5E9"
-                      strokeWidth={1.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions)}</p>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </div>
-
-              {/* Clicks */}
-              <div className="space-y-1">
-                <div className="flex items-center text-sm">
-                  <MousePointer className="mr-1 text-violet-500" size={14} />
-                  <span className="text-muted-foreground">Clicks</span>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t pt-4">
+                {/* Impressions */}
+                <div className="flex items-center space-x-2">
+                  <div className="bg-sky-100 p-2 rounded-full">
+                    <Eye className="h-4 w-4 text-sky-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions)}</p>
+                    <p className="text-xs text-muted-foreground">Impressions</p>
+                  </div>
                 </div>
-                <div className="h-1"></div>
-                <ResponsiveContainer width="100%" height={40}>
-                  <LineChart data={campaign.timeSeriesData}>
-                    <Tooltip 
-                      formatter={(value: number) => [formatNumber(value), 'Clicks']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="clicks"
-                      stroke="#8B5CF6"
-                      strokeWidth={1.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks)}</p>
+
+                {/* Clicks */}
+                <div className="flex items-center space-x-2">
+                  <div className="bg-violet-100 p-2 rounded-full">
+                    <MousePointer className="h-4 w-4 text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks)}</p>
+                    <p className="text-xs text-muted-foreground">Clicks</p>
+                  </div>
+                </div>
+
+                {/* Transactions */}
+                <div className="flex items-center space-x-2">
+                  <div className="bg-orange-100 p-2 rounded-full">
+                    <ShoppingCart className="h-4 w-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions)}</p>
+                    <p className="text-xs text-muted-foreground">Transactions</p>
+                  </div>
+                </div>
+
+                {/* Revenue */}
+                <div className="flex items-center space-x-2">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <DollarSign className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue)}</p>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                  </div>
+                </div>
               </div>
-
-              {/* Transactions */}
-              <div className="space-y-1">
-                <div className="flex items-center text-sm">
-                  <ShoppingCart className="mr-1 text-orange-500" size={14} />
-                  <span className="text-muted-foreground">Transactions</span>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 h-24">
+                {/* Sparklines */}
+                <div className="hidden sm:block">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={campaign.timeSeriesData}>
+                      <Tooltip 
+                        formatter={(value: number) => [formatNumber(value), 'Impressions']}
+                        labelFormatter={(label) => `${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="impressions"
+                        stroke="#0EA5E9"
+                        strokeWidth={1.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="h-1"></div>
-                <ResponsiveContainer width="100%" height={40}>
-                  <LineChart data={campaign.timeSeriesData}>
-                    <Tooltip 
-                      formatter={(value: number) => [formatNumber(value), 'Transactions']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="transactions"
-                      stroke="#F97316"
-                      strokeWidth={1.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions)}</p>
-              </div>
 
-              {/* Revenue */}
-              <div className="space-y-1">
-                <div className="flex items-center text-sm">
-                  <DollarSign className="mr-1 text-green-500" size={14} />
-                  <span className="text-muted-foreground">Revenue</span>
+                <div className="hidden sm:block">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={campaign.timeSeriesData}>
+                      <Tooltip 
+                        formatter={(value: number) => [formatNumber(value), 'Clicks']}
+                        labelFormatter={(label) => `${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="clicks"
+                        stroke="#8B5CF6"
+                        strokeWidth={1.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="h-1"></div>
-                <ResponsiveContainer width="100%" height={40}>
-                  <LineChart data={campaign.timeSeriesData}>
-                    <Tooltip 
-                      formatter={(value: number) => [`$${formatNumber(value)}`, 'Revenue']}
-                      labelFormatter={(label) => `${label}`}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#10B981"
-                      strokeWidth={1.5}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue)}</p>
+
+                <div className="hidden sm:block">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={campaign.timeSeriesData}>
+                      <Tooltip 
+                        formatter={(value: number) => [formatNumber(value), 'Transactions']}
+                        labelFormatter={(label) => `${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="transactions"
+                        stroke="#F97316"
+                        strokeWidth={1.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="hidden sm:block">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={campaign.timeSeriesData}>
+                      <Tooltip 
+                        formatter={(value: number) => [`$${formatNumber(value)}`, 'Revenue']}
+                        labelFormatter={(label) => `${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="#10B981"
+                        strokeWidth={1.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
       ))}
     </div>
