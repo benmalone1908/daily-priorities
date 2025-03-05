@@ -4,7 +4,8 @@ import {
   LineChart, 
   Line, 
   ResponsiveContainer,
-  Tooltip
+  Tooltip,
+  Area
 } from "recharts";
 import {
   Card,
@@ -133,7 +134,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 h-24">
-                {/* Sparklines */}
+                {/* Sparklines with shaded areas */}
                 <div className="hidden sm:block">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={campaign.timeSeriesData}>
@@ -141,11 +142,18 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         formatter={(value: number) => [formatNumber(value), 'Impressions']}
                         labelFormatter={(label) => `${label}`}
                       />
-                      <Line
+                      <defs>
+                        <linearGradient id="impressionsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <Area
                         type="monotone"
                         dataKey="impressions"
                         stroke="#0EA5E9"
                         strokeWidth={1.5}
+                        fill="url(#impressionsGradient)"
                         dot={false}
                         isAnimationActive={false}
                       />
@@ -160,11 +168,18 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         formatter={(value: number) => [formatNumber(value), 'Clicks']}
                         labelFormatter={(label) => `${label}`}
                       />
-                      <Line
+                      <defs>
+                        <linearGradient id="clicksGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <Area
                         type="monotone"
                         dataKey="clicks"
                         stroke="#8B5CF6"
                         strokeWidth={1.5}
+                        fill="url(#clicksGradient)"
                         dot={false}
                         isAnimationActive={false}
                       />
@@ -179,11 +194,18 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         formatter={(value: number) => [formatNumber(value), 'Transactions']}
                         labelFormatter={(label) => `${label}`}
                       />
-                      <Line
+                      <defs>
+                        <linearGradient id="transactionsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#F97316" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <Area
                         type="monotone"
                         dataKey="transactions"
                         stroke="#F97316"
                         strokeWidth={1.5}
+                        fill="url(#transactionsGradient)"
                         dot={false}
                         isAnimationActive={false}
                       />
@@ -198,11 +220,18 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         formatter={(value: number) => [`$${formatNumber(value)}`, 'Revenue']}
                         labelFormatter={(label) => `${label}`}
                       />
-                      <Line
+                      <defs>
+                        <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <Area
                         type="monotone"
                         dataKey="revenue"
                         stroke="#10B981"
                         strokeWidth={1.5}
+                        fill="url(#revenueGradient)"
                         dot={false}
                         isAnimationActive={false}
                       />
