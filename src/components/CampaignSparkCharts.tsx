@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight } from "lucide-react";
+import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 
 interface CampaignSparkChartsProps {
@@ -37,14 +37,30 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
       campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
       
       // Extract metrics per date
-      const timeSeriesData = campaignRows.map(row => ({
-        date: dateFormat.format(new Date(row.DATE)),
-        rawDate: new Date(row.DATE),
-        impressions: Number(row.IMPRESSIONS) || 0,
-        clicks: Number(row.CLICKS) || 0,
-        transactions: Number(row.TRANSACTIONS) || 0,
-        revenue: Number(row.REVENUE) || 0,
-      }));
+      const timeSeriesData = campaignRows.map(row => {
+        // Get basic metrics
+        const impressions = Number(row.IMPRESSIONS) || 0;
+        const clicks = Number(row.CLICKS) || 0;
+        const transactions = Number(row.TRANSACTIONS) || 0;
+        const revenue = Number(row.REVENUE) || 0;
+        const spend = Number(row.SPEND) || 0;
+        
+        // Calculate CTR and ROAS
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const roas = spend > 0 ? revenue / spend : 0;
+        
+        return {
+          date: dateFormat.format(new Date(row.DATE)),
+          rawDate: new Date(row.DATE),
+          impressions,
+          clicks,
+          transactions,
+          revenue,
+          spend,
+          ctr,
+          roas
+        };
+      });
 
       // Calculate totals for this campaign
       const totals = {
@@ -52,12 +68,19 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
         clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
         transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
         revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+        spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
       };
+      
+      // Calculate average CTR and ROAS (not sum)
+      const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+      const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
 
       return {
         name: campaign,
         timeSeriesData,
-        totals
+        totals,
+        avgCtr,
+        avgRoas
       };
     });
   }, [data]);
@@ -80,6 +103,8 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
         const clicksId = `clicks-${getSafeId(campaign.name)}`;
         const transactionsId = `transactions-${getSafeId(campaign.name)}`;
         const revenueId = `revenue-${getSafeId(campaign.name)}`;
+        const ctrId = `ctr-${getSafeId(campaign.name)}`;
+        const roasId = `roas-${getSafeId(campaign.name)}`;
         
         return (
           <Card key={campaign.name} className="overflow-hidden">
@@ -97,7 +122,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 border-t pt-4">
                   {/* Impressions */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-sky-100 p-2 rounded-full">
@@ -117,6 +142,17 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <div>
                       <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks)}</p>
                       <p className="text-xs text-muted-foreground">Clicks</p>
+                    </div>
+                  </div>
+
+                  {/* CTR */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-indigo-100 p-2 rounded-full">
+                      <Percent className="h-4 w-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{campaign.avgCtr.toFixed(2)}%</p>
+                      <p className="text-xs text-muted-foreground">CTR</p>
                     </div>
                   </div>
 
@@ -141,9 +177,20 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <p className="text-xs text-muted-foreground">Revenue</p>
                     </div>
                   </div>
+
+                  {/* ROAS */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-amber-100 p-2 rounded-full">
+                      <TrendingUp className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{campaign.avgRoas.toFixed(2)}x</p>
+                      <p className="text-xs text-muted-foreground">ROAS</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 h-24">
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 h-24">
                   {/* Impressions chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
@@ -191,6 +238,33 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                           stroke="#8B5CF6"
                           strokeWidth={1.5}
                           fill={`url(#${clicksId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* CTR chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [`${value.toFixed(2)}%`, 'CTR']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={ctrId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="ctr"
+                          stroke="#6366F1"
+                          strokeWidth={1.5}
+                          fill={`url(#${ctrId})`}
                           dot={false}
                           isAnimationActive={false}
                         />
@@ -251,6 +325,33 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
+
+                  {/* ROAS chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [`${value.toFixed(2)}x`, 'ROAS']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={roasId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="roas"
+                          stroke="#F59E0B"
+                          strokeWidth={1.5}
+                          fill={`url(#${roasId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </div>
@@ -262,3 +363,4 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
 };
 
 export default CampaignSparkCharts;
+
