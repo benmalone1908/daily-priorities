@@ -115,9 +115,15 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <h3 className="text-lg font-medium truncate" title={campaign.name}>
                       {campaign.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {campaign.timeSeriesData.length} days of data
-                    </p>
+                    <div className="flex items-center mt-1">
+                      <p className="text-sm text-muted-foreground mr-3">
+                        {campaign.timeSeriesData.length} days of data
+                      </p>
+                      <div className="flex items-center text-sm font-medium">
+                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                        <span>Total Spend: ${formatNumber(campaign.totals.spend)}</span>
+                      </div>
+                    </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
@@ -363,4 +369,3 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
 };
 
 export default CampaignSparkCharts;
-
