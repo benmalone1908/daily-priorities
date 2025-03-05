@@ -5,7 +5,8 @@ import {
   Line, 
   ResponsiveContainer,
   Tooltip,
-  Area
+  Area,
+  AreaChart
 } from "recharts";
 import {
   Card,
@@ -137,13 +138,13 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                 {/* Impressions chart */}
                 <div className="hidden sm:block">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={campaign.timeSeriesData}>
+                    <AreaChart data={campaign.timeSeriesData}>
                       <Tooltip 
                         formatter={(value: number) => [formatNumber(value), 'Impressions']}
                         labelFormatter={(label) => `${label}`}
                       />
                       <defs>
-                        <linearGradient id={`impressionsGradient-${campaign.name}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`impressionsGradient-${campaign.name.replace(/\s+/g, '-')}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0.1}/>
                         </linearGradient>
@@ -153,24 +154,24 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         dataKey="impressions"
                         stroke="#0EA5E9"
                         strokeWidth={1.5}
-                        fill={`url(#impressionsGradient-${campaign.name})`}
+                        fill={`url(#impressionsGradient-${campaign.name.replace(/\s+/g, '-')})`}
                         dot={false}
                         isAnimationActive={false}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Clicks chart */}
                 <div className="hidden sm:block">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={campaign.timeSeriesData}>
+                    <AreaChart data={campaign.timeSeriesData}>
                       <Tooltip 
                         formatter={(value: number) => [formatNumber(value), 'Clicks']}
                         labelFormatter={(label) => `${label}`}
                       />
                       <defs>
-                        <linearGradient id={`clicksGradient-${campaign.name}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`clicksGradient-${campaign.name.replace(/\s+/g, '-')}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
                         </linearGradient>
@@ -180,24 +181,24 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         dataKey="clicks"
                         stroke="#8B5CF6"
                         strokeWidth={1.5}
-                        fill={`url(#clicksGradient-${campaign.name})`}
+                        fill={`url(#clicksGradient-${campaign.name.replace(/\s+/g, '-')})`}
                         dot={false}
                         isAnimationActive={false}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Transactions chart */}
                 <div className="hidden sm:block">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={campaign.timeSeriesData}>
+                    <AreaChart data={campaign.timeSeriesData}>
                       <Tooltip 
                         formatter={(value: number) => [formatNumber(value), 'Transactions']}
                         labelFormatter={(label) => `${label}`}
                       />
                       <defs>
-                        <linearGradient id={`transactionsGradient-${campaign.name}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`transactionsGradient-${campaign.name.replace(/\s+/g, '-')}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#F97316" stopOpacity={0.1}/>
                         </linearGradient>
@@ -207,24 +208,24 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         dataKey="transactions"
                         stroke="#F97316"
                         strokeWidth={1.5}
-                        fill={`url(#transactionsGradient-${campaign.name})`}
+                        fill={`url(#transactionsGradient-${campaign.name.replace(/\s+/g, '-')})`}
                         dot={false}
                         isAnimationActive={false}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Revenue chart */}
                 <div className="hidden sm:block">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={campaign.timeSeriesData}>
+                    <AreaChart data={campaign.timeSeriesData}>
                       <Tooltip 
                         formatter={(value: number) => [`$${formatNumber(value)}`, 'Revenue']}
                         labelFormatter={(label) => `${label}`}
                       />
                       <defs>
-                        <linearGradient id={`revenueGradient-${campaign.name}`} x1="0" y1="0" x2="0" y2="1">
+                        <linearGradient id={`revenueGradient-${campaign.name.replace(/\s+/g, '-')}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
                         </linearGradient>
@@ -234,11 +235,11 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                         dataKey="revenue"
                         stroke="#10B981"
                         strokeWidth={1.5}
-                        fill={`url(#revenueGradient-${campaign.name})`}
+                        fill={`url(#revenueGradient-${campaign.name.replace(/\s+/g, '-')})`}
                         dot={false}
                         isAnimationActive={false}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
