@@ -5,6 +5,9 @@ import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
 import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CampaignSparkCharts from "@/components/CampaignSparkCharts";
+import { LayoutDashboard, ChartLine } from "lucide-react";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
@@ -132,7 +135,25 @@ const Index = () => {
               onDateRangeChange={setDateRange}
             />
           </div>
-          <Dashboard data={filteredData} />
+          
+          <Tabs defaultValue="dashboard" className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+              <TabsTrigger value="dashboard">
+                <LayoutDashboard className="mr-2" size={16} />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="sparks">
+                <ChartLine className="mr-2" size={16} />
+                Campaign Trends
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="dashboard">
+              <Dashboard data={filteredData} />
+            </TabsContent>
+            <TabsContent value="sparks">
+              <CampaignSparkCharts data={data} />
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
