@@ -42,7 +42,9 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
         const clicks = Number(row.CLICKS) || 0;
         const transactions = Number(row.TRANSACTIONS) || 0;
         const revenue = Number(row.REVENUE) || 0;
-        const spend = Number(row.SPEND) || 0;
+        
+        // Calculate spend using $15 CPM
+        const spend = (impressions / 1000) * 15;
         
         // Calculate CTR and ROAS
         const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
