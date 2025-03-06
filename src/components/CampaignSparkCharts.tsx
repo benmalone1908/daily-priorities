@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { 
   ResponsiveContainer,
@@ -121,7 +120,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       </p>
                       <div className="flex items-center text-sm font-medium">
                         <DollarSign className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-                        <span>Total Spend: ${formatNumber(campaign.totals.spend)}</span>
+                        <span>Total Spend: ${formatNumber(campaign.totals.spend, { abbreviate: false })}</span>
                       </div>
                     </div>
                   </div>
@@ -135,7 +134,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <Eye className="h-4 w-4 text-sky-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions)}</p>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Impressions</p>
                     </div>
                   </div>
@@ -146,7 +145,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <MousePointer className="h-4 w-4 text-violet-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks)}</p>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Clicks</p>
                     </div>
                   </div>
@@ -157,7 +156,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <Percent className="h-4 w-4 text-indigo-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{campaign.avgCtr.toFixed(2)}%</p>
+                      <p className="text-sm font-medium">{formatNumber(campaign.avgCtr, { decimals: 2, suffix: '%' })}</p>
                       <p className="text-xs text-muted-foreground">CTR</p>
                     </div>
                   </div>
@@ -168,7 +167,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <ShoppingCart className="h-4 w-4 text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions)}</p>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Transactions</p>
                     </div>
                   </div>
@@ -179,7 +178,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <DollarSign className="h-4 w-4 text-green-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue)}</p>
+                      <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Revenue</p>
                     </div>
                   </div>
@@ -190,7 +189,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                       <TrendingUp className="h-4 w-4 text-amber-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{campaign.avgRoas.toFixed(2)}x</p>
+                      <p className="text-sm font-medium">{formatNumber(campaign.avgRoas, { decimals: 2, suffix: 'x' })}</p>
                       <p className="text-xs text-muted-foreground">ROAS</p>
                     </div>
                   </div>
@@ -202,7 +201,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [formatNumber(value), 'Impressions']}
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Impressions']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
@@ -229,7 +228,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [formatNumber(value), 'Clicks']}
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Clicks']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
@@ -256,7 +255,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [`${value.toFixed(2)}%`, 'CTR']}
+                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: '%' }), 'CTR']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
@@ -283,7 +282,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [formatNumber(value), 'Transactions']}
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Transactions']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
@@ -310,7 +309,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [`$${formatNumber(value)}`, 'Revenue']}
+                          formatter={(value: number) => ['$' + formatNumber(value, { abbreviate: false }), 'Revenue']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
@@ -337,7 +336,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
                         <Tooltip 
-                          formatter={(value: number) => [`${value.toFixed(2)}x`, 'ROAS']}
+                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: 'x' }), 'ROAS']}
                           labelFormatter={(label) => `${label}`}
                         />
                         <defs>
