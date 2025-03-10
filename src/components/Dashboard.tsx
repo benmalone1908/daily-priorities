@@ -44,6 +44,109 @@ interface WeeklyAggregation {
 
 type AnomalyPeriod = "daily" | "weekly";
 
+// MetricCard component to display anomalies
+interface MetricCardProps {
+  title: string;
+  anomalies: any[];
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}
+
+const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
+  const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const handleSelectAnomaly = (anomaly: any) => {
+    setSelectedAnomaly(anomaly);
+    setShowDetails(true);
+  };
+
+  const formatValue = (value: number): string => {
+    if (metric === "REVENUE") {
+      return `$${Math.round(value).toLocaleString()}`;
+    }
+    return value.toLocaleString();
+  };
+
+  const getDisplayDate = (anomaly: any): string => {
+    if (anomaly.periodType === "weekly") {
+      return anomaly.DATE;
+    }
+    try {
+      const date = new Date(anomaly.DATE);
+      return date.toLocaleDateString();
+    } catch (err) {
+      return anomaly.DATE || "Unknown date";
+    }
+  };
+
+  return (
+    <Card className="p-4 overflow-hidden">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-medium">{title}</h3>
+        <div className="text-xs text-muted-foreground">
+          {anomalies.length} found
+        </div>
+      </div>
+      {anomalies.length > 0 ? (
+        <ScrollArea className="h-[220px]">
+          <div className="space-y-3 pr-4">
+            {anomalies.map((anomaly, idx) => (
+              <div
+                key={`${anomaly.campaign}-${anomaly.DATE}-${idx}`}
+                className="border rounded-md p-3 cursor-pointer hover:bg-slate-50 transition-colors"
+                onClick={() => handleSelectAnomaly(anomaly)}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-medium text-sm truncate max-w-[180px]">
+                      {anomaly.campaign}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {getDisplayDate(anomaly)}
+                    </div>
+                  </div>
+                  <div className={`flex items-center ${getColorClasses(anomaly.deviation)}`}>
+                    {anomaly.deviation > 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                    <span className="text-xs font-medium">
+                      {anomaly.deviation > 0 ? "+" : ""}
+                      {Math.round(anomaly.deviation)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    <span className="text-xs">
+                      Expected: {formatValue(anomaly.mean)}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium">
+                    Actual: {formatValue(anomaly.actualValue)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      ) : (
+        <div className="h-[220px] flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">No anomalies detected</p>
+        </div>
+      )}
+      
+      {showDetails && selectedAnomaly && (
+        <AnomalyDetails
+          open={showDetails}
+          onClose={() => setShowDetails(false)}
+          metric={metric}
+          anomalies={[selectedAnomaly]}
+        />
+      )}
+    </Card>
+  );
+};
+
 const Dashboard = ({ 
   data,
   allCampaigns = [],
@@ -809,84 +912,4 @@ const Dashboard = ({
                         <p className="text-2xl font-bold">
                           {formatNumber(period.IMPRESSIONS)}
                         </p>
-                        {idx < weeklyData.length - 1 && (
-                          (() => {
-                            const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
-                            return (
-                              <div className={`flex items-center ${comparison.colorClass}`}>
-                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                <span className="ml-1 text-sm">
-                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                                </span>
-                              </div>
-                            );
-                          })()
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {period.periodStart} to {period.periodEnd}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
-                <div className="space-y-4">
-                  {weeklyData.map((period, idx) => (
-                    <Card key={`clicks-${idx}`} className="p-4">
-                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                        {idx === 0 ? "Most Recent 7 Days" : 
-                        idx === 1 ? "Previous 7 Days" : 
-                        `${idx + 1} Weeks Ago`}
-                      </h5>
-                      <div className="flex items-center gap-2">
-                        <p className="text-2xl font-bold">
-                          {formatNumber(period.CLICKS)}
-                        </p>
-                        {idx < weeklyData.length - 1 && (
-                          (() => {
-                            const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
-                            return (
-                              <div className={`flex items-center ${comparison.colorClass}`}>
-                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                <span className="ml-1 text-sm">
-                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                                </span>
-                              </div>
-                            );
-                          })()
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {period.periodStart} to {period.periodEnd}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
-                <div className="space-y-4">
-                  {weeklyData.map((period, idx) => (
-                    <Card key={`revenue-${idx}`} className="p-4">
-                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                        {idx === 0 ? "Most Recent 7 Days" : 
-                        idx === 1 ? "Previous 7 Days" : 
-                        `${idx + 1} Weeks Ago`}
-                      </h5>
-                      <div className="flex items-center gap-2">
-                        <p className="text-2xl font-bold">
-                          {formatRevenue(period.REVENUE)}
-                        </p>
-                        {idx < weeklyData.length - 1 && (
-                          (() => {
-                            const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
-                            return (
-                              <div className={`flex items-center ${comparison.colorClass}`}>
-                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                <span className="ml-1 text-sm">
-                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
-                                </span>
+                        {idx < weeklyData

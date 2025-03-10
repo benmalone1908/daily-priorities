@@ -114,7 +114,7 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-full min-w-[200px] max-w-[400px] max-h-[300px] overflow-auto p-0 border bg-white" 
+        className="w-full min-w-[200px] max-w-[400px] max-h-[300px] overflow-auto p-0" 
         align="start"
         side="bottom"
         sideOffset={5}
