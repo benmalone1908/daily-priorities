@@ -61,20 +61,20 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0 bg-background shadow-lg" align="start">
+      <PopoverContent className="w-[300px] p-0 bg-background shadow-lg" align="start">
         <div className="max-h-[300px] overflow-auto p-1">
           <div
             className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
             onClick={handleSelectAll}
           >
-            <div className="flex items-center justify-center mr-2 h-4 w-4">
+            <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
               {selected.length === options.length ? (
                 <CheckSquare className="h-4 w-4 text-primary" />
               ) : (
                 <Square className="h-4 w-4 text-muted-foreground" />
               )}
             </div>
-            <span>Select All</span>
+            <span className="truncate">Select All</span>
           </div>
           {options.map((option) => (
             <div
@@ -85,14 +85,14 @@ export function MultiSelect({
               )}
               onClick={() => handleSelect(option.value)}
             >
-              <div className="flex items-center justify-center mr-2 h-4 w-4">
+              <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
                 {selected.includes(option.value) ? (
                   <CheckSquare className="h-4 w-4 text-primary" />
                 ) : (
                   <Square className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
-              <span>{option.label}</span>
+              <span className="truncate">{option.label}</span>
             </div>
           ))}
         </div>
