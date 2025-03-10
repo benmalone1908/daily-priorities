@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -13,6 +14,7 @@ const Index = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleDataLoaded = (uploadedData: any[]) => {
     try {
@@ -143,15 +145,7 @@ const Index = () => {
             </div>
             
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full md:w-auto">
-                <DateRangePicker 
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  className="w-full md:w-auto"
-                />
-              </div>
-              
-              <Tabs defaultValue="dashboard" className="w-full md:w-auto">
+              <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="dashboard">
                     <LayoutDashboard className="mr-2" size={16} />
@@ -163,10 +157,18 @@ const Index = () => {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+              
+              <div className="w-full md:w-auto ml-auto">
+                <DateRangePicker 
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  className="w-full md:w-auto"
+                />
+              </div>
             </div>
           </div>
           
-          <Tabs defaultValue="dashboard" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsContent value="dashboard">
               <Dashboard 
                 data={filteredData} 
@@ -179,7 +181,7 @@ const Index = () => {
               />
             </TabsContent>
             <TabsContent value="sparks">
-              <CampaignSparkCharts data={data} dateRange={dateRange} />
+              <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
             </TabsContent>
           </Tabs>
         </>

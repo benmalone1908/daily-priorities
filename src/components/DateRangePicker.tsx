@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -65,43 +64,41 @@ export default function DateRangePicker({
   };
 
   return (
-    <div className={cn("grid grid-cols-2 gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       {/* Start Date Picker */}
-      <div>
-        <Popover open={startOpen} onOpenChange={setStartOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              id="start-date"
-              variant={"outline"}
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !dateRange?.from && "text-muted-foreground"
-              )}
-              size="sm"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange?.from ? (
-                format(dateRange.from, "LLL dd, y")
-              ) : (
-                <span>Start Date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              initialFocus
-              mode="single"
-              defaultMonth={dateRange?.from}
-              selected={dateRange?.from}
-              onSelect={handleStartDateSelect}
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+      <Popover open={startOpen} onOpenChange={setStartOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id="start-date"
+            variant={"outline"}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !dateRange?.from && "text-muted-foreground"
+            )}
+            size="sm"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateRange?.from ? (
+              format(dateRange.from, "LLL dd, y")
+            ) : (
+              <span>Start Date</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            initialFocus
+            mode="single"
+            defaultMonth={dateRange?.from}
+            selected={dateRange?.from}
+            onSelect={handleStartDateSelect}
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
 
       {/* End Date Picker */}
-      <div>
+      <div className="flex items-center gap-2">
         <Popover open={endOpen} onOpenChange={setEndOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -135,15 +132,13 @@ export default function DateRangePicker({
             />
           </PopoverContent>
         </Popover>
-      </div>
 
-      {/* Reset Button */}
-      <div className="col-span-2 flex justify-end">
+        {/* Reset Button */}
         <Button 
           variant="ghost" 
           size="sm"
           onClick={handleReset}
-          className="mt-1"
+          className="text-xs h-7 px-2"
         >
           Reset
         </Button>
