@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Square, CheckSquare } from "lucide-react";
+import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -38,6 +38,14 @@ export function MultiSelect({
     }
   };
 
+  const handleSelectAll = () => {
+    if (selected.length === options.length) {
+      onChange([]);
+    } else {
+      onChange(options.map(option => option.value));
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -55,6 +63,19 @@ export function MultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[220px] p-0 bg-background shadow-lg" align="start">
         <div className="max-h-[300px] overflow-auto p-1">
+          <div
+            className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
+            onClick={handleSelectAll}
+          >
+            <div className="flex items-center justify-center mr-2 h-4 w-4">
+              {selected.length === options.length ? (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              ) : (
+                <Square className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <span>Select All</span>
+          </div>
           {options.map((option) => (
             <div
               key={option.value}
