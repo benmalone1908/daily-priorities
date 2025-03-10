@@ -21,9 +21,12 @@ import { MultiSelect, Option } from "./MultiSelect";
 
 interface DashboardProps {
   data: any[];
-  allCampaigns?: string[];
-  selectedCampaigns?: string[];
-  onCampaignsChange?: (selected: string[]) => void;
+  metricsData?: any[];
+  revenueData?: any[];
+  selectedMetricsCampaigns?: string[];
+  selectedRevenueCampaigns?: string[];
+  onMetricsCampaignsChange?: (selected: string[]) => void;
+  onRevenueCampaignsChange?: (selected: string[]) => void;
 }
 
 interface WeeklyData {
@@ -46,12 +49,13 @@ type AnomalyPeriod = "daily" | "weekly";
 
 const Dashboard = ({ 
   data,
-  allCampaigns = [],
-  selectedCampaigns = [],
-  onCampaignsChange
+  metricsData,
+  revenueData,
+  selectedMetricsCampaigns = [],
+  selectedRevenueCampaigns = [],
+  onMetricsCampaignsChange,
+  onRevenueCampaignsChange
 }: DashboardProps) => {
-  const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
-  const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
@@ -269,16 +273,10 @@ const Dashboard = ({
     return detectAnomalies(data);
   }, [data, anomalyPeriod]);
 
-  const getAggregatedData = (campaign: string) => {
+  const getAggregatedData = (filteredData: any[]) => {
     try {
-      if (!data || !data.length) return [];
+      if (!filteredData || !filteredData.length) return [];
       
-      const filteredData = campaign === "all" 
-        ? data 
-        : data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
-
-      if (!filteredData.length) return [];
-
       const dateGroups = filteredData.reduce((acc, row) => {
         if (!row || !row.DATE) return acc;
         
@@ -438,8 +436,8 @@ const Dashboard = ({
   };
 
   const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign), [data, selectedWeeklyCampaign]);
-  const metricsData = useMemo(() => getAggregatedData(selectedMetricsCampaign), [data, selectedMetricsCampaign]);
-  const revenueData = useMemo(() => getAggregatedData(selectedRevenueCampaign), [data, selectedRevenueCampaign]);
+  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
+  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
 
   const formatNumber = (value: number) => {
     try {
@@ -601,16 +599,16 @@ const Dashboard = ({
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          {onCampaignsChange && campaignOptions.length > 0 ? (
+          {onMetricsCampaignsChange && campaignOptions.length > 0 ? (
             <MultiSelect
               options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={onCampaignsChange}
+              selected={selectedMetricsCampaigns}
+              onChange={onMetricsCampaignsChange}
               placeholder="Select campaigns"
               className="w-[250px]"
             />
           ) : (
-            <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
+            <Select value="all">
               <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Filter by campaign" />
               </SelectTrigger>
@@ -624,9 +622,9 @@ const Dashboard = ({
           )}
         </div>
         <div className="h-[400px]">
-          {metricsData.length > 0 ? (
+          {processedMetricsData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={metricsData}>
+              <ComposedChart data={processedMetricsData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="DATE" 
@@ -681,16 +679,16 @@ const Dashboard = ({
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          {onCampaignsChange && campaignOptions.length > 0 ? (
+          {onRevenueCampaignsChange && campaignOptions.length > 0 ? (
             <MultiSelect
               options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={onCampaignsChange}
+              selected={selectedRevenueCampaigns}
+              onChange={onRevenueCampaignsChange}
               placeholder="Select campaigns"
               className="w-[250px]"
             />
           ) : (
-            <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
+            <Select value="all">
               <SelectTrigger className="w-[280px]">
                 <SelectValue placeholder="Filter by campaign" />
               </SelectTrigger>
@@ -704,9 +702,9 @@ const Dashboard = ({
           )}
         </div>
         <div className="h-[400px]">
-          {revenueData.length > 0 ? (
+          {processedRevenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={revenueData}>
+              <ComposedChart data={processedRevenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="DATE" 

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -11,7 +12,8 @@ import { LayoutDashboard, ChartLine } from "lucide-react";
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
+  const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
 
   const handleDataLoaded = (uploadedData: any[]) => {
     try {
@@ -99,8 +101,17 @@ const Index = () => {
 
   const filteredData = getFilteredData();
 
-  const handleCampaignsChange = (selected: string[]) => {
-    setSelectedCampaigns(selected);
+  const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
+    if (!campaigns.length) return filteredData;
+    return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+  };
+
+  const handleMetricsCampaignsChange = (selected: string[]) => {
+    setSelectedMetricsCampaigns(selected);
+  };
+
+  const handleRevenueCampaignsChange = (selected: string[]) => {
+    setSelectedRevenueCampaigns(selected);
   };
 
   return (
@@ -143,8 +154,12 @@ const Index = () => {
             <TabsContent value="dashboard">
               <Dashboard 
                 data={filteredData} 
-                selectedCampaigns={selectedCampaigns}
-                onCampaignsChange={handleCampaignsChange}
+                metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+                revenueData={getFilteredDataBySelectedCampaigns(selectedRevenueCampaigns)}
+                selectedMetricsCampaigns={selectedMetricsCampaigns}
+                selectedRevenueCampaigns={selectedRevenueCampaigns}
+                onMetricsCampaignsChange={handleMetricsCampaignsChange}
+                onRevenueCampaignsChange={handleRevenueCampaignsChange}
               />
             </TabsContent>
             <TabsContent value="sparks">
