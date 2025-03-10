@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -171,18 +170,12 @@ const Index = () => {
                   </TabsList>
                 </Tabs>
                 
-                <div className="flex flex-row items-center space-x-3 w-full md:w-auto">
-                  <DateRangePicker 
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                  
-                  {dateRange?.from && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {getDateRangeDisplayText()}
-                    </span>
-                  )}
-                </div>
+                <DateRangePicker 
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  displayDateRangeSummary={!!dateRange?.from}
+                  dateRangeSummaryText={getDateRangeDisplayText()}
+                />
               </div>
             </div>
           </div>
