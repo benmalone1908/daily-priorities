@@ -17,6 +17,7 @@ import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MultiSelect } from "./MultiSelect";
 
 interface DashboardProps {
   data: any[];
@@ -41,6 +42,7 @@ interface WeeklyAggregation {
 type AnomalyPeriod = "daily" | "weekly";
 
 const Dashboard = ({ data }: DashboardProps) => {
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
@@ -50,6 +52,27 @@ const Dashboard = ({ data }: DashboardProps) => {
     if (!data || !data.length) return [];
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
   }, [data]);
+
+  useEffect(() => {
+    if (campaigns.length > 0 && selectedCampaigns.length === 0) {
+      setSelectedCampaigns(campaigns);
+    }
+  }, [campaigns]);
+
+  const campaignOptions = useMemo(() => {
+    return campaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [campaigns]);
+
+  const getFilteredData = () => {
+    if (!selectedCampaigns.length) return [];
+    
+    return data.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
+  };
+
+  const filteredData = useMemo(() => getFilteredData(), [data, selectedCampaigns]);
 
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
@@ -250,8 +273,8 @@ const Dashboard = ({ data }: DashboardProps) => {
   };
 
   const anomalies = useMemo(() => {
-    return detectAnomalies(data);
-  }, [data, anomalyPeriod]);
+    return detectAnomalies(filteredData);
+  }, [filteredData, anomalyPeriod]);
 
   const getAggregatedData = (campaign: string) => {
     try {
@@ -421,9 +444,9 @@ const Dashboard = ({ data }: DashboardProps) => {
     }
   };
 
-  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign), [data, selectedWeeklyCampaign]);
-  const metricsData = useMemo(() => getAggregatedData(selectedMetricsCampaign), [data, selectedMetricsCampaign]);
-  const revenueData = useMemo(() => getAggregatedData(selectedRevenueCampaign), [data, selectedRevenueCampaign]);
+  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign), [filteredData, selectedWeeklyCampaign]);
+  const metricsData = useMemo(() => getAggregatedData(selectedMetricsCampaign), [filteredData, selectedMetricsCampaign]);
+  const revenueData = useMemo(() => getAggregatedData(selectedRevenueCampaign), [filteredData, selectedRevenueCampaign]);
 
   const formatNumber = (value: number) => {
     try {
@@ -541,7 +564,7 @@ const Dashboard = ({ data }: DashboardProps) => {
       {dateRange && (
         <div className="text-sm text-muted-foreground text-center">
           Showing data for: <span className="font-medium">{dateRangeText}</span> 
-          ({data.length.toLocaleString()} records)
+          ({filteredData.length.toLocaleString()} records)
         </div>
       )}
       
@@ -560,6 +583,19 @@ const Dashboard = ({ data }: DashboardProps) => {
             </ToggleGroup>
           </div>
         </div>
+        
+        <div className="w-full">
+          <div className="mb-4">
+            <label className="text-sm font-medium mb-2 block">Filter Campaigns:</label>
+            <MultiSelect 
+              options={campaignOptions}
+              selected={selectedCampaigns}
+              onChange={setSelectedCampaigns}
+              placeholder="Select campaigns"
+            />
+          </div>
+        </div>
+        
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
             title="Impression Anomalies"
