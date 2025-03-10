@@ -171,19 +171,19 @@ const Index = () => {
                   </TabsList>
                 </Tabs>
                 
-                <div className="w-full md:w-auto">
-                  <div className="flex flex-col">
+                <div className="w-full md:w-auto flex flex-row items-start">
+                  <div>
                     <DateRangePicker 
                       dateRange={dateRange}
                       onDateRangeChange={setDateRange}
                       className="w-full md:w-auto"
                     />
-                    {dateRange?.from && (
-                      <div className="text-xs text-muted-foreground text-right mt-0.5">
-                        {getDateRangeDisplayText()}
-                      </div>
-                    )}
                   </div>
+                  {dateRange?.from && (
+                    <div className="text-xs text-muted-foreground ml-4 self-end pb-1.5">
+                      {getDateRangeDisplayText()}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
