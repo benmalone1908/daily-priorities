@@ -151,7 +151,7 @@ const Index = () => {
               <Dashboard data={filteredData} />
             </TabsContent>
             <TabsContent value="sparks">
-              <CampaignSparkCharts data={data} />
+              <CampaignSparkCharts data={data} dateRange={dateRange} />
             </TabsContent>
           </Tabs>
         </>

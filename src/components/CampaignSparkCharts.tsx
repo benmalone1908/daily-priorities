@@ -12,25 +12,53 @@ import {
 } from "@/components/ui/card";
 import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 interface CampaignSparkChartsProps {
   data: any[];
+  dateRange?: DateRange;
 }
 
-const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
+const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   // Process data to get campaigns and their metrics over time
   const campaignData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
+    // Filter data by date range if provided
+    let filteredData = data;
+    if (dateRange?.from) {
+      filteredData = data.filter(row => {
+        const rowDate = new Date(row.DATE);
+        if (isNaN(rowDate.getTime())) return false;
+        
+        // If only from date is selected
+        if (dateRange.from && !dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          return rowDate >= fromDate;
+        }
+        
+        // If both from and to dates are selected
+        if (dateRange.from && dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          const toDate = new Date(dateRange.to);
+          // Set toDate to end of day for inclusive filtering
+          toDate.setHours(23, 59, 59, 999);
+          return rowDate >= fromDate && rowDate <= toDate;
+        }
+        
+        return true;
+      });
+    }
+
     // Extract unique campaigns
-    const campaigns = Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
+    const campaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
     
     // Group data by campaign and date
     const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
     
     return campaigns.map(campaign => {
       // Filter data for this campaign
-      const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+      const campaignRows = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
       
       // Sort by date
       campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
@@ -84,7 +112,7 @@ const CampaignSparkCharts = ({ data }: CampaignSparkChartsProps) => {
         avgRoas
       };
     });
-  }, [data]);
+  }, [data, dateRange]);
 
   // Create a safe ID from campaign name
   const getSafeId = (campaignName: string) => {
