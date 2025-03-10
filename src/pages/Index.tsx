@@ -115,6 +115,19 @@ const Index = () => {
     setSelectedRevenueCampaigns(selected);
   };
 
+  // Function to format the date display text
+  const getDateRangeDisplayText = () => {
+    if (!dateRange || !dateRange.from) return null;
+    
+    const fromDate = dateRange.from;
+    const toDate = dateRange.to || fromDate;
+    
+    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
+    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
+    
+    return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
+  };
+
   return (
     <div className="container py-8 space-y-8">
       {data.length === 0 ? (
@@ -134,38 +147,47 @@ const Index = () => {
         </>
       ) : (
         <>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b animate-fade-in">
-            <div className="flex items-center gap-4">
-              <img 
-                src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
-                alt="Display Campaign Monitor" 
-                className="h-14 w-auto"
-              />
-              <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
-            </div>
-            
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="dashboard">
-                    <LayoutDashboard className="mr-2" size={16} />
-                    Dashboard
-                  </TabsTrigger>
-                  <TabsTrigger value="sparks">
-                    <ChartLine className="mr-2" size={16} />
-                    Trends
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              
-              <div className="w-full md:w-auto ml-auto">
-                <DateRangePicker 
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  className="w-full md:w-auto"
+          <div className="flex flex-col border-b animate-fade-in">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-4">
+              <div className="flex items-center gap-4">
+                <img 
+                  src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
+                  alt="Display Campaign Monitor" 
+                  className="h-14 w-auto"
                 />
+                <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+              </div>
+              
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="dashboard">
+                      <LayoutDashboard className="mr-2" size={16} />
+                      Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger value="sparks">
+                      <ChartLine className="mr-2" size={16} />
+                      Trends
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                <div className="w-full md:w-auto ml-auto">
+                  <DateRangePicker 
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                    className="w-full md:w-auto"
+                  />
+                </div>
               </div>
             </div>
+            
+            {/* Date range display text - now in the header and visible for both tabs */}
+            {dateRange?.from && (
+              <div className="text-sm text-muted-foreground pb-4">
+                {getDateRangeDisplayText()}
+              </div>
+            )}
           </div>
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
