@@ -53,22 +53,24 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0 bg-background" align="start">
+      <PopoverContent className="w-[220px] p-0 bg-background shadow-lg" align="start">
         <div className="max-h-[300px] overflow-auto p-1">
           {options.map((option) => (
             <div
               key={option.value}
               className={cn(
                 "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
-                selected.includes(option.value) && "bg-accent"
+                selected.includes(option.value) ? "bg-accent/50" : ""
               )}
               onClick={() => handleSelect(option.value)}
             >
-              {selected.includes(option.value) ? (
-                <CheckSquare className="mr-2 h-4 w-4 text-primary" />
-              ) : (
-                <Square className="mr-2 h-4 w-4 text-muted-foreground" />
-              )}
+              <div className="flex items-center justify-center mr-2 h-4 w-4">
+                {selected.includes(option.value) ? (
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                ) : (
+                  <Square className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
               <span>{option.label}</span>
             </div>
           ))}

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -12,10 +11,10 @@ import { LayoutDashboard, ChartLine } from "lucide-react";
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
 
   const handleDataLoaded = (uploadedData: any[]) => {
     try {
-      // Validate data format before setting it
       if (!Array.isArray(uploadedData) || uploadedData.length === 0) {
         toast.error("Invalid data format received");
         return;
@@ -23,7 +22,6 @@ const Index = () => {
       
       console.log(`Loaded ${uploadedData.length} rows of data`);
       
-      // Further validation - check if we have necessary fields in at least the first row
       const requiredFields = ["DATE", "CAMPAIGN ORDER NAME", "IMPRESSIONS", "CLICKS", "REVENUE"];
       
       if (uploadedData[0]) {
@@ -37,26 +35,20 @@ const Index = () => {
         }
       }
       
-      // Process dates to ensure they're in a standard format
       const processedData = uploadedData.map(row => {
-        // Create a new object to avoid mutating the original
         const newRow = { ...row };
         
-        // Ensure DATE is a string in YYYY-MM-DD format
         if (newRow.DATE) {
           try {
             const date = new Date(newRow.DATE);
             if (!isNaN(date.getTime())) {
-              // Format as YYYY-MM-DD
               newRow.DATE = date.toISOString().split('T')[0];
             }
           } catch (e) {
             console.error("Error parsing date:", e);
-            // Keep the original date if parsing fails
           }
         }
         
-        // Ensure numerical fields are numbers
         ["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].forEach(field => {
           const normalizedField = Object.keys(newRow).find(key => key.toUpperCase() === field);
           if (normalizedField) {
@@ -85,17 +77,14 @@ const Index = () => {
         const rowDate = new Date(row.DATE);
         if (isNaN(rowDate.getTime())) return false;
         
-        // If only from date is selected
         if (dateRange.from && !dateRange.to) {
           const fromDate = new Date(dateRange.from);
           return rowDate >= fromDate;
         }
         
-        // If both from and to dates are selected
         if (dateRange.from && dateRange.to) {
           const fromDate = new Date(dateRange.from);
           const toDate = new Date(dateRange.to);
-          // Set toDate to end of day for inclusive filtering
           toDate.setHours(23, 59, 59, 999);
           return rowDate >= fromDate && rowDate <= toDate;
         }
@@ -109,6 +98,10 @@ const Index = () => {
   };
 
   const filteredData = getFilteredData();
+
+  const handleCampaignsChange = (selected: string[]) => {
+    setSelectedCampaigns(selected);
+  };
 
   return (
     <div className="container py-8 space-y-8">
@@ -148,7 +141,11 @@ const Index = () => {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard">
-              <Dashboard data={filteredData} />
+              <Dashboard 
+                data={filteredData} 
+                selectedCampaigns={selectedCampaigns}
+                onCampaignsChange={handleCampaignsChange}
+              />
             </TabsContent>
             <TabsContent value="sparks">
               <CampaignSparkCharts data={data} dateRange={dateRange} />
