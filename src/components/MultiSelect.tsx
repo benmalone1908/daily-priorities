@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Square, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -53,7 +53,7 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent className="w-[200px] p-0 bg-background" align="start">
         <div className="max-h-[300px] overflow-auto p-1">
           {options.map((option) => (
             <div
@@ -64,18 +64,11 @@ export function MultiSelect({
               )}
               onClick={() => handleSelect(option.value)}
             >
-              <div
-                className={cn(
-                  "mr-2 flex h-4 w-4 items-center justify-center rounded border",
-                  selected.includes(option.value)
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input"
-                )}
-              >
-                {selected.includes(option.value) && (
-                  <Check className="h-3 w-3" />
-                )}
-              </div>
+              {selected.includes(option.value) ? (
+                <CheckSquare className="mr-2 h-4 w-4 text-primary" />
+              ) : (
+                <Square className="mr-2 h-4 w-4 text-muted-foreground" />
+              )}
               <span>{option.label}</span>
             </div>
           ))}
