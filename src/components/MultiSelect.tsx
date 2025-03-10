@@ -61,7 +61,7 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0 bg-background shadow-lg" align="start">
+      <PopoverContent className="w-[400px] p-0 bg-background shadow-lg" align="start">
         <div className="max-h-[300px] overflow-auto p-1">
           <div
             className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
@@ -100,3 +100,4 @@ export function MultiSelect({
     </Popover>
   );
 }
+
