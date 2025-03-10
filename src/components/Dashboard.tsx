@@ -98,9 +98,9 @@ const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps
       )}
       {showDetails && selectedAnomaly && (
         <AnomalyDetails
-          anomaly={selectedAnomaly}
+          anomalies={[selectedAnomaly]}
           metric={metric}
-          onClose={() => setShowDetails(false)}
+          anomalyPeriod={anomalyPeriod}
         />
       )}
     </Card>

@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +12,7 @@ interface AnomalyDetailsProps {
 
 const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProps) => {
   const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
 
   if (!anomalies || anomalies.length === 0) {
     return null;
@@ -24,6 +24,13 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
 
   const closeDetails = () => {
     setSelectedAnomaly(null);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      closeDetails();
+    }
   };
 
   const renderAnomalyDetail = (anomaly: any) => {
@@ -131,6 +138,30 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       </div>
     );
   };
+
+  if (anomalies.length === 1) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent 
+          className="max-h-[80vh] overflow-y-auto text-xs" 
+          style={{ 
+            width: "700px", 
+            maxWidth: "700px !important",
+            minWidth: "700px",
+            transform: "translate(-50%, -50%)"
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-base">Anomaly Details</DialogTitle>
+            <DialogDescription className="text-xs">
+              Detailed view for {anomalies[0].campaign}
+            </DialogDescription>
+          </DialogHeader>
+          {renderAnomalyDetail(anomalies[0])}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <>
