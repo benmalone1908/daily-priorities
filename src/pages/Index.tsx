@@ -147,7 +147,7 @@ const Index = () => {
         </>
       ) : (
         <>
-          <div className="flex flex-col border-b animate-fade-in">
+          <div className="border-b animate-fade-in">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-4">
               <div className="flex items-center gap-4">
                 <img 
@@ -182,7 +182,7 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Date range display text - now in the header and visible for both tabs */}
+            {/* Date range display text in the header */}
             {dateRange?.from && (
               <div className="text-sm text-muted-foreground pb-4">
                 {getDateRangeDisplayText()}
