@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -40,6 +41,71 @@ interface WeeklyAggregation {
 }
 
 type AnomalyPeriod = "daily" | "weekly";
+
+interface MetricCardProps {
+  title: string;
+  anomalies: any[];
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}
+
+const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedAnomaly, setSelectedAnomaly] = useState<any>(null);
+
+  const handleAnomalyClick = (anomaly: any) => {
+    setSelectedAnomaly(anomaly);
+    setShowDetails(true);
+  };
+
+  return (
+    <Card className="p-4">
+      <h3 className="text-base font-semibold mb-2">{title}</h3>
+      {anomalies.length > 0 ? (
+        <div className="space-y-2">
+          {anomalies.slice(0, 3).map((anomaly, index) => {
+            const colorClasses = getColorClasses(anomaly.deviation);
+            return (
+              <div
+                key={`${anomaly.campaign}-${anomaly.DATE}-${index}`}
+                className={`p-2 rounded-md flex items-start gap-2 cursor-pointer ${colorClasses}`}
+                onClick={() => handleAnomalyClick(anomaly)}
+              >
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 text-xs">
+                  <p className="font-medium">{anomaly.campaign}</p>
+                  <p>{anomaly.DATE}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="font-medium">{metric === "REVENUE" ? "$" : ""}{Math.round(anomaly.actualValue).toLocaleString()}</span>
+                    <span className={anomaly.deviation > 0 ? "text-emerald-600" : "text-red-600"}>
+                      {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {anomalies.length > 3 && (
+            <div className="text-xs text-center text-muted-foreground mt-2">
+              {anomalies.length - 3} more anomalies
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+          <p className="text-sm">No {anomalyPeriod} anomalies detected</p>
+        </div>
+      )}
+      {showDetails && selectedAnomaly && (
+        <AnomalyDetails
+          anomaly={selectedAnomaly}
+          metric={metric}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+    </Card>
+  );
+};
 
 const Dashboard = ({ data }: DashboardProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
@@ -891,3 +957,61 @@ const Dashboard = ({ data }: DashboardProps) => {
                               </div>
                             );
                           })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`roas-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatROAS(period.ROAS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">No period data available</p>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default Dashboard;
