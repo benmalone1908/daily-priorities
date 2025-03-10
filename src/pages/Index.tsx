@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -115,7 +114,6 @@ const Index = () => {
     setSelectedRevenueCampaigns(selected);
   };
 
-  // Function to format the date display text
   const getDateRangeDisplayText = () => {
     if (!dateRange || !dateRange.from) return null;
     
@@ -148,7 +146,7 @@ const Index = () => {
       ) : (
         <>
           <div className="border-b animate-fade-in">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 <img 
                   src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
@@ -182,9 +180,8 @@ const Index = () => {
               </div>
             </div>
             
-            {/* Date range display text in the header */}
             {dateRange?.from && (
-              <div className="text-sm text-muted-foreground pb-4">
+              <div className="text-sm text-muted-foreground py-3 border-t mt-4">
                 {getDateRangeDisplayText()}
               </div>
             )}
