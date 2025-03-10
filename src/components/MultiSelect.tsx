@@ -38,23 +38,12 @@ export function MultiSelect({
   };
 
   const handleSelect = (value: string) => {
-    if (value === "all") {
-      // Toggle between all or none
-      if (selected.length === options.length) {
-        onChange([]);
-      } else {
-        onChange(options.map((option) => option.value));
-      }
+    if (selected.includes(value)) {
+      handleUnselect(value);
     } else {
-      if (selected.includes(value)) {
-        handleUnselect(value);
-      } else {
-        onChange([...selected, value]);
-      }
+      onChange([...selected, value]);
     }
   };
-
-  const areAllSelected = selected.length === options.length && options.length > 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -102,26 +91,7 @@ export function MultiSelect({
           <CommandEmpty>No options found.</CommandEmpty>
           <ScrollArea className="h-60">
             <CommandGroup>
-              {options && options.length > 0 && (
-                <CommandItem
-                  key="select-all"
-                  value="all"
-                  onSelect={() => handleSelect("all")}
-                >
-                  <div
-                    className={cn(
-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                      areAllSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "opacity-50"
-                    )}
-                  >
-                    {areAllSelected && <Check className="h-3 w-3" />}
-                  </div>
-                  <span>Select All</span>
-                </CommandItem>
-              )}
-              {options && options.map((option) => {
+              {options.map((option) => {
                 const isSelected = selected.includes(option.value);
                 return (
                   <CommandItem
