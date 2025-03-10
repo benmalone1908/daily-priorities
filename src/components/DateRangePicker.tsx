@@ -68,7 +68,7 @@ export default function DateRangePicker({
   };
 
   return (
-    <div className={cn("flex flex-col space-y-2", className)}>
+    <div className={cn("space-y-2", className)}>
       <div className="flex items-center gap-2">
         {/* Start Date Picker */}
         <Popover open={startOpen} onOpenChange={setStartOpen}>
@@ -103,58 +103,56 @@ export default function DateRangePicker({
         </Popover>
 
         {/* End Date Picker */}
-        <div className="flex items-center gap-2">
-          <Popover open={endOpen} onOpenChange={setEndOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                id="end-date"
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !dateRange?.to && "text-muted-foreground"
-                )}
-                size="sm"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.to ? (
-                  format(dateRange.to, "LLL dd, y")
-                ) : (
-                  <span>End Date</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="single"
-                defaultMonth={dateRange?.to || dateRange?.from}
-                selected={dateRange?.to}
-                onSelect={handleEndDateSelect}
-                disabled={(date) => 
-                  dateRange?.from ? date < dateRange.from : false
-                }
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+        <Popover open={endOpen} onOpenChange={setEndOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="end-date"
+              variant={"outline"}
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !dateRange?.to && "text-muted-foreground"
+              )}
+              size="sm"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange?.to ? (
+                format(dateRange.to, "LLL dd, y")
+              ) : (
+                <span>End Date</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              initialFocus
+              mode="single"
+              defaultMonth={dateRange?.to || dateRange?.from}
+              selected={dateRange?.to}
+              onSelect={handleEndDateSelect}
+              disabled={(date) => 
+                dateRange?.from ? date < dateRange.from : false
+              }
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
 
-          {/* Reset Button */}
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleReset}
-            className="text-xs h-7 px-2"
-          >
-            Reset
-          </Button>
-        </div>
+        {/* Reset Button */}
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={handleReset}
+          className="text-xs h-7 px-2"
+        >
+          Reset
+        </Button>
       </div>
       
-      {/* Display text summary if enabled - moved outside the flex container */}
+      {/* Date Range Summary - moved as a separate element with improved styling */}
       {displayDateRangeSummary && dateRangeSummaryText && (
-        <div className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-1">
           {dateRangeSummaryText}
-        </div>
+        </p>
       )}
     </div>
   );
