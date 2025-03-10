@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -76,6 +77,7 @@ export default function DateRangePicker({
                 "w-full justify-start text-left font-normal",
                 !dateRange?.from && "text-muted-foreground"
               )}
+              size="sm"
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.from ? (
@@ -92,6 +94,7 @@ export default function DateRangePicker({
               defaultMonth={dateRange?.from}
               selected={dateRange?.from}
               onSelect={handleStartDateSelect}
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
@@ -108,6 +111,7 @@ export default function DateRangePicker({
                 "w-full justify-start text-left font-normal",
                 !dateRange?.to && "text-muted-foreground"
               )}
+              size="sm"
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.to ? (
@@ -127,6 +131,7 @@ export default function DateRangePicker({
               disabled={(date) => 
                 dateRange?.from ? date < dateRange.from : false
               }
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
@@ -138,9 +143,9 @@ export default function DateRangePicker({
           variant="ghost" 
           size="sm"
           onClick={handleReset}
-          className="mt-2"
+          className="mt-1"
         >
-          Reset Dates
+          Reset
         </Button>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -116,41 +115,58 @@ const Index = () => {
 
   return (
     <div className="container py-8 space-y-8">
-      <div className="space-y-2 text-center animate-fade-in">
-        <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-          Marketing Anomaly Detector
-        </h1>
-        <p className="text-muted-foreground">
-          Upload your campaign data to identify potential anomalies and trends
-        </p>
-      </div>
-
-      {data.length === 0 && (
-        <div className="max-w-2xl mx-auto">
-          <FileUpload onDataLoaded={handleDataLoaded} />
-        </div>
-      )}
-
-      {data.length > 0 && (
+      {data.length === 0 ? (
         <>
-          <div className="max-w-sm mx-auto">
-            <DateRangePicker 
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
+          <div className="space-y-2 text-center animate-fade-in">
+            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+              Marketing Anomaly Detector
+            </h1>
+            <p className="text-muted-foreground">
+              Upload your campaign data to identify potential anomalies and trends
+            </p>
+          </div>
+
+          <div className="max-w-2xl mx-auto">
+            <FileUpload onDataLoaded={handleDataLoaded} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b animate-fade-in">
+            <div className="flex items-center gap-4">
+              <img 
+                src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
+                alt="Display Campaign Monitor" 
+                className="h-14 w-auto"
+              />
+              <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+            </div>
+            
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="w-full md:w-auto">
+                <DateRangePicker 
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  className="w-full md:w-auto"
+                />
+              </div>
+              
+              <Tabs defaultValue="dashboard" className="w-full md:w-auto">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="dashboard">
+                    <LayoutDashboard className="mr-2" size={16} />
+                    Dashboard
+                  </TabsTrigger>
+                  <TabsTrigger value="sparks">
+                    <ChartLine className="mr-2" size={16} />
+                    Trends
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
           
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-              <TabsTrigger value="dashboard">
-                <LayoutDashboard className="mr-2" size={16} />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="sparks">
-                <ChartLine className="mr-2" size={16} />
-                Campaign Trends
-              </TabsTrigger>
-            </TabsList>
             <TabsContent value="dashboard">
               <Dashboard 
                 data={filteredData} 
