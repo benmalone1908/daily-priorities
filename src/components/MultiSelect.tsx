@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -49,31 +49,34 @@ export function MultiSelect({
             className
           )}
         >
-          {selected.length === 0
-            ? placeholder
-            : `${selected.length} selected`}
-          <span className="ml-2 text-muted-foreground">▼</span>
+          {selected.length === 0 ? placeholder : `${selected.length} selected`}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
-        <div className="max-h-[300px] overflow-auto">
+        <div className="max-h-[300px] overflow-auto p-1">
           {options.map((option) => (
             <div
               key={option.value}
               className={cn(
-                "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
                 selected.includes(option.value) && "bg-accent"
               )}
               onClick={() => handleSelect(option.value)}
             >
-              <span className={cn("mr-2 h-4 w-4 border rounded flex items-center justify-center", 
-                selected.includes(option.value) ? "bg-primary border-primary" : "border-input"
-              )}>
-                {selected.includes(option.value) && (
-                  <Check className="h-3 w-3 text-primary-foreground" />
+              <div
+                className={cn(
+                  "mr-2 flex h-4 w-4 items-center justify-center rounded border",
+                  selected.includes(option.value)
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input"
                 )}
-              </span>
-              {option.label}
+              >
+                {selected.includes(option.value) && (
+                  <Check className="h-3 w-3" />
+                )}
+              </div>
+              <span>{option.label}</span>
             </div>
           ))}
         </div>
