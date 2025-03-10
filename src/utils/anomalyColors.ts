@@ -12,3 +12,23 @@ export const getColorClasses = (deviation: number) => {
   if (absDeviation < 500) return 'bg-red-50 border-red-200 text-[#f87171]';
   return 'bg-red-50 border-red-200 text-alert';
 };
+
+// Add the trendingColor function that was missing
+export const trendingColor = (percentChange: number) => {
+  const absChange = Math.abs(percentChange);
+  
+  // For very small changes, use muted color
+  if (absChange < 5) return 'text-muted-foreground';
+  
+  // For positive changes
+  if (percentChange > 0) {
+    if (percentChange > 50) return 'text-success';
+    if (percentChange > 25) return 'text-[#4ade80]';
+    return 'text-[#86efac]';
+  }
+  
+  // For negative changes
+  if (percentChange < -50) return 'text-alert';
+  if (percentChange < -25) return 'text-[#f87171]';
+  return 'text-[#fca5a5]';
+};
