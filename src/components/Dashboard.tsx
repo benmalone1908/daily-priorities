@@ -17,9 +17,13 @@ import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MultiSelect, Option } from "./MultiSelect";
 
 interface DashboardProps {
   data: any[];
+  allCampaigns?: string[];
+  selectedCampaigns?: string[];
+  onCampaignsChange?: (selected: string[]) => void;
 }
 
 interface WeeklyData {
@@ -40,7 +44,12 @@ interface WeeklyAggregation {
 
 type AnomalyPeriod = "daily" | "weekly";
 
-const Dashboard = ({ data }: DashboardProps) => {
+const Dashboard = ({ 
+  data,
+  allCampaigns = [],
+  selectedCampaigns = [],
+  onCampaignsChange
+}: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
@@ -48,8 +57,15 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   const campaigns = useMemo(() => {
     if (!data || !data.length) return [];
-    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
+    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean).sort();
   }, [data]);
+
+  const campaignOptions: Option[] = useMemo(() => {
+    return campaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [campaigns]);
 
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
@@ -583,19 +599,29 @@ const Dashboard = ({ data }: DashboardProps) => {
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {onCampaignsChange && campaignOptions.length > 0 ? (
+            <MultiSelect
+              options={campaignOptions}
+              selected={selectedCampaigns}
+              onChange={onCampaignsChange}
+              placeholder="Select campaigns"
+              className="w-[250px]"
+            />
+          ) : (
+            <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Filter by campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {campaigns.map(campaign => (
+                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="h-[400px]">
           {metricsData.length > 0 ? (
@@ -653,19 +679,29 @@ const Dashboard = ({ data }: DashboardProps) => {
       </Card>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {onCampaignsChange && campaignOptions.length > 0 ? (
+            <MultiSelect
+              options={campaignOptions}
+              selected={selectedCampaigns}
+              onChange={onCampaignsChange}
+              placeholder="Select campaigns"
+              className="w-[250px]"
+            />
+          ) : (
+            <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Filter by campaign" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                {campaigns.map(campaign => (
+                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="h-[400px]">
           {revenueData.length > 0 ? (
