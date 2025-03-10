@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -912,4 +913,145 @@ const Dashboard = ({
                         <p className="text-2xl font-bold">
                           {formatNumber(period.IMPRESSIONS)}
                         </p>
-                        {idx < weeklyData
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`clicks-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatNumber(period.CLICKS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`revenue-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatRevenue(period.REVENUE)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`roas-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatROAS(period.ROAS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center h-[300px]">
+            <p className="text-muted-foreground">No weekly data available</p>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default Dashboard;
