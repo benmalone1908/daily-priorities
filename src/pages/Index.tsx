@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
 import Dashboard from "@/components/Dashboard";
@@ -8,12 +8,10 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
-import { MultiSelect, Option } from "@/components/MultiSelect";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
 
   const handleDataLoaded = (uploadedData: any[]) => {
     try {
@@ -70,11 +68,6 @@ const Index = () => {
       });
       
       setData(processedData);
-      
-      // Set all campaigns as selected by default
-      const uniqueCampaigns = Array.from(new Set(processedData.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean);
-      setSelectedCampaigns(uniqueCampaigns);
-      
       toast.success(`Successfully loaded ${processedData.length} rows of data`);
     } catch (error) {
       console.error("Error processing uploaded data:", error);
@@ -83,58 +76,37 @@ const Index = () => {
   };
 
   const getFilteredData = () => {
-    if (!data || data.length === 0) return [];
-    
-    let filtered = [...data];
-    
-    // Filter by date if dateRange is provided
-    if (dateRange && dateRange.from) {
-      filtered = filtered.filter(row => {
-        try {
-          const rowDate = new Date(row.DATE);
-          if (isNaN(rowDate.getTime())) return false;
-          
-          // If only from date is selected
-          if (dateRange.from && !dateRange.to) {
-            const fromDate = new Date(dateRange.from);
-            return rowDate >= fromDate;
-          }
-          
-          // If both from and to dates are selected
-          if (dateRange.from && dateRange.to) {
-            const fromDate = new Date(dateRange.from);
-            const toDate = new Date(dateRange.to);
-            // Set toDate to end of day for inclusive filtering
-            toDate.setHours(23, 59, 59, 999);
-            return rowDate >= fromDate && rowDate <= toDate;
-          }
-          
-          return true;
-        } catch (error) {
-          console.error("Error filtering by date:", error);
-          return false;
-        }
-      });
+    if (!dateRange || !dateRange.from) {
+      return data;
     }
-    
-    // Filter by selected campaigns
-    if (selectedCampaigns.length > 0 && selectedCampaigns.length < campaignOptions.length) {
-      filtered = filtered.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
-    }
-    
-    return filtered;
-  };
 
-  const campaignOptions: Option[] = useMemo(() => {
-    if (!data || !data.length) return [];
-    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"])))
-      .filter(Boolean)
-      .sort()
-      .map(campaign => ({
-        value: campaign,
-        label: campaign
-      }));
-  }, [data]);
+    return data.filter(row => {
+      try {
+        const rowDate = new Date(row.DATE);
+        if (isNaN(rowDate.getTime())) return false;
+        
+        // If only from date is selected
+        if (dateRange.from && !dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          return rowDate >= fromDate;
+        }
+        
+        // If both from and to dates are selected
+        if (dateRange.from && dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          const toDate = new Date(dateRange.to);
+          // Set toDate to end of day for inclusive filtering
+          toDate.setHours(23, 59, 59, 999);
+          return rowDate >= fromDate && rowDate <= toDate;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error("Error filtering by date:", error);
+        return false;
+      }
+    });
+  };
 
   const filteredData = getFilteredData();
 
@@ -157,21 +129,11 @@ const Index = () => {
 
       {data.length > 0 && (
         <>
-          <div className="flex flex-col sm:flex-row gap-4 max-w-4xl mx-auto">
-            <div className="flex-1">
-              <DateRangePicker 
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-              />
-            </div>
-            <div className="flex-1">
-              <MultiSelect
-                options={campaignOptions}
-                selected={selectedCampaigns}
-                onChange={setSelectedCampaigns}
-                placeholder="Select campaigns"
-              />
-            </div>
+          <div className="max-w-sm mx-auto">
+            <DateRangePicker 
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
           </div>
           
           <Tabs defaultValue="dashboard" className="w-full">
@@ -186,19 +148,10 @@ const Index = () => {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="dashboard">
-              <Dashboard 
-                data={filteredData} 
-                allCampaigns={campaignOptions.map(opt => opt.value)}
-                selectedCampaigns={selectedCampaigns}
-                onCampaignsChange={setSelectedCampaigns}
-              />
+              <Dashboard data={filteredData} />
             </TabsContent>
             <TabsContent value="sparks">
-              <CampaignSparkCharts 
-                data={data} 
-                dateRange={dateRange}
-                selectedCampaigns={selectedCampaigns}
-              />
+              <CampaignSparkCharts data={data} dateRange={dateRange} />
             </TabsContent>
           </Tabs>
         </>

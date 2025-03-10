@@ -1,392 +1,398 @@
-
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { 
+  ResponsiveContainer,
+  Tooltip,
+  Area,
+  AreaChart
+} from "recharts";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp } from "lucide-react";
+import { formatNumber } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
-import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trendingColor } from "@/utils/anomalyColors";
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, Info, TrendingDown, TrendingUp } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CampaignSparkChartsProps {
   data: any[];
   dateRange?: DateRange;
-  selectedCampaigns?: string[];
 }
 
-const CampaignSparkCharts = ({ 
-  data, 
-  dateRange,
-  selectedCampaigns = []
-}: CampaignSparkChartsProps) => {
-  const [showDetails, setShowDetails] = useState(false);
-
-  const getFilteredData = () => {
+const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
+  // Process data to get campaigns and their metrics over time
+  const campaignData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    
-    let filtered = [...data];
-    
-    // Filter by date if dateRange is provided
-    if (dateRange && dateRange.from) {
-      filtered = filtered.filter(row => {
-        try {
-          const rowDate = new Date(row.DATE);
-          if (isNaN(rowDate.getTime())) return false;
-          
-          if (dateRange.from && !dateRange.to) {
-            const fromDate = new Date(dateRange.from);
-            return rowDate >= fromDate;
-          }
-          
-          if (dateRange.from && dateRange.to) {
-            const fromDate = new Date(dateRange.from);
-            const toDate = new Date(dateRange.to);
-            toDate.setHours(23, 59, 59, 999);
-            return rowDate >= fromDate && rowDate <= toDate;
-          }
-          
-          return true;
-        } catch (error) {
-          console.error("Error filtering by date:", error);
-          return false;
+
+    // Filter data by date range if provided
+    let filteredData = data;
+    if (dateRange?.from) {
+      filteredData = data.filter(row => {
+        const rowDate = new Date(row.DATE);
+        if (isNaN(rowDate.getTime())) return false;
+        
+        // If only from date is selected
+        if (dateRange.from && !dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          return rowDate >= fromDate;
         }
+        
+        // If both from and to dates are selected
+        if (dateRange.from && dateRange.to) {
+          const fromDate = new Date(dateRange.from);
+          const toDate = new Date(dateRange.to);
+          // Set toDate to end of day for inclusive filtering
+          toDate.setHours(23, 59, 59, 999);
+          return rowDate >= fromDate && rowDate <= toDate;
+        }
+        
+        return true;
       });
     }
-    
-    // Filter by selected campaigns if provided
-    if (selectedCampaigns.length > 0) {
-      filtered = filtered.filter(row => 
-        selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"])
-      );
-    }
-    
-    return filtered;
-  };
 
-  // Group by campaign and calculate daily metrics
-  const campaignMetrics = useMemo(() => {
-    const filteredData = getFilteredData();
-    if (!filteredData.length) return [];
+    // Extract unique campaigns
+    const campaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
     
-    const campaigns = {};
+    // Group data by campaign and date
+    const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
     
-    // Group data by campaign
-    filteredData.forEach(row => {
-      if (!row["CAMPAIGN ORDER NAME"]) return;
+    return campaigns.map(campaign => {
+      // Filter data for this campaign
+      const campaignRows = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
       
-      const campaign = row["CAMPAIGN ORDER NAME"];
-      if (!campaigns[campaign]) {
-        campaigns[campaign] = {
-          name: campaign,
-          dateData: {},
-          metrics: {
-            totalImpressions: 0,
-            totalClicks: 0,
-            totalRevenue: 0,
-            ctr: 0,
-            cpc: 0,
-            conversionRate: 0,
-            roas: 0,
-          },
-        };
-      }
+      // Sort by date
+      campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
       
-      // Group by date for time-series data
-      const date = row.DATE;
-      if (!campaigns[campaign].dateData[date]) {
-        campaigns[campaign].dateData[date] = {
-          date,
-          impressions: 0,
-          clicks: 0,
-          revenue: 0,
-        };
-      }
-      
-      campaigns[campaign].dateData[date].impressions += Number(row.IMPRESSIONS) || 0;
-      campaigns[campaign].dateData[date].clicks += Number(row.CLICKS) || 0;
-      campaigns[campaign].dateData[date].revenue += Number(row.REVENUE) || 0;
-      
-      // Aggregate totals
-      campaigns[campaign].metrics.totalImpressions += Number(row.IMPRESSIONS) || 0;
-      campaigns[campaign].metrics.totalClicks += Number(row.CLICKS) || 0;
-      campaigns[campaign].metrics.totalRevenue += Number(row.REVENUE) || 0;
-    });
-    
-    // Calculate derived metrics and format time-series data
-    return Object.values(campaigns).map((campaign: any) => {
-      // Sort date data chronologically
-      const sortedDates = Object.keys(campaign.dateData).sort((a, b) => 
-        new Date(a).getTime() - new Date(b).getTime()
-      );
-      
-      const timeSeriesData = sortedDates.map(date => campaign.dateData[date]);
-      
-      // Calculate CTR, CPC, conversion rate, and ROAS
-      const { totalImpressions, totalClicks, totalRevenue } = campaign.metrics;
-      const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-      const cpc = totalClicks > 0 ? totalRevenue / totalClicks : 0;
-      
-      // Assuming 15 cents per 1000 impressions as the CPM
-      const totalSpend = (totalImpressions / 1000) * 15;
-      const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-      
-      // Calculate trends
-      let impressionTrend = 0;
-      let clickTrend = 0;
-      let revenueTrend = 0;
-      
-      if (timeSeriesData.length >= 6) {
-        const midPoint = Math.floor(timeSeriesData.length / 2);
+      // Extract metrics per date
+      const timeSeriesData = campaignRows.map(row => {
+        // Get basic metrics
+        const impressions = Number(row.IMPRESSIONS) || 0;
+        const clicks = Number(row.CLICKS) || 0;
+        const transactions = Number(row.TRANSACTIONS) || 0;
+        const revenue = Number(row.REVENUE) || 0;
         
-        const firstHalf = timeSeriesData.slice(0, midPoint);
-        const secondHalf = timeSeriesData.slice(midPoint);
+        // Calculate spend using $15 CPM
+        const spend = (impressions / 1000) * 15;
         
-        const firstHalfImpressions = firstHalf.reduce((sum, item) => sum + item.impressions, 0);
-        const secondHalfImpressions = secondHalf.reduce((sum, item) => sum + item.impressions, 0);
+        // Calculate CTR and ROAS
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        const roas = spend > 0 ? revenue / spend : 0;
         
-        const firstHalfClicks = firstHalf.reduce((sum, item) => sum + item.clicks, 0);
-        const secondHalfClicks = secondHalf.reduce((sum, item) => sum + item.clicks, 0);
-        
-        const firstHalfRevenue = firstHalf.reduce((sum, item) => sum + item.revenue, 0);
-        const secondHalfRevenue = secondHalf.reduce((sum, item) => sum + item.revenue, 0);
-        
-        impressionTrend = firstHalfImpressions > 0 
-          ? ((secondHalfImpressions - firstHalfImpressions) / firstHalfImpressions) * 100 
-          : secondHalfImpressions > 0 ? 100 : 0;
-          
-        clickTrend = firstHalfClicks > 0 
-          ? ((secondHalfClicks - firstHalfClicks) / firstHalfClicks) * 100 
-          : secondHalfClicks > 0 ? 100 : 0;
-          
-        revenueTrend = firstHalfRevenue > 0 
-          ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 100 
-          : secondHalfRevenue > 0 ? 100 : 0;
-      }
-      
-      return {
-        name: campaign.name,
-        timeSeriesData,
-        metrics: {
-          ...campaign.metrics,
+        return {
+          date: dateFormat.format(new Date(row.DATE)),
+          rawDate: new Date(row.DATE),
+          impressions,
+          clicks,
+          transactions,
+          revenue,
+          spend,
           ctr,
-          cpc,
-          roas,
-          impressionTrend,
-          clickTrend,
-          revenueTrend,
-        },
+          roas
+        };
+      });
+
+      // Calculate totals for this campaign
+      const totals = {
+        impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+        clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+        transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+        revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+        spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
       };
-    }).sort((a, b) => b.metrics.totalImpressions - a.metrics.totalImpressions);
-  }, [data, dateRange, selectedCampaigns]);
+      
+      // Calculate average CTR and ROAS (not sum)
+      const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+      const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
 
-  const formatNumber = (value: number) => value.toLocaleString();
-  const formatMoney = (value: number) => `$${value.toFixed(2)}`;
-  const formatPercent = (value: number) => `${value.toFixed(2)}%`;
+      return {
+        name: campaign,
+        timeSeriesData,
+        totals,
+        avgCtr,
+        avgRoas
+      };
+    });
+  }, [data, dateRange]);
 
-  const formatChange = (value: number) => {
-    const formatted = value.toFixed(1);
-    return value > 0 ? `+${formatted}%` : `${formatted}%`;
+  // Create a safe ID from campaign name
+  const getSafeId = (campaignName: string) => {
+    // Replace all non-alphanumeric characters with hyphens and ensure uniqueness
+    return `gradient-${campaignName.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
   };
 
-  const renderTrendIcon = (trend: number) => {
-    if (trend > 0) {
-      return <TrendingUp className="w-4 h-4" />;
-    } else if (trend < 0) {
-      return <TrendingDown className="w-4 h-4" />;
-    }
-    return null;
-  };
+  if (!data || data.length === 0) {
+    return <div className="text-center py-8">No data available</div>;
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold tracking-tight">Campaign Performance</h2>
-        <Badge 
-          variant="outline" 
-          className="cursor-pointer"
-          onClick={() => setShowDetails(!showDetails)}
-        >
-          {showDetails ? "Show Less" : "Show All Metrics"} <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-        </Badge>
-      </div>
-
-      {campaignMetrics.length > 0 ? (
-        <ScrollArea className="h-[800px] pr-4">
-          <div className="grid gap-6">
-            {campaignMetrics.map((campaign, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="flex justify-between items-start">
-                    <div className="text-base font-semibold truncate">
+    <div className="space-y-4">
+      {campaignData.map((campaign) => {
+        // Create safe IDs for each gradient
+        const impressionsId = `impressions-${getSafeId(campaign.name)}`;
+        const clicksId = `clicks-${getSafeId(campaign.name)}`;
+        const transactionsId = `transactions-${getSafeId(campaign.name)}`;
+        const revenueId = `revenue-${getSafeId(campaign.name)}`;
+        const ctrId = `ctr-${getSafeId(campaign.name)}`;
+        const roasId = `roas-${getSafeId(campaign.name)}`;
+        
+        return (
+          <Card key={campaign.name} className="overflow-hidden">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium truncate" title={campaign.name}>
                       {campaign.name}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className={`flex items-center gap-1 ${trendingColor(campaign.metrics.impressionTrend)}`}>
-                        {renderTrendIcon(campaign.metrics.impressionTrend)}
-                        <span>{formatChange(campaign.metrics.impressionTrend)}</span>
-                      </div>
-                      <HoverCard>
-                        <HoverCardTrigger>
-                          <Info className="h-4 w-4 text-muted-foreground" />
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80 text-xs">
-                          <p className="font-medium">Trend Calculation</p>
-                          <p className="mt-1">
-                            This trend compares the first half of the date range to the second half, 
-                            showing the percentage change in impressions over time.
-                          </p>
-                        </HoverCardContent>
-                      </HoverCard>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pt-0 pb-4">
-                  <div className="grid grid-cols-2 gap-6 mt-2 sm:grid-cols-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Impressions</p>
-                      <div className="mt-1 flex items-baseline">
-                        <p className="text-2xl font-semibold">{formatNumber(campaign.metrics.totalImpressions)}</p>
-                      </div>
-                      <div className="h-16 mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={campaign.timeSeriesData}>
-                            <Line
-                              type="monotone"
-                              dataKey="impressions"
-                              stroke="#4ade80"
-                              strokeWidth={2}
-                              dot={false}
-                              isAnimationActive={false}
-                            />
-                            <Tooltip formatter={(value: any) => [formatNumber(value), "Impressions"]} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Clicks</p>
-                      <div className="mt-1 flex items-baseline">
-                        <p className="text-2xl font-semibold">{formatNumber(campaign.metrics.totalClicks)}</p>
-                        <p className={`ml-2 text-sm ${trendingColor(campaign.metrics.clickTrend)}`}>
-                          {renderTrendIcon(campaign.metrics.clickTrend)}
-                          <span className="ml-1 inline-block">{formatChange(campaign.metrics.clickTrend)}</span>
-                        </p>
-                      </div>
-                      <div className="h-16 mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={campaign.timeSeriesData}>
-                            <Line
-                              type="monotone"
-                              dataKey="clicks"
-                              stroke="#f59e0b"
-                              strokeWidth={2}
-                              dot={false}
-                              isAnimationActive={false}
-                            />
-                            <Tooltip formatter={(value: any) => [formatNumber(value), "Clicks"]} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                      <div className="mt-1 flex items-baseline">
-                        <p className="text-2xl font-semibold">${formatNumber(Math.round(campaign.metrics.totalRevenue))}</p>
-                        <p className={`ml-2 text-sm ${trendingColor(campaign.metrics.revenueTrend)}`}>
-                          {renderTrendIcon(campaign.metrics.revenueTrend)}
-                          <span className="ml-1 inline-block">{formatChange(campaign.metrics.revenueTrend)}</span>
-                        </p>
-                      </div>
-                      <div className="h-16 mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={campaign.timeSeriesData}>
-                            <Line
-                              type="monotone"
-                              dataKey="revenue"
-                              stroke="#ef4444"
-                              strokeWidth={2}
-                              dot={false}
-                              isAnimationActive={false}
-                            />
-                            <Tooltip formatter={(value: any) => [`$${formatNumber(Math.round(value))}`, "Revenue"]} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">CTR</p>
-                      <div className="mt-1 flex items-baseline">
-                        <p className="text-2xl font-semibold">{campaign.metrics.ctr.toFixed(2)}%</p>
-                      </div>
-                      <div className="h-16 mt-2 flex items-end">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">ROAS</span>
-                            <span className="text-xs font-medium">{campaign.metrics.roas.toFixed(2)}x</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${campaign.metrics.roas >= 1 ? 'bg-green-500' : campaign.metrics.roas >= 0.5 ? 'bg-amber-500' : 'bg-red-500'}`}
-                              style={{ width: `${Math.min(campaign.metrics.roas * 50, 100)}%` }}
-                            />
-                          </div>
-                        </div>
+                    </h3>
+                    <div className="flex items-center mt-1">
+                      <p className="text-sm text-muted-foreground mr-3">
+                        {campaign.timeSeriesData.length} days of data
+                      </p>
+                      <div className="flex items-center text-sm font-medium">
+                        <DollarSign className="h-3.5 w-3.5 text-muted-foreground mr-1" />
+                        <span>Total Spend: ${formatNumber(campaign.totals.spend, { abbreviate: false })}</span>
                       </div>
                     </div>
                   </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 border-t pt-4">
+                  {/* Impressions */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-sky-100 p-2 rounded-full">
+                      <Eye className="h-4 w-4 text-sky-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions, { abbreviate: false })}</p>
+                      <p className="text-xs text-muted-foreground">Impressions</p>
+                    </div>
+                  </div>
 
-                  {showDetails && (
-                    <Accordion type="single" collapsible className="w-full mt-4">
-                      <AccordionItem value="details" className="border-t pt-2">
-                        <AccordionTrigger className="text-sm">Detailed Metrics</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mt-2">
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Cost Per Click (CPC)</p>
-                              <p className="text-sm font-medium mt-1">{formatMoney(campaign.metrics.cpc)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Estimated Spend</p>
-                              <p className="text-sm font-medium mt-1">{formatMoney((campaign.metrics.totalImpressions / 1000) * 15)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Return on Ad Spend</p>
-                              <p className="text-sm font-medium mt-1">{campaign.metrics.roas.toFixed(2)}x</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Revenue per Click</p>
-                              <p className="text-sm font-medium mt-1">
-                                {campaign.metrics.totalClicks > 0 
-                                  ? formatMoney(campaign.metrics.totalRevenue / campaign.metrics.totalClicks) 
-                                  : '$0.00'}
-                              </p>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
-      ) : (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No campaign data available</p>
-        </div>
-      )}
+                  {/* Clicks */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-violet-100 p-2 rounded-full">
+                      <MousePointer className="h-4 w-4 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks, { abbreviate: false })}</p>
+                      <p className="text-xs text-muted-foreground">Clicks</p>
+                    </div>
+                  </div>
+
+                  {/* CTR */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-indigo-100 p-2 rounded-full">
+                      <Percent className="h-4 w-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{formatNumber(campaign.avgCtr, { decimals: 2, suffix: '%' })}</p>
+                      <p className="text-xs text-muted-foreground">CTR</p>
+                    </div>
+                  </div>
+
+                  {/* Transactions */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-orange-100 p-2 rounded-full">
+                      <ShoppingCart className="h-4 w-4 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions, { abbreviate: false })}</p>
+                      <p className="text-xs text-muted-foreground">Transactions</p>
+                    </div>
+                  </div>
+
+                  {/* Revenue */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-green-100 p-2 rounded-full">
+                      <DollarSign className="h-4 w-4 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue, { abbreviate: false })}</p>
+                      <p className="text-xs text-muted-foreground">Revenue</p>
+                    </div>
+                  </div>
+
+                  {/* ROAS */}
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-amber-100 p-2 rounded-full">
+                      <TrendingUp className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{formatNumber(campaign.avgRoas, { decimals: 2, suffix: 'x' })}</p>
+                      <p className="text-xs text-muted-foreground">ROAS</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 h-24">
+                  {/* Impressions chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Impressions']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={impressionsId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="impressions"
+                          stroke="#0EA5E9"
+                          strokeWidth={1.5}
+                          fill={`url(#${impressionsId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Clicks chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Clicks']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={clicksId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="clicks"
+                          stroke="#8B5CF6"
+                          strokeWidth={1.5}
+                          fill={`url(#${clicksId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* CTR chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: '%' }), 'CTR']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={ctrId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="ctr"
+                          stroke="#6366F1"
+                          strokeWidth={1.5}
+                          fill={`url(#${ctrId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Transactions chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Transactions']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={transactionsId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="transactions"
+                          stroke="#F97316"
+                          strokeWidth={1.5}
+                          fill={`url(#${transactionsId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Revenue chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => ['$' + formatNumber(value, { abbreviate: false }), 'Revenue']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={revenueId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#10B981"
+                          strokeWidth={1.5}
+                          fill={`url(#${revenueId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* ROAS chart */}
+                  <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={campaign.timeSeriesData}>
+                        <Tooltip 
+                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: 'x' }), 'ROAS']}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <defs>
+                          <linearGradient id={roasId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="roas"
+                          stroke="#F59E0B"
+                          strokeWidth={1.5}
+                          fill={`url(#${roasId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -18,13 +17,9 @@ import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MultiSelect, Option } from "./MultiSelect";
 
 interface DashboardProps {
   data: any[];
-  allCampaigns?: string[];
-  selectedCampaigns?: string[];
-  onCampaignsChange?: (selected: string[]) => void;
 }
 
 interface WeeklyData {
@@ -45,115 +40,7 @@ interface WeeklyAggregation {
 
 type AnomalyPeriod = "daily" | "weekly";
 
-// MetricCard component to display anomalies
-interface MetricCardProps {
-  title: string;
-  anomalies: any[];
-  metric: string;
-  anomalyPeriod: AnomalyPeriod;
-}
-
-const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
-  const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-
-  const handleSelectAnomaly = (anomaly: any) => {
-    setSelectedAnomaly(anomaly);
-    setShowDetails(true);
-  };
-
-  const formatValue = (value: number): string => {
-    if (metric === "REVENUE") {
-      return `$${Math.round(value).toLocaleString()}`;
-    }
-    return value.toLocaleString();
-  };
-
-  const getDisplayDate = (anomaly: any): string => {
-    if (anomaly.periodType === "weekly") {
-      return anomaly.DATE;
-    }
-    try {
-      const date = new Date(anomaly.DATE);
-      return date.toLocaleDateString();
-    } catch (err) {
-      return anomaly.DATE || "Unknown date";
-    }
-  };
-
-  return (
-    <Card className="p-4 overflow-hidden">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-medium">{title}</h3>
-        <div className="text-xs text-muted-foreground">
-          {anomalies.length} found
-        </div>
-      </div>
-      {anomalies.length > 0 ? (
-        <ScrollArea className="h-[220px]">
-          <div className="space-y-3 pr-4">
-            {anomalies.map((anomaly, idx) => (
-              <div
-                key={`${anomaly.campaign}-${anomaly.DATE}-${idx}`}
-                className="border rounded-md p-3 cursor-pointer hover:bg-slate-50 transition-colors"
-                onClick={() => handleSelectAnomaly(anomaly)}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium text-sm truncate max-w-[180px]">
-                      {anomaly.campaign}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {getDisplayDate(anomaly)}
-                    </div>
-                  </div>
-                  <div className={`flex items-center ${getColorClasses(anomaly.deviation)}`}>
-                    {anomaly.deviation > 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-                    <span className="text-xs font-medium">
-                      {anomaly.deviation > 0 ? "+" : ""}
-                      {Math.round(anomaly.deviation)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3 text-amber-500" />
-                    <span className="text-xs">
-                      Expected: {formatValue(anomaly.mean)}
-                    </span>
-                  </div>
-                  <span className="text-xs font-medium">
-                    Actual: {formatValue(anomaly.actualValue)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      ) : (
-        <div className="h-[220px] flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">No anomalies detected</p>
-        </div>
-      )}
-      
-      {showDetails && selectedAnomaly && (
-        <AnomalyDetails
-          open={showDetails}
-          onClose={() => setShowDetails(false)}
-          metric={metric}
-          anomalies={[selectedAnomaly]}
-        />
-      )}
-    </Card>
-  );
-};
-
-const Dashboard = ({ 
-  data,
-  allCampaigns = [],
-  selectedCampaigns = [],
-  onCampaignsChange
-}: DashboardProps) => {
+const Dashboard = ({ data }: DashboardProps) => {
   const [selectedMetricsCampaign, setSelectedMetricsCampaign] = useState<string>("all");
   const [selectedRevenueCampaign, setSelectedRevenueCampaign] = useState<string>("all");
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
@@ -161,15 +48,8 @@ const Dashboard = ({
 
   const campaigns = useMemo(() => {
     if (!data || !data.length) return [];
-    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean).sort();
+    return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
   }, [data]);
-
-  const campaignOptions: Option[] = useMemo(() => {
-    return campaigns.map(campaign => ({
-      value: campaign,
-      label: campaign
-    }));
-  }, [campaigns]);
 
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
@@ -666,7 +546,7 @@ const Dashboard = ({
       )}
       
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium">Anomaly period:</span>
@@ -703,29 +583,19 @@ const Dashboard = ({
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          {onCampaignsChange && campaignOptions.length > 0 ? (
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={onCampaignsChange}
-              placeholder="Select campaigns"
-              className="w-[250px]"
-            />
-          ) : (
-            <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={selectedMetricsCampaign} onValueChange={setSelectedMetricsCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="h-[400px]">
           {metricsData.length > 0 ? (
@@ -783,29 +653,19 @@ const Dashboard = ({
       </Card>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          {onCampaignsChange && campaignOptions.length > 0 ? (
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={onCampaignsChange}
-              placeholder="Select campaigns"
-              className="w-[250px]"
-            />
-          ) : (
-            <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={selectedRevenueCampaign} onValueChange={setSelectedRevenueCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="h-[400px]">
           {revenueData.length > 0 ? (
@@ -866,34 +726,24 @@ const Dashboard = ({
       </Card>
 
       <Card className="p-6">
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
             <p className="text-sm text-muted-foreground mt-1">
               {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
             </p>
           </div>
-          {onCampaignsChange && campaignOptions.length > 0 ? (
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={onCampaignsChange}
-              placeholder="Select campaigns"
-              className="w-[250px]"
-            />
-          ) : (
-            <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="Filter by campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Campaigns</SelectItem>
+              {campaigns.map(campaign => (
+                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {weeklyData.length >= 1 ? (
@@ -1045,12 +895,76 @@ const Dashboard = ({
             </div>
           </ScrollArea>
         ) : (
-          <div className="flex items-center justify-center h-[300px]">
-            <p className="text-muted-foreground">No weekly data available</p>
-          </div>
+          <p className="text-center text-muted-foreground">
+            Not enough data for period comparison
+          </p>
         )}
       </Card>
     </div>
+  );
+};
+
+const MetricCard = ({
+  title,
+  anomalies,
+  metric,
+  anomalyPeriod
+}: {
+  title: string;
+  anomalies: any[];
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}) => {
+  const topAnomalyColor = anomalies.length > 0 ? getColorClasses(anomalies[0].deviation) : '';
+  
+  return (
+    <Card className="p-6 transition-all duration-300 hover:shadow-lg">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-medium text-muted-foreground">{title}</h3>
+          <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
+        </div>
+        {anomalies.length > 0 && (
+          <div className={`p-2 rounded-full ${topAnomalyColor}`}>
+            <AlertTriangle className={`w-5 h-5 ${topAnomalyColor.split(' ').find(c => c.startsWith('text-'))}`} />
+          </div>
+        )}
+      </div>
+      {anomalies.length > 0 && (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              <span>Top anomalies:</span>
+            </div>
+            <AnomalyDetails 
+              anomalies={anomalies} 
+              metric={metric} 
+              anomalyPeriod={anomalyPeriod}
+            />
+          </div>
+          {anomalies.slice(0, 2).map((anomaly, idx) => {
+            const colorClasses = getColorClasses(anomaly.deviation);
+            return (
+              <div key={idx} className="text-sm space-y-1">
+                <div className="font-medium">{anomaly.campaign}</div>
+                <div className="text-muted-foreground">
+                  {anomalyPeriod === "weekly" ? "Week of: " : "Date: "}{anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
+                  <span className={colorClasses.split(' ').find(c => c.startsWith('text-'))}>
+                    {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
+                  </span>
+                </div>
+                {anomaly.comparedTo && (
+                  <div className="text-xs text-muted-foreground">
+                    Compared to: {anomaly.comparedTo}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
   );
 };
 
