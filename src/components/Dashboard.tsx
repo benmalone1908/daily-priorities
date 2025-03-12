@@ -989,16 +989,38 @@ const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps
         {topAnomalies.length > 0 ? (
           <div className="p-0">
             {topAnomalies.map((anomaly, index) => (
-              <AnomalyDetails 
-                key={index}
-                anomaly={anomaly}
-                metric={metric}
-                formatValue={formatValue}
-              />
+              <div key={index} className="border-b last:border-b-0">
+                <div className="p-3 border-l-4" style={{ borderLeftColor: anomaly.deviation > 0 ? '#ef4444' : '#3b82f6' }}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{anomaly.campaign}</p>
+                      <p className="text-xs text-muted-foreground">{anomaly.DATE}</p>
+                    </div>
+                    <div className={getColorClasses(anomaly.deviation)}>
+                      {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Actual: </span>
+                      <span className="font-medium">{formatValue(anomaly.actualValue)}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Expected: </span>
+                      <span className="font-medium">{formatValue(anomaly.mean)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ))}
             {anomalies.length > 5 && (
               <div className="px-4 py-2 border-t text-xs text-muted-foreground">
                 + {anomalies.length - 5} more anomalies not shown
+                <AnomalyDetails 
+                  anomalies={anomalies.filter(a => a.periodType === anomalyPeriod)} 
+                  metric={metric}
+                  anomalyPeriod={anomalyPeriod}
+                />
               </div>
             )}
           </div>
