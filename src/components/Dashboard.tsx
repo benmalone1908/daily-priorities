@@ -51,6 +51,90 @@ interface WeeklyAggregation {
 
 type AnomalyPeriod = "daily" | "weekly";
 
+// MetricCard component definition
+const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: { 
+  title: string; 
+  anomalies: any[]; 
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedAnomaly, setSelectedAnomaly] = useState<any>(null);
+
+  const handleAnomalyClick = (anomaly: any) => {
+    setSelectedAnomaly(anomaly);
+    setShowDetails(true);
+  };
+
+  return (
+    <Card className="p-4 relative">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="font-medium text-sm">{title}</h4>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">{anomalies.length} found</span>
+          <AlertTriangle 
+            className={`h-4 w-4 ${anomalies.length > 0 ? 'text-yellow-500' : 'text-muted-foreground'}`} 
+          />
+        </div>
+      </div>
+      
+      {anomalies.length > 0 ? (
+        <div className="space-y-2 max-h-[300px] overflow-auto pr-1">
+          {anomalies.slice(0, 5).map((anomaly, index) => {
+            const deviation = anomaly.deviation;
+            const colorClasses = getColorClasses(deviation);
+            const isIncrease = deviation > 0;
+            const absDeviation = Math.abs(deviation).toFixed(1);
+            
+            return (
+              <div
+                key={`${anomaly.campaign}-${index}-${anomaly.periodType}`}
+                className="p-2 border rounded-md cursor-pointer hover:bg-accent transition-colors"
+                onClick={() => handleAnomalyClick(anomaly)}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <div className="text-xs font-medium truncate max-w-[70%]">
+                    {anomaly.campaign}
+                  </div>
+                  <div className={`text-xs font-bold flex items-center gap-1 ${colorClasses}`}>
+                    {isIncrease ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {absDeviation}%
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {anomaly.periodType === "daily" ? anomaly.DATE : `Period: ${anomaly.DATE}`}
+                </div>
+                <div className="text-xs flex justify-between mt-1">
+                  <span>Expected: {metric === "REVENUE" ? `$${Math.round(anomaly.mean)}` : Math.round(anomaly.mean).toLocaleString()}</span>
+                  <span>Actual: {metric === "REVENUE" ? `$${Math.round(anomaly.actualValue)}` : Math.round(anomaly.actualValue).toLocaleString()}</span>
+                </div>
+              </div>
+            );
+          })}
+          
+          {anomalies.length > 5 && (
+            <div className="text-xs text-center text-muted-foreground py-1">
+              + {anomalies.length - 5} more anomalies
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-[100px] text-sm text-muted-foreground">
+          No {anomalyPeriod} anomalies detected
+        </div>
+      )}
+      
+      {showDetails && selectedAnomaly && (
+        <AnomalyDetails
+          anomaly={selectedAnomaly}
+          metric={metric}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
+    </Card>
+  );
+};
+
 const Dashboard = ({ 
   data,
   metricsData,
@@ -823,103 +907,4 @@ const Dashboard = ({
         <div className="h-[400px]">
           {processedRevenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={processedRevenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="DATE" 
-                  style={axisStyle}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  orientation="left"
-                  stroke="#4ade80"
-                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                  tickFormatter={formatNumber}
-                  style={axisStyle}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#ef4444"
-                  label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
-                  tickFormatter={formatRevenue}
-                  style={axisStyle}
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => {
-                    if (name === "Revenue") return [formatRevenue(value), name];
-                    return [formatNumber(value), name];
-                  }}
-                  contentStyle={{ fontSize: '0.75rem' }}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="IMPRESSIONS"
-                  fill="#4ade80"
-                  opacity={0.8}
-                  name="Impressions"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="REVENUE"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Revenue"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No revenue data available for the selected filters</p>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium mr-1">Filter by:</span>
-              <div className="flex items-center gap-2">
-                <MultiSelect
-                  options={advertiserOptions}
-                  selected={selectedWeeklyAdvertisers}
-                  onChange={handleWeeklyAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-                
-                <Select 
-                  value={selectedWeeklyCampaign} 
-                  onValueChange={setSelectedWeeklyCampaign}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Campaign" />
-                  </SelectTrigger>
-                  <SelectContent className="w-[400px]">
-                    {filteredWeeklyCampaignOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {weeklyData.length >= 1 ? (
-          <ScrollArea className="h-[460px]">
-            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium
+              <ComposedChart data={processed
