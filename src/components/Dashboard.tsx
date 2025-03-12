@@ -730,6 +730,7 @@ const Dashboard = ({
                   onChange={onMetricsCampaignsChange}
                   placeholder="Campaign"
                   className="w-[200px]"
+                  isWide={true}
                 />
               )}
             </div>
@@ -1140,4 +1141,3 @@ const MetricCard = ({
 };
 
 export default Dashboard;
-
