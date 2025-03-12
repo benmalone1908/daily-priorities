@@ -105,7 +105,7 @@ export function MultiSelect({
               </div>
               <span className={cn(
                 "whitespace-nowrap overflow-hidden text-ellipsis pr-2",
-                isWide ? "max-w-[300px]" : "truncate"
+                isWide ? "max-w-[450px]" : "truncate"
               )}>
                 {option.label}
               </span>
