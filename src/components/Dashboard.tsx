@@ -148,13 +148,11 @@ const Dashboard = ({
   sortedAdvertiserOptions = []
 }: DashboardProps) => {
   const filteredMetricsData = useMemo(() => {
-    // Filter logic for metrics data
-    return metricsData; // Placeholder for actual filtering logic
+    return metricsData;
   }, [metricsData]);
 
   const filteredRevenueData = useMemo(() => {
-    // Filter logic for revenue data
-    return revenueData; // Placeholder for actual filtering logic
+    return revenueData;
   }, [revenueData]);
 
   return (
