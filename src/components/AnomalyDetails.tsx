@@ -1,18 +1,27 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getColorClasses } from "@/utils/anomalyColors";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AnomalyDetailsProps {
   anomalies: any[];
   metric: string;
   anomalyPeriod: "daily" | "weekly";
+  initialIndex?: number;
+  onClose?: () => void;
 }
 
-const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProps) => {
+const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClose }: AnomalyDetailsProps) => {
   const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialIndex !== undefined && anomalies && anomalies[initialIndex]) {
+      setSelectedAnomaly(anomalies[initialIndex]);
+      setDialogOpen(true);
+    }
+  }, [initialIndex, anomalies]);
 
   if (!anomalies || anomalies.length === 0) {
     return null;
@@ -20,10 +29,22 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
 
   const openDetails = (anomaly: any) => {
     setSelectedAnomaly(anomaly);
+    setDialogOpen(true);
   };
 
   const closeDetails = () => {
     setSelectedAnomaly(null);
+    setDialogOpen(false);
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open && onClose) {
+      onClose();
+    }
   };
 
   const renderAnomalyDetail = (anomaly: any) => {
@@ -198,7 +219,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod }: AnomalyDetailsProp
       </Dialog>
 
       {selectedAnomaly && (
-        <Dialog open={!!selectedAnomaly} onOpenChange={(open) => !open && closeDetails()}>
+        <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogContent 
             className="max-h-[80vh] overflow-y-auto text-xs" 
             style={{ 
