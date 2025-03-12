@@ -944,6 +944,181 @@ const Dashboard = ({
             </div>
           </div>
         </div>
+        
+        {weeklyData.length > 0 ? (
+          <div className="space-y-8">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {weeklyData.length >= 2 && (
+                <>
+                  <Card className="overflow-hidden">
+                    <div className="p-4 border-b">
+                      <h4 className="font-medium">Impressions</h4>
+                    </div>
+                    <div className="p-4">
+                      {(() => {
+                        const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
+                        return (
+                          <>
+                            <div className="text-2xl font-bold">{formatNumber(comparison.currentValue)}</div>
+                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
+                              {comparison.increased ? (
+                                <TrendingUp className="mr-1 h-4 w-4" />
+                              ) : (
+                                <TrendingDown className="mr-1 h-4 w-4" />
+                              )}
+                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </Card>
+
+                  <Card className="overflow-hidden">
+                    <div className="p-4 border-b">
+                      <h4 className="font-medium">Clicks</h4>
+                    </div>
+                    <div className="p-4">
+                      {(() => {
+                        const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
+                        return (
+                          <>
+                            <div className="text-2xl font-bold">{formatNumber(comparison.currentValue)}</div>
+                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
+                              {comparison.increased ? (
+                                <TrendingUp className="mr-1 h-4 w-4" />
+                              ) : (
+                                <TrendingDown className="mr-1 h-4 w-4" />
+                              )}
+                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </Card>
+
+                  <Card className="overflow-hidden">
+                    <div className="p-4 border-b">
+                      <h4 className="font-medium">Revenue</h4>
+                    </div>
+                    <div className="p-4">
+                      {(() => {
+                        const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
+                        return (
+                          <>
+                            <div className="text-2xl font-bold">{formatRevenue(comparison.currentValue)}</div>
+                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
+                              {comparison.increased ? (
+                                <TrendingUp className="mr-1 h-4 w-4" />
+                              ) : (
+                                <TrendingDown className="mr-1 h-4 w-4" />
+                              )}
+                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </Card>
+
+                  <Card className="overflow-hidden">
+                    <div className="p-4 border-b">
+                      <h4 className="font-medium">ROAS</h4>
+                    </div>
+                    <div className="p-4">
+                      {(() => {
+                        const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
+                        return (
+                          <>
+                            <div className="text-2xl font-bold">{formatROAS(comparison.currentValue)}</div>
+                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
+                              {comparison.increased ? (
+                                <TrendingUp className="mr-1 h-4 w-4" />
+                              ) : (
+                                <TrendingDown className="mr-1 h-4 w-4" />
+                              )}
+                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </Card>
+                </>
+              )}
+            </div>
+
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="periodStart"
+                    tickFormatter={formatDate}
+                    style={axisStyle}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    orientation="left"
+                    stroke="#4ade80"
+                    label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                    tickFormatter={formatNumber}
+                    style={axisStyle}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#ef4444"
+                    label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
+                    tickFormatter={formatRevenue}
+                    style={axisStyle}
+                  />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => {
+                      if (name === "Revenue") return [formatRevenue(value), name];
+                      if (name === "ROAS") return [formatROAS(value), name];
+                      return [formatNumber(value), name];
+                    }}
+                    labelFormatter={(label) => formatDate(label)}
+                    contentStyle={{ fontSize: '0.75rem' }}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="IMPRESSIONS"
+                    stroke="#4ade80"
+                    strokeWidth={2}
+                    dot={true}
+                    name="Impressions"
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="CLICKS"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={true}
+                    name="Clicks"
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="REVENUE"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={true}
+                    name="Revenue"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">No data available for the selected period</p>
+          </div>
+        )}
       </Card>
     </div>
   );
