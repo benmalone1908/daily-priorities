@@ -1,4 +1,5 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -159,8 +160,8 @@ const Dashboard = ({
     <div>
       <h2 className="text-lg font-bold">Dashboard</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MetricCard title="Metrics" anomalies={filteredMetricsData} metric="METRICS" anomalyPeriod="weekly" />
-        <MetricCard title="Revenue" anomalies={filteredRevenueData} metric="REVENUE" anomalyPeriod="weekly" />
+        <MetricCard title="Metrics" anomalies={filteredMetricsData || []} metric="METRICS" anomalyPeriod="weekly" />
+        <MetricCard title="Revenue" anomalies={filteredRevenueData || []} metric="REVENUE" anomalyPeriod="weekly" />
       </div>
     </div>
   );
