@@ -1,10 +1,9 @@
-
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DateRange } from "react-day-picker";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
-import { MultiSelect } from "./MultiSelect";
+import { MultiSelect, Option } from "./MultiSelect";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -39,14 +38,14 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean).sort();
   }, [data]);
 
-  const advertiserOptions = useMemo(() => {
+  const advertiserOptions: Option[] = useMemo(() => {
     return advertisers.map(advertiser => ({
       value: advertiser,
       label: advertiser
     }));
   }, [advertisers]);
 
-  const campaignOptions = useMemo(() => {
+  const campaignOptions: Option[] = useMemo(() => {
     if (!selectedAdvertisers.length) {
       return campaigns.map(campaign => ({
         value: campaign,
