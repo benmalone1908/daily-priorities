@@ -94,7 +94,7 @@ export function MultiSelect({
                   <Square className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
-              <span>
+              <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
                 {option.label}
               </span>
             </div>
