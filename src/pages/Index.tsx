@@ -15,6 +15,7 @@ const Index = () => {
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
+  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleDataLoaded = (uploadedData: any[]) => {
@@ -144,9 +145,13 @@ const Index = () => {
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
   };
+  
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+  };
 
   // Calculate filtered data for metrics and revenue charts
-  const metricsData = getFilteredDataByCampaignsAndAdvertisers(selectedMetricsCampaigns, []);
+  const metricsData = getFilteredDataByCampaignsAndAdvertisers(selectedMetricsCampaigns, selectedMetricsAdvertisers);
   const revenueData = getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers);
 
   const getDateRangeDisplayText = () => {
@@ -224,9 +229,11 @@ const Index = () => {
                 selectedMetricsCampaigns={selectedMetricsCampaigns}
                 selectedRevenueCampaigns={selectedRevenueCampaigns}
                 selectedRevenueAdvertisers={selectedRevenueAdvertisers}
+                selectedMetricsAdvertisers={selectedMetricsAdvertisers}
                 onMetricsCampaignsChange={handleMetricsCampaignsChange}
                 onRevenueCampaignsChange={handleRevenueCampaignsChange}
                 onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+                onMetricsAdvertisersChange={handleMetricsAdvertisersChange}
               />
             </TabsContent>
             <TabsContent value="sparks">
