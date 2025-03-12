@@ -168,5 +168,4 @@ const Dashboard = ({
   );
 };
 
-export const Dashboard = Dashboard;
 export default Dashboard;
