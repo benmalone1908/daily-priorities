@@ -11,7 +11,7 @@ import {
   Bar,
   ComposedChart,
 } from "recharts";
-import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Filter } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
@@ -61,6 +61,8 @@ const Dashboard = ({
   onRevenueAdvertisersChange
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
+  const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
+  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
@@ -100,6 +102,76 @@ const Dashboard = ({
       label: advertiser
     }));
   }, [advertisers]);
+
+  const filteredMetricsCampaignOptions = useMemo(() => {
+    if (!selectedMetricsAdvertisers.length) return campaignOptions;
+    
+    return campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedMetricsAdvertisers.includes(advertiser);
+    });
+  }, [campaignOptions, selectedMetricsAdvertisers]);
+
+  const filteredRevenueCampaignOptions = useMemo(() => {
+    if (!selectedRevenueAdvertisers.length) return campaignOptions;
+    
+    return campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedRevenueAdvertisers.includes(advertiser);
+    });
+  }, [campaignOptions, selectedRevenueAdvertisers]);
+
+  const filteredWeeklyCampaignOptions = useMemo(() => {
+    if (!selectedWeeklyAdvertisers.length) {
+      return [
+        { value: "all", label: "All Campaigns" },
+        ...campaignOptions
+      ];
+    }
+    
+    const filteredCampaigns = campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedWeeklyAdvertisers.includes(advertiser);
+    });
+    
+    return [
+      { value: "all", label: "All Campaigns" },
+      ...filteredCampaigns
+    ];
+  }, [campaignOptions, selectedWeeklyAdvertisers]);
+
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+    
+    if (selected.length > 0 && onMetricsCampaignsChange) {
+      const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
+      });
+      
+      onMetricsCampaignsChange(validCampaigns);
+    }
+  };
+
+  const handleWeeklyAdvertisersChange = (selected: string[]) => {
+    setSelectedWeeklyAdvertisers(selected);
+    
+    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
+      const match = selectedWeeklyCampaign.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      
+      if (!selected.includes(advertiser)) {
+        setSelectedWeeklyCampaign("all");
+      }
+    }
+  };
 
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
@@ -348,16 +420,27 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string) => {
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[]) => {
     try {
       if (!data || !data.length) {
         console.log("No data available");
         return [];
       }
 
-      const filteredData = selectedCampaign === "all" 
-        ? data 
-        : data.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+      let filteredData = data;
+      
+      if (selectedAdvertisers.length > 0) {
+        filteredData = data.filter(row => {
+          const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+          const match = campaignName.match(/SM:\s+([^-]+)/);
+          const advertiser = match ? match[1].trim() : "";
+          return selectedAdvertisers.includes(advertiser);
+        });
+      }
+      
+      if (selectedCampaign !== "all") {
+        filteredData = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+      }
 
       if (!filteredData.length) {
         console.log("No filtered data available");
@@ -418,8 +501,6 @@ const Dashboard = ({
           ROAS: 0,
           count: 0
         });
-        
-        console.log(`Period ${i+1}: ${periodStartStr} to ${periodEndStr}`);
       }
 
       filteredData.forEach(row => {
@@ -452,12 +533,6 @@ const Dashboard = ({
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
 
-      console.log("Weekly periods with metrics:");
-      periods.forEach((p, i) => {
-        console.log(`Period ${i+1}: ${p.periodStart} - ${p.periodEnd}`);
-        console.log(`  Impressions: ${p.IMPRESSIONS}, Clicks: ${p.CLICKS}, Revenue: ${p.REVENUE}`);
-      });
-
       return periods;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
@@ -465,7 +540,9 @@ const Dashboard = ({
     }
   };
 
-  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign), [data, selectedWeeklyCampaign]);
+  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
+    [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
+    
   const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
   const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
 
@@ -627,29 +704,30 @@ const Dashboard = ({
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-          {onMetricsCampaignsChange && campaignOptions.length > 0 ? (
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedMetricsCampaigns}
-              onChange={onMetricsCampaignsChange}
-              placeholder="Select campaigns"
-              className="w-[250px]"
-            />
-          ) : (
-            <Select value="all">
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium mr-1">Filter by:</span>
+            <div className="flex items-center gap-2">
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedMetricsAdvertisers}
+                onChange={handleMetricsAdvertisersChange}
+                placeholder="Advertiser"
+                className="w-[200px]"
+              />
+              
+              {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
+                <MultiSelect
+                  options={filteredMetricsCampaignOptions}
+                  selected={selectedMetricsCampaigns}
+                  onChange={onMetricsCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                />
+              )}
+            </div>
+          </div>
         </div>
         <div className="h-[400px]">
           {processedMetricsData.length > 0 ? (
@@ -700,47 +778,38 @@ const Dashboard = ({
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No data available for the selected campaign</p>
+              <p className="text-muted-foreground">No data available for the selected filters</p>
             </div>
           )}
         </div>
       </Card>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+        <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          <div className="flex items-center gap-4">
-            {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
-              <MultiSelect
-                options={advertiserOptions}
-                selected={selectedRevenueAdvertisers}
-                onChange={onRevenueAdvertisersChange}
-                placeholder="Filter by advertiser"
-                className="w-[250px]"
-              />
-            )}
-            
-            {onRevenueCampaignsChange && campaignOptions.length > 0 ? (
-              <MultiSelect
-                options={campaignOptions}
-                selected={selectedRevenueCampaigns}
-                onChange={onRevenueCampaignsChange}
-                placeholder="Select campaigns"
-                className="w-[250px]"
-              />
-            ) : (
-              <Select value="all">
-                <SelectTrigger className="w-[280px]">
-                  <SelectValue placeholder="Filter by campaign" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Campaigns</SelectItem>
-                  {campaigns.map(campaign => (
-                    <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium mr-1">Filter by:</span>
+            <div className="flex items-center gap-2">
+              {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedRevenueAdvertisers}
+                  onChange={onRevenueAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+              )}
+              
+              {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
+                <MultiSelect
+                  options={filteredRevenueCampaignOptions}
+                  selected={selectedRevenueCampaigns}
+                  onChange={onRevenueCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                />
+              )}
+            </div>
           </div>
         </div>
         <div className="h-[400px]">
@@ -802,24 +871,43 @@ const Dashboard = ({
       </Card>
 
       <Card className="p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
-            </p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium mr-1">Filter by:</span>
+              <div className="flex items-center gap-2">
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedWeeklyAdvertisers}
+                  onChange={handleWeeklyAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+                
+                <Select 
+                  value={selectedWeeklyCampaign} 
+                  onValueChange={setSelectedWeeklyCampaign}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredWeeklyCampaignOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-          <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Filter by campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Campaigns</SelectItem>
-              {campaigns.map(campaign => (
-                <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {weeklyData.length >= 1 ? (
