@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -922,116 +921,78 @@ const Dashboard = ({
 
         {weeklyData.length >= 1 ? (
           <ScrollArea className="h-[460px]">
-            <div className="pb-4 pr-4">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-2 text-sm font-medium">Period</th>
-                    <th className="text-right py-2 px-2 text-sm font-medium">Impressions</th>
-                    <th className="text-right py-2 px-2 text-sm font-medium">Clicks</th>
-                    <th className="text-right py-2 px-2 text-sm font-medium">CTR</th>
-                    <th className="text-right py-2 px-2 text-sm font-medium">Revenue</th>
-                    <th className="text-right py-2 px-2 text-sm font-medium">ROAS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeklyData.map((period, index) => {
-                    const previousPeriod = weeklyData[index + 1];
-                    
-                    // Impressions comparison
-                    const impressionsComp = getMetricComparison('IMPRESSIONS', period, previousPeriod);
-                    // Clicks comparison
-                    const clicksComp = getMetricComparison('CLICKS', period, previousPeriod);
-                    // CTR calculation and comparison
-                    const currentCTR = period.CLICKS / period.IMPRESSIONS * 100 || 0;
-                    const previousCTR = previousPeriod 
-                      ? previousPeriod.CLICKS / previousPeriod.IMPRESSIONS * 100 || 0
-                      : 0;
-                    const ctrPercentChange = previousCTR 
-                      ? ((currentCTR - previousCTR) / previousCTR) * 100
-                      : currentCTR > 0 ? 100 : 0;
-                    const ctrColorClass = getColorClasses(ctrPercentChange).split(' ').find(c => c.startsWith('text-')) || '';
-                    
-                    // Revenue comparison
-                    const revenueComp = getMetricComparison('REVENUE', period, previousPeriod);
-                    // ROAS comparison
-                    const roasComp = getMetricComparison('ROAS', period, previousPeriod);
-                    
-                    return (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="text-left py-2 px-2 whitespace-nowrap font-medium text-sm">
-                          {formatDate(period.periodStart)} to {formatDate(period.periodEnd)}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          <div className="text-sm">{formatNumber(impressionsComp.currentValue)}</div>
-                          {previousPeriod && (
-                            <div className={`text-xs flex items-center justify-end ${impressionsComp.colorClass}`}>
-                              {impressionsComp.increased ? (
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-3 w-3" />
-                              )}
-                              {Math.abs(impressionsComp.percentChange).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          <div className="text-sm">{formatNumber(clicksComp.currentValue)}</div>
-                          {previousPeriod && (
-                            <div className={`text-xs flex items-center justify-end ${clicksComp.colorClass}`}>
-                              {clicksComp.increased ? (
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-3 w-3" />
-                              )}
-                              {Math.abs(clicksComp.percentChange).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          <div className="text-sm">{currentCTR.toFixed(2)}%</div>
-                          {previousPeriod && (
-                            <div className={`text-xs flex items-center justify-end ${ctrColorClass}`}>
-                              {ctrPercentChange > 0 ? (
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-3 w-3" />
-                              )}
-                              {Math.abs(ctrPercentChange).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          <div className="text-sm">{formatRevenue(revenueComp.currentValue)}</div>
-                          {previousPeriod && (
-                            <div className={`text-xs flex items-center justify-end ${revenueComp.colorClass}`}>
-                              {revenueComp.increased ? (
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-3 w-3" />
-                              )}
-                              {Math.abs(revenueComp.percentChange).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          <div className="text-sm">{formatROAS(roasComp.currentValue)}</div>
-                          {previousPeriod && (
-                            <div className={`text-xs flex items-center justify-end ${roasComp.colorClass}`}>
-                              {roasComp.increased ? (
-                                <TrendingUp className="mr-1 h-3 w-3" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-3 w-3" />
-                              )}
-                              {Math.abs(roasComp.percentChange).toFixed(1)}%
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
+              {weeklyData.map((period, index) => {
+                const previousPeriod = weeklyData[index + 1];
+                const periodLabel = `${formatDate(period.periodStart)} - ${formatDate(period.periodEnd)}`;
+                
+                const metrics = [
+                  {
+                    title: "Impressions",
+                    current: period.IMPRESSIONS,
+                    previous: previousPeriod?.IMPRESSIONS,
+                    format: formatNumber
+                  },
+                  {
+                    title: "Clicks",
+                    current: period.CLICKS,
+                    previous: previousPeriod?.CLICKS,
+                    format: formatNumber
+                  },
+                  {
+                    title: "Revenue",
+                    current: period.REVENUE,
+                    previous: previousPeriod?.REVENUE,
+                    format: formatRevenue
+                  },
+                  {
+                    title: "ROAS",
+                    current: period.ROAS,
+                    previous: previousPeriod?.ROAS,
+                    format: formatROAS
+                  }
+                ];
+
+                return metrics.map((metric, metricIndex) => {
+                  const percentChange = metric.previous
+                    ? ((metric.current - metric.previous) / metric.previous) * 100
+                    : metric.current > 0 ? 100 : 0;
+
+                  const colorClasses = getColorClasses(percentChange).split(' ').find(c => c.startsWith('text-')) || '';
+                  
+                  return (
+                    <Card key={`${index}-${metricIndex}`} className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">{metric.title}</span>
+                        <span className="text-xs text-muted-foreground">{periodLabel}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-2xl font-bold">
+                          {metric.format(metric.current)}
+                        </div>
+                        {previousPeriod && (
+                          <div className={`flex items-center text-sm ${colorClasses}`}>
+                            {percentChange > 0 ? (
+                              <TrendingUp className="mr-1 h-4 w-4" />
+                            ) : (
+                              <TrendingDown className="mr-1 h-4 w-4" />
+                            )}
+                            <span>
+                              {percentChange > 0 ? "+" : ""}
+                              {percentChange.toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                        {previousPeriod && (
+                          <div className="text-sm text-muted-foreground">
+                            vs {metric.format(metric.previous)}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                });
+              })}
             </div>
           </ScrollArea>
         ) : (
