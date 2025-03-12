@@ -1,13 +1,12 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
-import Dashboard from "@/components/Dashboard";
 import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
+import DashboardWrapper from "@/components/DashboardWrapper";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
@@ -112,7 +111,6 @@ const Index = () => {
     if (!advertisers.length) return filteredData;
     return filteredData.filter(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      // Extract advertiser from "SM: Advertiser - Rest of name" format
       const match = campaignName.match(/SM:\s+([^-]+)/);
       const advertiser = match ? match[1].trim() : "";
       return advertisers.includes(advertiser);
@@ -213,7 +211,7 @@ const Index = () => {
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsContent value="dashboard">
-              <Dashboard 
+              <DashboardWrapper 
                 data={filteredData} 
                 metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
                 revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}

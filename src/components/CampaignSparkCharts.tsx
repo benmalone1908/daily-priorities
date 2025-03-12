@@ -34,10 +34,12 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       if (advertiser) advertisers.add(advertiser);
     });
     
-    return Array.from(advertisers).map(advertiser => ({
-      value: advertiser,
-      label: advertiser
-    }));
+    return Array.from(advertisers)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
   }, [data]);
 
   const campaignOptions = useMemo(() => {
@@ -53,10 +55,12 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }
     
     const uniqueCampaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"])));
-    return uniqueCampaigns.map(campaign => ({
-      value: campaign,
-      label: campaign
-    }));
+    return uniqueCampaigns
+      .sort((a, b) => a.localeCompare(b))
+      .map(campaign => ({
+        value: campaign,
+        label: campaign
+      }));
   }, [data, selectedAdvertisers]);
 
   useEffect(() => {
@@ -461,4 +465,3 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 };
 
 export default CampaignSparkCharts;
-
