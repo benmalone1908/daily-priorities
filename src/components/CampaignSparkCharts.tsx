@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
@@ -201,7 +202,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             selected={selectedCampaigns}
             onChange={setSelectedCampaigns}
             placeholder="Campaign"
-            className="w-[300px]"
+            className="w-[200px]"
+            popoverClassName="w-[400px]"
           />
         </div>
       </div>
