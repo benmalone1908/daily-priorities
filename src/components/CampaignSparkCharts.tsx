@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { 
   ResponsiveContainer,
   Tooltip,
@@ -13,6 +13,7 @@ import {
 import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { MultiSelect } from "./MultiSelect";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -20,28 +21,41 @@ interface CampaignSparkChartsProps {
 }
 
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  
+  // Extract unique campaigns
+  const campaignOptions = useMemo(() => {
+    const uniqueCampaigns = Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"])));
+    return uniqueCampaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [data]);
+
+  // Filter campaigns based on selection
+  const filteredData = useMemo(() => {
+    if (selectedCampaigns.length === 0) return data;
+    return data.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
+  }, [data, selectedCampaigns]);
+
   // Process data to get campaigns and their metrics over time
   const campaignData = useMemo(() => {
-    if (!data || data.length === 0) return [];
+    if (!filteredData || filteredData.length === 0) return [];
 
-    // Filter data by date range if provided
-    let filteredData = data;
+    let filteredDataByDate = filteredData;
     if (dateRange?.from) {
-      filteredData = data.filter(row => {
+      filteredDataByDate = filteredData.filter(row => {
         const rowDate = new Date(row.DATE);
         if (isNaN(rowDate.getTime())) return false;
         
-        // If only from date is selected
         if (dateRange.from && !dateRange.to) {
           const fromDate = new Date(dateRange.from);
           return rowDate >= fromDate;
         }
         
-        // If both from and to dates are selected
         if (dateRange.from && dateRange.to) {
           const fromDate = new Date(dateRange.from);
           const toDate = new Date(dateRange.to);
-          // Set toDate to end of day for inclusive filtering
           toDate.setHours(23, 59, 59, 999);
           return rowDate >= fromDate && rowDate <= toDate;
         }
@@ -50,31 +64,20 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
 
-    // Extract unique campaigns
-    const campaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
-    
-    // Group data by campaign and date
-    const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+    const campaigns = Array.from(new Set(filteredDataByDate.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
     
     return campaigns.map(campaign => {
-      // Filter data for this campaign
-      const campaignRows = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
-      
-      // Sort by date
+      const campaignRows = filteredDataByDate.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
       campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
       
-      // Extract metrics per date
+      const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+      
       const timeSeriesData = campaignRows.map(row => {
-        // Get basic metrics
         const impressions = Number(row.IMPRESSIONS) || 0;
         const clicks = Number(row.CLICKS) || 0;
         const transactions = Number(row.TRANSACTIONS) || 0;
         const revenue = Number(row.REVENUE) || 0;
-        
-        // Calculate spend using $15 CPM
         const spend = (impressions / 1000) * 15;
-        
-        // Calculate CTR and ROAS
         const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
         const roas = spend > 0 ? revenue / spend : 0;
         
@@ -91,7 +94,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         };
       });
 
-      // Calculate totals for this campaign
       const totals = {
         impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
         clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
@@ -100,7 +102,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
       };
       
-      // Calculate average CTR and ROAS (not sum)
       const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
       const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
 
@@ -112,11 +113,10 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         avgRoas
       };
     });
-  }, [data, dateRange]);
+  }, [filteredData, dateRange]);
 
   // Create a safe ID from campaign name
   const getSafeId = (campaignName: string) => {
-    // Replace all non-alphanumeric characters with hyphens and ensure uniqueness
     return `gradient-${campaignName.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
   };
 
@@ -126,8 +126,17 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end mb-4">
+        <MultiSelect
+          options={campaignOptions}
+          selected={selectedCampaigns}
+          onChange={setSelectedCampaigns}
+          placeholder="Filter campaigns..."
+          className="w-[300px]"
+        />
+      </div>
+      
       {campaignData.map((campaign) => {
-        // Create safe IDs for each gradient
         const impressionsId = `impressions-${getSafeId(campaign.name)}`;
         const clicksId = `clicks-${getSafeId(campaign.name)}`;
         const transactionsId = `transactions-${getSafeId(campaign.name)}`;
@@ -156,9 +165,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
-                
+
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 border-t pt-4">
-                  {/* Impressions */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-sky-100 p-2 rounded-full">
                       <Eye className="h-4 w-4 text-sky-500" />
@@ -169,7 +177,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
 
-                  {/* Clicks */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-violet-100 p-2 rounded-full">
                       <MousePointer className="h-4 w-4 text-violet-500" />
@@ -180,7 +187,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
 
-                  {/* CTR */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-indigo-100 p-2 rounded-full">
                       <Percent className="h-4 w-4 text-indigo-500" />
@@ -191,7 +197,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
 
-                  {/* Transactions */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-orange-100 p-2 rounded-full">
                       <ShoppingCart className="h-4 w-4 text-orange-500" />
@@ -202,7 +207,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
 
-                  {/* Revenue */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-green-100 p-2 rounded-full">
                       <DollarSign className="h-4 w-4 text-green-500" />
@@ -213,7 +217,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
 
-                  {/* ROAS */}
                   <div className="flex items-center space-x-2">
                     <div className="bg-amber-100 p-2 rounded-full">
                       <TrendingUp className="h-4 w-4 text-amber-500" />
@@ -224,9 +227,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 h-24">
-                  {/* Impressions chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
@@ -253,7 +255,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Clicks chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
@@ -280,7 +281,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* CTR chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
@@ -307,7 +307,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Transactions chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
@@ -334,7 +333,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* Revenue chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
@@ -361,7 +359,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  {/* ROAS chart */}
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={campaign.timeSeriesData}>
