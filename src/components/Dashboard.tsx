@@ -183,11 +183,124 @@ const Dashboard = ({
     }
   };
 
-  // Return the JSX element for the Dashboard component
+  // Return the actual dashboard UI
   return (
     <div className="space-y-6">
-      {/* Your existing Dashboard UI goes here */}
-      <div>Dashboard Component</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-3">Display Metrics Over Time</h2>
+          <div className="space-y-3">
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Filter by Advertiser</label>
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedMetricsAdvertisers}
+                onChange={handleMetricsAdvertisersChange}
+                placeholder="Select advertisers..."
+              />
+            </div>
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Filter by Campaign</label>
+              <MultiSelect
+                options={filteredMetricsCampaignOptions}
+                selected={selectedMetricsCampaigns || []}
+                onChange={onMetricsCampaignsChange || (() => {})}
+                placeholder="Select campaigns..."
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-3">Revenue Analysis</h2>
+          <div className="space-y-3">
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Filter by Advertiser</label>
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedRevenueAdvertisers || []}
+                onChange={onRevenueAdvertisersChange || (() => {})}
+                placeholder="Select advertisers..."
+              />
+            </div>
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Filter by Campaign</label>
+              <MultiSelect
+                options={filteredRevenueCampaignOptions}
+                selected={selectedRevenueCampaigns || []}
+                onChange={onRevenueCampaignsChange || (() => {})}
+                placeholder="Select campaigns..."
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-3">Weekly Trend Analysis</h2>
+          <div className="space-y-3">
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Filter by Advertiser</label>
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedWeeklyAdvertisers}
+                onChange={handleWeeklyAdvertisersChange}
+                placeholder="Select advertisers..."
+              />
+            </div>
+            <div className="flex flex-col space-y-2">
+              <label className="text-sm font-medium">Select Campaign</label>
+              <Select value={selectedWeeklyCampaign} onValueChange={setSelectedWeeklyCampaign}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select campaign" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredWeeklyCampaignOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Anomaly Detection</h2>
+            <ToggleGroup type="single" value={anomalyPeriod} onValueChange={(value: AnomalyPeriod) => value && setAnomalyPeriod(value)}>
+              <ToggleGroupItem value="daily" aria-label="Daily" className="text-xs">
+                Daily
+              </ToggleGroupItem>
+              <ToggleGroupItem value="weekly" aria-label="Weekly" className="text-xs">
+                Weekly
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard
+              title="Impression Anomalies"
+              anomalies={[]}
+              metric="IMPRESSIONS"
+              anomalyPeriod={anomalyPeriod}
+            />
+            <MetricCard
+              title="Click Anomalies"
+              anomalies={[]}
+              metric="CLICKS"
+              anomalyPeriod={anomalyPeriod}
+            />
+            <MetricCard
+              title="Revenue Anomalies"
+              anomalies={[]}
+              metric="REVENUE"
+              anomalyPeriod={anomalyPeriod}
+            />
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
