@@ -63,7 +63,6 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onMetricsCampaignsChange={onMetricsCampaignsChange}
       onRevenueCampaignsChange={onRevenueCampaignsChange}
       onRevenueAdvertisersChange={onRevenueAdvertisersChange}
-      // Pass the sorted options as additional props
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
     />

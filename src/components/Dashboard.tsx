@@ -29,6 +29,8 @@ interface DashboardProps {
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
+  sortedCampaignOptions?: string[];
+  sortedAdvertiserOptions?: string[];
 }
 
 interface WeeklyData {
@@ -58,7 +60,9 @@ const Dashboard = ({
   selectedRevenueAdvertisers = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
-  onRevenueAdvertisersChange
+  onRevenueAdvertisersChange,
+  sortedCampaignOptions = [],
+  sortedAdvertiserOptions = []
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -66,11 +70,13 @@ const Dashboard = ({
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
+    if (sortedCampaignOptions.length > 0) return sortedCampaignOptions;
     if (!data || !data.length) return [];
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean).sort();
-  }, [data]);
+  }, [data, sortedCampaignOptions]);
 
   const advertisers = useMemo(() => {
+    if (sortedAdvertiserOptions.length > 0) return sortedAdvertiserOptions;
     if (!data || !data.length) return [];
     
     const uniqueAdvertisers = new Set<string>();
@@ -87,7 +93,7 @@ const Dashboard = ({
     });
     
     return Array.from(uniqueAdvertisers).sort();
-  }, [data]);
+  }, [data, sortedAdvertiserOptions]);
 
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
