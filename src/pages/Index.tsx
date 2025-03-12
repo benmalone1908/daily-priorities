@@ -100,8 +100,6 @@ const Index = () => {
     });
   };
 
-  const filteredData = getFilteredData();
-
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredData;
     return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -125,7 +123,7 @@ const Index = () => {
     }
     
     if (campaigns.length > 0) {
-      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+      filtered = filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     return filtered;
@@ -142,6 +140,10 @@ const Index = () => {
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
   };
+
+  const filteredData = getFilteredData();
+  const metricsData = getFilteredDataByCampaignsAndAdvertisers(selectedMetricsCampaigns, []);
+  const revenueData = getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers);
 
   const getDateRangeDisplayText = () => {
     if (!dateRange || !dateRange.from) return null;
@@ -213,8 +215,8 @@ const Index = () => {
             <TabsContent value="dashboard">
               <DashboardWrapper 
                 data={filteredData} 
-                metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-                revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
+                metricsData={metricsData}
+                revenueData={revenueData}
                 selectedMetricsCampaigns={selectedMetricsCampaigns}
                 selectedRevenueCampaigns={selectedRevenueCampaigns}
                 selectedRevenueAdvertisers={selectedRevenueAdvertisers}

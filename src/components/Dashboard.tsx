@@ -550,8 +550,8 @@ const Dashboard = ({
   const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
     [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
     
-  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || []), [metricsData]);
-  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || []), [revenueData]);
+  const processedMetricsData = useMemo(() => getAggregatedData(metricsData), [metricsData]);
+  const processedRevenueData = useMemo(() => getAggregatedData(revenueData), [revenueData]);
 
   const formatNumber = (value: number) => {
     try {
