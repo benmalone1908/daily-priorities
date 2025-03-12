@@ -25,8 +25,10 @@ interface DashboardProps {
   revenueData?: any[];
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
+  selectedRevenueAdvertisers?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
+  onRevenueAdvertisersChange?: (selected: string[]) => void;
 }
 
 interface WeeklyData {
@@ -53,8 +55,10 @@ const Dashboard = ({
   revenueData,
   selectedMetricsCampaigns = [],
   selectedRevenueCampaigns = [],
+  selectedRevenueAdvertisers = [],
   onMetricsCampaignsChange,
-  onRevenueCampaignsChange
+  onRevenueCampaignsChange,
+  onRevenueAdvertisersChange
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
@@ -64,12 +68,38 @@ const Dashboard = ({
     return Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"]))).filter(Boolean).sort();
   }, [data]);
 
+  const advertisers = useMemo(() => {
+    if (!data || !data.length) return [];
+    
+    const uniqueAdvertisers = new Set<string>();
+    
+    data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      if (match) {
+        const advertiser = match[1].trim();
+        if (advertiser) {
+          uniqueAdvertisers.add(advertiser);
+        }
+      }
+    });
+    
+    return Array.from(uniqueAdvertisers).sort();
+  }, [data]);
+
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
       label: campaign
     }));
   }, [campaigns]);
+
+  const advertiserOptions: Option[] = useMemo(() => {
+    return advertisers.map(advertiser => ({
+      value: advertiser,
+      label: advertiser
+    }));
+  }, [advertisers]);
 
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
@@ -679,27 +709,39 @@ const Dashboard = ({
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-          {onRevenueCampaignsChange && campaignOptions.length > 0 ? (
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedRevenueCampaigns}
-              onChange={onRevenueCampaignsChange}
-              placeholder="Select campaigns"
-              className="w-[250px]"
-            />
-          ) : (
-            <Select value="all">
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Filter by campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Campaigns</SelectItem>
-                {campaigns.map(campaign => (
-                  <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div className="flex items-center gap-4">
+            {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedRevenueAdvertisers}
+                onChange={onRevenueAdvertisersChange}
+                placeholder="Filter by advertiser"
+                className="w-[250px]"
+              />
+            )}
+            
+            {onRevenueCampaignsChange && campaignOptions.length > 0 ? (
+              <MultiSelect
+                options={campaignOptions}
+                selected={selectedRevenueCampaigns}
+                onChange={onRevenueCampaignsChange}
+                placeholder="Select campaigns"
+                className="w-[250px]"
+              />
+            ) : (
+              <Select value="all">
+                <SelectTrigger className="w-[280px]">
+                  <SelectValue placeholder="Filter by campaign" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Campaigns</SelectItem>
+                  {campaigns.map(campaign => (
+                    <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
         <div className="h-[400px]">
           {processedRevenueData.length > 0 ? (
@@ -753,7 +795,7 @@ const Dashboard = ({
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No revenue data available for the selected campaign</p>
+              <p className="text-muted-foreground">No revenue data available for the selected filters</p>
             </div>
           )}
         </div>

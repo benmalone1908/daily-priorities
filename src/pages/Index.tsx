@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -13,6 +14,7 @@ const Index = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
+  const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleDataLoaded = (uploadedData: any[]) => {
@@ -106,12 +108,41 @@ const Index = () => {
     return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
   };
 
+  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
+    if (!advertisers.length) return filteredData;
+    return filteredData.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      // Extract advertiser from "SM: Advertiser - Rest of name" format
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return advertisers.includes(advertiser);
+    });
+  };
+
+  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
+    let filtered = filteredData;
+    
+    if (advertisers.length > 0) {
+      filtered = getFilteredDataByAdvertisers(advertisers);
+    }
+    
+    if (campaigns.length > 0) {
+      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    }
+    
+    return filtered;
+  };
+
   const handleMetricsCampaignsChange = (selected: string[]) => {
     setSelectedMetricsCampaigns(selected);
   };
 
   const handleRevenueCampaignsChange = (selected: string[]) => {
     setSelectedRevenueCampaigns(selected);
+  };
+
+  const handleRevenueAdvertisersChange = (selected: string[]) => {
+    setSelectedRevenueAdvertisers(selected);
   };
 
   const getDateRangeDisplayText = () => {
@@ -185,11 +216,13 @@ const Index = () => {
               <Dashboard 
                 data={filteredData} 
                 metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-                revenueData={getFilteredDataBySelectedCampaigns(selectedRevenueCampaigns)}
+                revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
                 selectedMetricsCampaigns={selectedMetricsCampaigns}
                 selectedRevenueCampaigns={selectedRevenueCampaigns}
+                selectedRevenueAdvertisers={selectedRevenueAdvertisers}
                 onMetricsCampaignsChange={handleMetricsCampaignsChange}
                 onRevenueCampaignsChange={handleRevenueCampaignsChange}
+                onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
               />
             </TabsContent>
             <TabsContent value="sparks">
