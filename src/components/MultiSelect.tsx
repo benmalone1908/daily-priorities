@@ -68,7 +68,7 @@ export function MultiSelect({
       <PopoverContent 
         className={cn(
           "p-0 bg-background shadow-lg", 
-          isWide ? "w-96" : "", 
+          isWide ? "w-[500px]" : "", 
           popoverClassName
         )} 
         align="start"
