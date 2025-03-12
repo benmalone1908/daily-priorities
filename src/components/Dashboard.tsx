@@ -930,4 +930,87 @@ const Dashboard = ({
                   onValueChange={setSelectedWeeklyCampaign}
                 >
                   <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Campaign
+                    <SelectValue placeholder="Campaign" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredWeeklyCampaignOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+interface MetricCardProps {
+  title: string;
+  anomalies: any[];
+  metric: string;
+  anomalyPeriod: AnomalyPeriod;
+}
+
+const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
+  const topAnomalies = anomalies
+    .filter(anomaly => anomaly.periodType === anomalyPeriod)
+    .slice(0, 5);
+
+  const formatValue = (value: number) => {
+    if (metric === "REVENUE") {
+      return `$${Math.round(value).toLocaleString()}`;
+    }
+    return value.toLocaleString();
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="bg-muted p-4 border-b flex items-center justify-between">
+        <div className="flex items-center">
+          <h3 className="font-medium">{title}</h3>
+          {anomalies.length > 0 && (
+            <span className="ml-2 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-medium">
+              {anomalies.length} found
+            </span>
+          )}
+        </div>
+        {anomalies.length === 0 && (
+          <span className="text-green-600 text-xs font-medium flex items-center">
+            <span className="mr-1">All normal</span>
+          </span>
+        )}
+      </div>
+      <ScrollArea className="h-[280px]">
+        {topAnomalies.length > 0 ? (
+          <div className="p-0">
+            {topAnomalies.map((anomaly, index) => (
+              <AnomalyDetails 
+                key={index}
+                anomaly={anomaly}
+                metric={metric}
+                formatValue={formatValue}
+              />
+            ))}
+            {anomalies.length > 5 && (
+              <div className="px-4 py-2 border-t text-xs text-muted-foreground">
+                + {anomalies.length - 5} more anomalies not shown
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 text-center text-sm text-muted-foreground flex flex-col items-center justify-center h-full">
+            <AlertTriangle className="h-10 w-10 text-muted-foreground mb-2 opacity-20" />
+            <p>No {anomalyPeriod} anomalies detected</p>
+          </div>
+        )}
+      </ScrollArea>
+    </Card>
+  );
+};
+
+export default Dashboard;
