@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -11,7 +11,7 @@ import {
   Bar,
   ComposedChart,
 } from "recharts";
-import { AlertTriangle, TrendingDown, TrendingUp, Filter } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
@@ -386,6 +386,8 @@ const Dashboard = ({
     try {
       if (!filteredData || !filteredData.length) return [];
       
+      console.log(`Aggregating data from ${filteredData.length} rows`);
+      
       const dateGroups = filteredData.reduce((acc, row) => {
         if (!row || !row.DATE) return acc;
         
@@ -550,8 +552,15 @@ const Dashboard = ({
   const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
     [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
     
-  const processedMetricsData = useMemo(() => getAggregatedData(metricsData), [metricsData]);
-  const processedRevenueData = useMemo(() => getAggregatedData(revenueData), [revenueData]);
+  const processedMetricsData = useMemo(() => {
+    console.log(`Processing metrics data: ${metricsData?.length || 0} rows`);
+    return getAggregatedData(metricsData || []);
+  }, [metricsData]);
+  
+  const processedRevenueData = useMemo(() => {
+    console.log(`Processing revenue data: ${revenueData?.length || 0} rows`);
+    return getAggregatedData(revenueData || []);
+  }, [revenueData]);
 
   const formatNumber = (value: number) => {
     try {
@@ -1169,3 +1178,4 @@ const MetricCard = ({
 };
 
 export default Dashboard;
+

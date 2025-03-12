@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -100,6 +101,9 @@ const Index = () => {
     });
   };
 
+  // Get filtered data based on date range first
+  const filteredData = getFilteredData();
+
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredData;
     return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -141,7 +145,7 @@ const Index = () => {
     setSelectedRevenueAdvertisers(selected);
   };
 
-  const filteredData = getFilteredData();
+  // Calculate filtered data for metrics and revenue charts
   const metricsData = getFilteredDataByCampaignsAndAdvertisers(selectedMetricsCampaigns, []);
   const revenueData = getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers);
 
