@@ -177,4 +177,3 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 };
 
 export default CampaignSparkCharts;
-
