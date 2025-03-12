@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
   Tooltip,
@@ -24,7 +24,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   
-  // Extract unique advertisers
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
@@ -41,11 +40,9 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }));
   }, [data]);
 
-  // Get all campaigns, potentially filtered by selected advertisers
   const campaignOptions = useMemo(() => {
     let filteredData = data;
     
-    // Filter data by selected advertisers if any are selected
     if (selectedAdvertisers.length > 0) {
       filteredData = data.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -55,7 +52,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
-    // Extract unique campaigns from the filtered data
     const uniqueCampaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"])));
     return uniqueCampaigns.map(campaign => ({
       value: campaign,
@@ -63,10 +59,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }));
   }, [data, selectedAdvertisers]);
 
-  // When advertisers change, we need to reset or filter the selected campaigns
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedAdvertisers.length > 0) {
-      // Keep only campaigns that belong to the selected advertisers
       setSelectedCampaigns(prev => {
         return prev.filter(campaign => {
           const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
@@ -81,11 +75,9 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }
   }, [selectedAdvertisers, data]);
 
-  // Filter campaigns based on selection
   const filteredData = useMemo(() => {
     let result = data;
     
-    // Filter by advertisers
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -95,7 +87,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
-    // Further filter by campaigns
     if (selectedCampaigns.length > 0) {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
@@ -103,7 +94,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     return result;
   }, [data, selectedCampaigns, selectedAdvertisers]);
 
-  // Process data to get campaigns and their metrics over time
   const campaignData = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
 
@@ -180,7 +170,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     });
   }, [filteredData, dateRange]);
 
-  // Create a safe ID from campaign name
   const getSafeId = (campaignName: string) => {
     return `gradient-${campaignName.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
   };
@@ -472,3 +461,4 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 };
 
 export default CampaignSparkCharts;
+
