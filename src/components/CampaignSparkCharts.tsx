@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { 
   ResponsiveContainer,
@@ -15,13 +14,6 @@ import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, Tre
 import { formatNumber } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -31,17 +23,7 @@ interface CampaignSparkChartsProps {
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<"campaigns" | "advertisers">("campaigns");
   
-  // Extract unique campaigns
-  const campaignOptions = useMemo(() => {
-    const uniqueCampaigns = Array.from(new Set(data.map(row => row["CAMPAIGN ORDER NAME"])));
-    return uniqueCampaigns.map(campaign => ({
-      value: campaign,
-      label: campaign
-    }));
-  }, [data]);
-
   // Extract unique advertisers
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
@@ -59,18 +41,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }));
   }, [data]);
 
-  // Filter campaigns based on selection
-  const filteredData = useMemo(() => {
-    if (selectedCampaigns.length === 0 && selectedAdvertisers.length === 0) {
-      return data;
-    }
+  // Get all campaigns, potentially filtered by selected advertisers
+  const campaignOptions = useMemo(() => {
+    let filteredData = data;
     
-    if (filterType === "campaigns" && selectedCampaigns.length > 0) {
-      return data.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
-    }
-    
-    if (filterType === "advertisers" && selectedAdvertisers.length > 0) {
-      return data.filter(row => {
+    // Filter data by selected advertisers if any are selected
+    if (selectedAdvertisers.length > 0) {
+      filteredData = data.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
         const match = campaignName.match(/SM:\s+([^-]+)/);
         const advertiser = match ? match[1].trim() : "";
@@ -78,8 +55,53 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
-    return data;
-  }, [data, selectedCampaigns, selectedAdvertisers, filterType]);
+    // Extract unique campaigns from the filtered data
+    const uniqueCampaigns = Array.from(new Set(filteredData.map(row => row["CAMPAIGN ORDER NAME"])));
+    return uniqueCampaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [data, selectedAdvertisers]);
+
+  // When advertisers change, we need to reset or filter the selected campaigns
+  React.useEffect(() => {
+    if (selectedAdvertisers.length > 0) {
+      // Keep only campaigns that belong to the selected advertisers
+      setSelectedCampaigns(prev => {
+        return prev.filter(campaign => {
+          const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+          if (campaignRows.length === 0) return false;
+          
+          const campaignName = campaignRows[0]["CAMPAIGN ORDER NAME"] || "";
+          const match = campaignName.match(/SM:\s+([^-]+)/);
+          const advertiser = match ? match[1].trim() : "";
+          return selectedAdvertisers.includes(advertiser);
+        });
+      });
+    }
+  }, [selectedAdvertisers, data]);
+
+  // Filter campaigns based on selection
+  const filteredData = useMemo(() => {
+    let result = data;
+    
+    // Filter by advertisers
+    if (selectedAdvertisers.length > 0) {
+      result = result.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const match = campaignName.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selectedAdvertisers.includes(advertiser);
+      });
+    }
+    
+    // Further filter by campaigns
+    if (selectedCampaigns.length > 0) {
+      result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    }
+    
+    return result;
+  }, [data, selectedCampaigns, selectedAdvertisers]);
 
   // Process data to get campaigns and their metrics over time
   const campaignData = useMemo(() => {
@@ -169,41 +191,26 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end items-center gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <FilterIcon className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filter by:</span>
-          <Select 
-            value={filterType} 
-            onValueChange={(value) => setFilterType(value as "campaigns" | "advertisers")}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Filter type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="campaigns">Campaigns</SelectItem>
-              <SelectItem value="advertisers">Advertisers</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex justify-end items-center gap-4 mb-4">
+        <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
         
-        {filterType === "campaigns" ? (
-          <MultiSelect
-            options={campaignOptions}
-            selected={selectedCampaigns}
-            onChange={setSelectedCampaigns}
-            placeholder="Filter campaigns..."
-            className="w-[300px]"
-          />
-        ) : (
+        <div className="flex items-center gap-2">
           <MultiSelect
             options={advertiserOptions}
             selected={selectedAdvertisers}
             onChange={setSelectedAdvertisers}
-            placeholder="Filter advertisers..."
+            placeholder="Advertiser"
+            className="w-[200px]"
+          />
+          
+          <MultiSelect
+            options={campaignOptions}
+            selected={selectedCampaigns}
+            onChange={setSelectedCampaigns}
+            placeholder="Campaign"
             className="w-[300px]"
           />
-        )}
+        </div>
       </div>
       
       {campaignData.map((campaign) => {
