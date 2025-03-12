@@ -18,6 +18,7 @@ import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MultiSelect, Option } from "./MultiSelect";
+import { Button } from "@/components/ui/button";
 
 interface DashboardProps {
   data: any[];
@@ -724,14 +725,28 @@ const Dashboard = ({
               />
               
               {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredMetricsCampaignOptions}
-                  selected={selectedMetricsCampaigns}
-                  onChange={onMetricsCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  isWide={true}
-                />
+                <>
+                  <MultiSelect
+                    options={filteredMetricsCampaignOptions}
+                    selected={selectedMetricsCampaigns}
+                    onChange={onMetricsCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    isWide={true}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleMetricsAdvertisersChange([]);
+                      onMetricsCampaignsChange([]);
+                    }}
+                    disabled={selectedMetricsAdvertisers.length === 0 && selectedMetricsCampaigns.length === 0}
+                    className="h-9"
+                  >
+                    Clear
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -808,14 +823,28 @@ const Dashboard = ({
               )}
               
               {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredRevenueCampaignOptions}
-                  selected={selectedRevenueCampaigns}
-                  onChange={onRevenueCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  isWide={true}
-                />
+                <>
+                  <MultiSelect
+                    options={filteredRevenueCampaignOptions}
+                    selected={selectedRevenueCampaigns}
+                    onChange={onRevenueCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    isWide={true}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onRevenueAdvertisersChange?.([]);
+                      onRevenueCampaignsChange([]);
+                    }}
+                    disabled={selectedRevenueAdvertisers.length === 0 && selectedRevenueCampaigns.length === 0}
+                    className="h-9"
+                  >
+                    Clear
+                  </Button>
+                </>
               )}
             </div>
           </div>
