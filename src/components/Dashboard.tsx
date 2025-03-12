@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -11,7 +11,7 @@ import {
   Bar,
   ComposedChart,
 } from "recharts";
-import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Filter } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
@@ -27,11 +27,9 @@ interface DashboardProps {
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
-  selectedMetricsAdvertisers?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
-  onMetricsAdvertisersChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
 }
@@ -61,16 +59,15 @@ const Dashboard = ({
   selectedMetricsCampaigns = [],
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
-  selectedMetricsAdvertisers = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
-  onMetricsAdvertisersChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = []
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
+  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
 
   const campaigns = useMemo(() => {
@@ -155,6 +152,20 @@ const Dashboard = ({
       ...filteredCampaigns
     ];
   }, [campaignOptions, selectedWeeklyAdvertisers]);
+
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+    
+    if (selected.length > 0 && onMetricsCampaignsChange) {
+      const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
+      });
+      
+      onMetricsCampaignsChange(validCampaigns);
+    }
+  };
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     setSelectedWeeklyAdvertisers(selected);
@@ -375,8 +386,6 @@ const Dashboard = ({
     try {
       if (!filteredData || !filteredData.length) return [];
       
-      console.log(`Aggregating data from ${filteredData.length} rows`);
-      
       const dateGroups = filteredData.reduce((acc, row) => {
         if (!row || !row.DATE) return acc;
         
@@ -541,15 +550,8 @@ const Dashboard = ({
   const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
     [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
     
-  const processedMetricsData = useMemo(() => {
-    console.log(`Processing metrics data: ${metricsData?.length || 0} rows`);
-    return getAggregatedData(metricsData || []);
-  }, [metricsData]);
-  
-  const processedRevenueData = useMemo(() => {
-    console.log(`Processing revenue data: ${revenueData?.length || 0} rows`);
-    return getAggregatedData(revenueData || []);
-  }, [revenueData]);
+  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
+  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
 
   const formatNumber = (value: number) => {
     try {
@@ -714,39 +716,38 @@ const Dashboard = ({
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
-              {onMetricsAdvertisersChange && advertiserOptions.length > 0 && (
-                <MultiSelect
-                  options={advertiserOptions}
-                  selected={selectedMetricsAdvertisers}
-                  onChange={onMetricsAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-              )}
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedMetricsAdvertisers}
+                onChange={handleMetricsAdvertisersChange}
+                placeholder="Advertiser"
+                className="w-[200px]"
+              />
               
               {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredMetricsCampaignOptions}
-                  selected={selectedMetricsCampaigns}
-                  onChange={onMetricsCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  isWide={true}
-                />
+                <>
+                  <MultiSelect
+                    options={filteredMetricsCampaignOptions}
+                    selected={selectedMetricsCampaigns}
+                    onChange={onMetricsCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    isWide={true}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      handleMetricsAdvertisersChange([]);
+                      onMetricsCampaignsChange([]);
+                    }}
+                    disabled={selectedMetricsAdvertisers.length === 0 && selectedMetricsCampaigns.length === 0}
+                    className="h-9"
+                  >
+                    Clear
+                  </Button>
+                </>
               )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onMetricsAdvertisersChange?.([]);
-                  onMetricsCampaignsChange?.([]);
-                }}
-                disabled={selectedMetricsAdvertisers.length === 0 && selectedMetricsCampaigns.length === 0}
-                className="h-9"
-              >
-                Clear
-              </Button>
             </div>
           </div>
         </div>
@@ -822,28 +823,29 @@ const Dashboard = ({
               )}
               
               {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredRevenueCampaignOptions}
-                  selected={selectedRevenueCampaigns}
-                  onChange={onRevenueCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  isWide={true}
-                />
+                <>
+                  <MultiSelect
+                    options={filteredRevenueCampaignOptions}
+                    selected={selectedRevenueCampaigns}
+                    onChange={onRevenueCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    isWide={true}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onRevenueAdvertisersChange?.([]);
+                      onRevenueCampaignsChange([]);
+                    }}
+                    disabled={selectedRevenueAdvertisers.length === 0 && selectedRevenueCampaigns.length === 0}
+                    className="h-9"
+                  >
+                    Clear
+                  </Button>
+                </>
               )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onRevenueAdvertisersChange?.([]);
-                  onRevenueCampaignsChange?.([]);
-                }}
-                disabled={selectedRevenueAdvertisers.length === 0 && selectedRevenueCampaigns.length === 0}
-                className="h-9"
-              >
-                Clear
-              </Button>
             </div>
           </div>
         </div>
@@ -944,239 +946,225 @@ const Dashboard = ({
             </div>
           </div>
         </div>
-        
-        {weeklyData.length > 0 ? (
-          <div className="space-y-8">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {weeklyData.length >= 2 && (
-                <>
-                  <Card className="overflow-hidden">
-                    <div className="p-4 border-b">
-                      <h4 className="font-medium">Impressions</h4>
-                    </div>
-                    <div className="p-4">
-                      {(() => {
-                        const comparison = getMetricComparison('IMPRESSIONS', weeklyData[0], weeklyData[1]);
-                        return (
-                          <>
-                            <div className="text-2xl font-bold">{formatNumber(comparison.currentValue)}</div>
-                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
-                              {comparison.increased ? (
-                                <TrendingUp className="mr-1 h-4 w-4" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-4 w-4" />
-                              )}
-                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Card>
 
-                  <Card className="overflow-hidden">
-                    <div className="p-4 border-b">
-                      <h4 className="font-medium">Clicks</h4>
-                    </div>
-                    <div className="p-4">
-                      {(() => {
-                        const comparison = getMetricComparison('CLICKS', weeklyData[0], weeklyData[1]);
-                        return (
-                          <>
-                            <div className="text-2xl font-bold">{formatNumber(comparison.currentValue)}</div>
-                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
-                              {comparison.increased ? (
-                                <TrendingUp className="mr-1 h-4 w-4" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-4 w-4" />
-                              )}
-                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Card>
+        {weeklyData.length >= 1 ? (
+          <ScrollArea className="h-[460px]">
+            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Impressions</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`impressions-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatNumber(period.IMPRESSIONS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('IMPRESSIONS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
 
-                  <Card className="overflow-hidden">
-                    <div className="p-4 border-b">
-                      <h4 className="font-medium">Revenue</h4>
-                    </div>
-                    <div className="p-4">
-                      {(() => {
-                        const comparison = getMetricComparison('REVENUE', weeklyData[0], weeklyData[1]);
-                        return (
-                          <>
-                            <div className="text-2xl font-bold">{formatRevenue(comparison.currentValue)}</div>
-                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
-                              {comparison.increased ? (
-                                <TrendingUp className="mr-1 h-4 w-4" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-4 w-4" />
-                              )}
-                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Card>
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Clicks</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`clicks-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatNumber(period.CLICKS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('CLICKS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
 
-                  <Card className="overflow-hidden">
-                    <div className="p-4 border-b">
-                      <h4 className="font-medium">ROAS</h4>
-                    </div>
-                    <div className="p-4">
-                      {(() => {
-                        const comparison = getMetricComparison('ROAS', weeklyData[0], weeklyData[1]);
-                        return (
-                          <>
-                            <div className="text-2xl font-bold">{formatROAS(comparison.currentValue)}</div>
-                            <div className={`flex items-center text-sm ${comparison.colorClass}`}>
-                              {comparison.increased ? (
-                                <TrendingUp className="mr-1 h-4 w-4" />
-                              ) : (
-                                <TrendingDown className="mr-1 h-4 w-4" />
-                              )}
-                              {Math.abs(comparison.percentChange).toFixed(1)}% from previous period
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Card>
-                </>
-              )}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Revenue</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`revenue-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatRevenue(period.REVENUE)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('REVENUE', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">ROAS</h4>
+                <div className="space-y-4">
+                  {weeklyData.map((period, idx) => (
+                    <Card key={`roas-${idx}`} className="p-4">
+                      <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        {idx === 0 ? "Most Recent 7 Days" : 
+                        idx === 1 ? "Previous 7 Days" : 
+                        `${idx + 1} Weeks Ago`}
+                      </h5>
+                      <div className="flex items-center gap-2">
+                        <p className="text-2xl font-bold">
+                          {formatROAS(period.ROAS)}
+                        </p>
+                        {idx < weeklyData.length - 1 && (
+                          (() => {
+                            const comparison = getMetricComparison('ROAS', period, weeklyData[idx+1]);
+                            return (
+                              <div className={`flex items-center ${comparison.colorClass}`}>
+                                {comparison.increased ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                                <span className="ml-1 text-sm">
+                                  {comparison.increased ? '+' : ''}{comparison.percentChange.toFixed(1)}%
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {period.periodStart} to {period.periodEnd}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             </div>
-
-            <div className="overflow-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="text-left p-2 bg-muted text-xs font-medium border">Period</th>
-                    <th className="text-right p-2 bg-muted text-xs font-medium border">Impressions</th>
-                    <th className="text-right p-2 bg-muted text-xs font-medium border">Clicks</th>
-                    <th className="text-right p-2 bg-muted text-xs font-medium border">CTR</th>
-                    <th className="text-right p-2 bg-muted text-xs font-medium border">Revenue</th>
-                    <th className="text-right p-2 bg-muted text-xs font-medium border">ROAS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeklyData.map((period, index) => {
-                    const ctr = period.IMPRESSIONS > 0 
-                      ? (period.CLICKS / period.IMPRESSIONS) * 100 
-                      : 0;
-                    
-                    return (
-                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-muted/30"}>
-                        <td className="p-2 border text-sm">
-                          {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
-                          {index === 0 && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Current</span>}
-                        </td>
-                        <td className="p-2 border text-right text-sm">{formatNumber(period.IMPRESSIONS)}</td>
-                        <td className="p-2 border text-right text-sm">{formatNumber(period.CLICKS)}</td>
-                        <td className="p-2 border text-right text-sm">{ctr.toFixed(2)}%</td>
-                        <td className="p-2 border text-right text-sm">{formatRevenue(period.REVENUE)}</td>
-                        <td className="p-2 border text-right text-sm">{formatROAS(period.ROAS)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </ScrollArea>
         ) : (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">No data available for the selected period</p>
-          </div>
+          <p className="text-center text-muted-foreground">
+            Not enough data for period comparison
+          </p>
         )}
       </Card>
     </div>
   );
 };
 
-interface MetricCardProps {
+const MetricCard = ({
+  title,
+  anomalies,
+  metric,
+  anomalyPeriod
+}: {
   title: string;
   anomalies: any[];
   metric: string;
   anomalyPeriod: AnomalyPeriod;
-}
-
-const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps) => {
-  const topAnomalies = anomalies
-    .filter(anomaly => anomaly.periodType === anomalyPeriod)
-    .slice(0, 5);
-
-  const formatValue = (value: number) => {
-    if (metric === "REVENUE") {
-      return `$${Math.round(value).toLocaleString()}`;
-    }
-    return value.toLocaleString();
-  };
-
+}) => {
+  const topAnomalyColor = anomalies.length > 0 ? getColorClasses(anomalies[0].deviation) : '';
+  
   return (
-    <Card className="overflow-hidden">
-      <div className="bg-muted p-4 border-b flex items-center justify-between">
-        <div className="flex items-center">
-          <h3 className="font-medium">{title}</h3>
-          {anomalies.length > 0 && (
-            <span className="ml-2 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-xs font-medium">
-              {anomalies.length} found
-            </span>
-          )}
+    <Card className="p-6 transition-all duration-300 hover:shadow-lg">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-medium text-muted-foreground">{title}</h3>
+          <p className="mt-2 text-2xl font-bold">{anomalies.length}</p>
         </div>
-        {anomalies.length === 0 && (
-          <span className="text-green-600 text-xs font-medium flex items-center">
-            <span className="mr-1">All normal</span>
-          </span>
+        {anomalies.length > 0 && (
+          <div className={`p-2 rounded-full ${topAnomalyColor}`}>
+            <AlertTriangle className={`w-5 h-5 ${topAnomalyColor.split(' ').find(c => c.startsWith('text-'))}`} />
+          </div>
         )}
       </div>
-      <ScrollArea className="h-[280px]">
-        {topAnomalies.length > 0 ? (
-          <div className="p-0">
-            {topAnomalies.map((anomaly, index) => (
-              <div key={index} className="border-b last:border-b-0">
-                <div className="p-3 border-l-4" style={{ borderLeftColor: anomaly.deviation > 0 ? '#ef4444' : '#3b82f6' }}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{anomaly.campaign}</p>
-                      <p className="text-xs text-muted-foreground">{anomaly.DATE}</p>
-                    </div>
-                    <div className={getColorClasses(anomaly.deviation)}>
-                      {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
-                    </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-xs text-muted-foreground">Actual: </span>
-                      <span className="font-medium">{formatValue(anomaly.actualValue)}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-muted-foreground">Expected: </span>
-                      <span className="font-medium">{formatValue(anomaly.mean)}</span>
-                    </div>
-                  </div>
+      {anomalies.length > 0 && (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              <span>Top anomalies:</span>
+            </div>
+            <AnomalyDetails 
+              anomalies={anomalies} 
+              metric={metric} 
+              anomalyPeriod={anomalyPeriod}
+            />
+          </div>
+          {anomalies.slice(0, 2).map((anomaly, idx) => {
+            const colorClasses = getColorClasses(anomaly.deviation);
+            return (
+              <div key={idx} className="text-sm space-y-1">
+                <div className="font-medium">{anomaly.campaign}</div>
+                <div className="text-muted-foreground">
+                  {anomalyPeriod === "weekly" ? "Week of: " : "Date: "}{anomaly.DATE} - {metric}: {anomaly.actualValue.toLocaleString()} 
+                  <span className={colorClasses.split(' ').find(c => c.startsWith('text-'))}>
+                    {" "}({anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%)
+                  </span>
                 </div>
+                {anomaly.comparedTo && (
+                  <div className="text-xs text-muted-foreground">
+                    Compared to: {anomaly.comparedTo}
+                  </div>
+                )}
               </div>
-            ))}
-            {anomalies.length > 5 && (
-              <div className="px-4 py-2 border-t text-xs text-muted-foreground">
-                + {anomalies.length - 5} more anomalies not shown
-                <AnomalyDetails 
-                  anomalies={anomalies.filter(a => a.periodType === anomalyPeriod)} 
-                  metric={metric}
-                  anomalyPeriod={anomalyPeriod}
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="p-4 text-center text-sm text-muted-foreground flex flex-col items-center justify-center h-full">
-            <AlertTriangle className="h-10 w-10 text-muted-foreground mb-2 opacity-20" />
-            <p>No {anomalyPeriod} anomalies detected</p>
-          </div>
-        )}
-      </ScrollArea>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 };

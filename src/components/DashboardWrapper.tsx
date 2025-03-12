@@ -9,11 +9,9 @@ interface DashboardWrapperProps {
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
-  selectedMetricsAdvertisers: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
-  onMetricsAdvertisersChange: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -24,11 +22,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     selectedMetricsCampaigns,
     selectedRevenueCampaigns,
     selectedRevenueAdvertisers,
-    selectedMetricsAdvertisers,
     onMetricsCampaignsChange,
     onRevenueCampaignsChange,
-    onRevenueAdvertisersChange,
-    onMetricsAdvertisersChange
+    onRevenueAdvertisersChange
   } = props;
 
   // Get sorted campaign options from the data
@@ -64,11 +60,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsCampaigns={selectedMetricsCampaigns}
       selectedRevenueCampaigns={selectedRevenueCampaigns}
       selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-      selectedMetricsAdvertisers={selectedMetricsAdvertisers}
       onMetricsCampaignsChange={onMetricsCampaignsChange}
       onRevenueCampaignsChange={onRevenueCampaignsChange}
       onRevenueAdvertisersChange={onRevenueAdvertisersChange}
-      onMetricsAdvertisersChange={onMetricsAdvertisersChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
     />

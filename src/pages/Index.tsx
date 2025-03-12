@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -15,7 +14,6 @@ const Index = () => {
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
-  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleDataLoaded = (uploadedData: any[]) => {
@@ -102,7 +100,6 @@ const Index = () => {
     });
   };
 
-  // Get filtered data based on date range first
   const filteredData = getFilteredData();
 
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
@@ -128,7 +125,7 @@ const Index = () => {
     }
     
     if (campaigns.length > 0) {
-      filtered = filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     return filtered;
@@ -145,14 +142,6 @@ const Index = () => {
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
   };
-  
-  const handleMetricsAdvertisersChange = (selected: string[]) => {
-    setSelectedMetricsAdvertisers(selected);
-  };
-
-  // Calculate filtered data for metrics and revenue charts
-  const metricsData = getFilteredDataByCampaignsAndAdvertisers(selectedMetricsCampaigns, selectedMetricsAdvertisers);
-  const revenueData = getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers);
 
   const getDateRangeDisplayText = () => {
     if (!dateRange || !dateRange.from) return null;
@@ -224,16 +213,14 @@ const Index = () => {
             <TabsContent value="dashboard">
               <DashboardWrapper 
                 data={filteredData} 
-                metricsData={metricsData}
-                revenueData={revenueData}
+                metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+                revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
                 selectedMetricsCampaigns={selectedMetricsCampaigns}
                 selectedRevenueCampaigns={selectedRevenueCampaigns}
                 selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-                selectedMetricsAdvertisers={selectedMetricsAdvertisers}
                 onMetricsCampaignsChange={handleMetricsCampaignsChange}
                 onRevenueCampaignsChange={handleRevenueCampaignsChange}
                 onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
-                onMetricsAdvertisersChange={handleMetricsAdvertisersChange}
               />
             </TabsContent>
             <TabsContent value="sparks">
