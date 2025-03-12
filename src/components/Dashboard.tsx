@@ -1049,69 +1049,40 @@ const Dashboard = ({
               )}
             </div>
 
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="periodStart"
-                    tickFormatter={formatDate}
-                    style={axisStyle}
-                  />
-                  <YAxis 
-                    yAxisId="left"
-                    orientation="left"
-                    stroke="#4ade80"
-                    label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                    tickFormatter={formatNumber}
-                    style={axisStyle}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    stroke="#ef4444"
-                    label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
-                    tickFormatter={formatRevenue}
-                    style={axisStyle}
-                  />
-                  <Tooltip 
-                    formatter={(value: number, name: string) => {
-                      if (name === "Revenue") return [formatRevenue(value), name];
-                      if (name === "ROAS") return [formatROAS(value), name];
-                      return [formatNumber(value), name];
-                    }}
-                    labelFormatter={(label) => formatDate(label)}
-                    contentStyle={{ fontSize: '0.75rem' }}
-                  />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="IMPRESSIONS"
-                    stroke="#4ade80"
-                    strokeWidth={2}
-                    dot={true}
-                    name="Impressions"
-                  />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="CLICKS"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    dot={true}
-                    name="Clicks"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="REVENUE"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                    dot={true}
-                    name="Revenue"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="overflow-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left p-2 bg-muted text-xs font-medium border">Period</th>
+                    <th className="text-right p-2 bg-muted text-xs font-medium border">Impressions</th>
+                    <th className="text-right p-2 bg-muted text-xs font-medium border">Clicks</th>
+                    <th className="text-right p-2 bg-muted text-xs font-medium border">CTR</th>
+                    <th className="text-right p-2 bg-muted text-xs font-medium border">Revenue</th>
+                    <th className="text-right p-2 bg-muted text-xs font-medium border">ROAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklyData.map((period, index) => {
+                    const ctr = period.IMPRESSIONS > 0 
+                      ? (period.CLICKS / period.IMPRESSIONS) * 100 
+                      : 0;
+                    
+                    return (
+                      <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-muted/30"}>
+                        <td className="p-2 border text-sm">
+                          {formatDate(period.periodStart)} - {formatDate(period.periodEnd)}
+                          {index === 0 && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Current</span>}
+                        </td>
+                        <td className="p-2 border text-right text-sm">{formatNumber(period.IMPRESSIONS)}</td>
+                        <td className="p-2 border text-right text-sm">{formatNumber(period.CLICKS)}</td>
+                        <td className="p-2 border text-right text-sm">{ctr.toFixed(2)}%</td>
+                        <td className="p-2 border text-right text-sm">{formatRevenue(period.REVENUE)}</td>
+                        <td className="p-2 border text-right text-sm">{formatROAS(period.ROAS)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : (
