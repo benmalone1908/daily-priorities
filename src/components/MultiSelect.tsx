@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks, X } from "lucide-react";
+import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -63,7 +63,7 @@ export function MultiSelect({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-20",
               className
             )}
           >
@@ -121,17 +121,16 @@ export function MultiSelect({
         </PopoverContent>
       </Popover>
       
-      {selected.length > 0 && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleClear}
-          className="absolute right-0 translate-x-[calc(100%+4px)] h-8 w-8"
-          aria-label="Clear selection"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleClear}
+        disabled={selected.length === 0}
+        className="absolute right-1 h-8"
+        aria-label="Clear selection"
+      >
+        Clear
+      </Button>
     </div>
   );
 }
