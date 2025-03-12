@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -907,4 +908,115 @@ const Dashboard = ({
         <div className="h-[400px]">
           {processedRevenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={processed
+              <ComposedChart data={processedRevenueData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="DATE" 
+                  style={axisStyle}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#4ade80"
+                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#ef4444"
+                  label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
+                  tickFormatter={formatRevenue}
+                  style={axisStyle}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === "Revenue") return [formatRevenue(value), name];
+                    return [formatNumber(value), name];
+                  }}
+                  contentStyle={{ fontSize: '0.75rem' }}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  opacity={0.8}
+                  name="Impressions"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="REVENUE"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Revenue"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No revenue data available for the selected filters</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium mr-1">Filter by:</span>
+              <div className="flex items-center gap-2">
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedWeeklyAdvertisers}
+                  onChange={handleWeeklyAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+                
+                <Select 
+                  value={selectedWeeklyCampaign} 
+                  onValueChange={setSelectedWeeklyCampaign}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Campaign" />
+                  </SelectTrigger>
+                  <SelectContent className="w-[400px]">
+                    {filteredWeeklyCampaignOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {weeklyData.length >= 1 ? (
+          <ScrollArea className="h-[460px]">
+            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
+              {/* Weekly data content would go here */}
+            </div>
+          </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">No period data available for the selected filters</p>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+export default Dashboard;
