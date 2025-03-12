@@ -20,6 +20,7 @@ interface MultiSelectProps {
   placeholder?: string;
   className?: string;
   popoverClassName?: string;
+  isWide?: boolean;
 }
 
 export function MultiSelect({
@@ -29,6 +30,7 @@ export function MultiSelect({
   placeholder = "Select options",
   className,
   popoverClassName,
+  isWide = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -63,7 +65,14 @@ export function MultiSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={cn("p-0 bg-background shadow-lg", popoverClassName)} align="start">
+      <PopoverContent 
+        className={cn(
+          "p-0 bg-background shadow-lg", 
+          isWide ? "w-96" : "", 
+          popoverClassName
+        )} 
+        align="start"
+      >
         <div className="max-h-[300px] overflow-auto p-1">
           <div
             className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
@@ -94,7 +103,10 @@ export function MultiSelect({
                   <Square className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
-              <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
+              <span className={cn(
+                "whitespace-nowrap overflow-hidden text-ellipsis pr-2",
+                isWide ? "max-w-[300px]" : "truncate"
+              )}>
                 {option.label}
               </span>
             </div>
