@@ -550,8 +550,8 @@ const Dashboard = ({
   const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
     [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
     
-  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
-  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
+  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || []), [metricsData]);
+  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || []), [revenueData]);
 
   const formatNumber = (value: number) => {
     try {
@@ -725,29 +725,28 @@ const Dashboard = ({
               />
               
               {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
-                <>
-                  <MultiSelect
-                    options={filteredMetricsCampaignOptions}
-                    selected={selectedMetricsCampaigns}
-                    onChange={onMetricsCampaignsChange}
-                    placeholder="Campaign"
-                    className="w-[200px]"
-                    isWide={true}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      handleMetricsAdvertisersChange([]);
-                      onMetricsCampaignsChange([]);
-                    }}
-                    disabled={selectedMetricsAdvertisers.length === 0 && selectedMetricsCampaigns.length === 0}
-                    className="h-9"
-                  >
-                    Clear
-                  </Button>
-                </>
+                <MultiSelect
+                  options={filteredMetricsCampaignOptions}
+                  selected={selectedMetricsCampaigns}
+                  onChange={onMetricsCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                  isWide={true}
+                />
               )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  handleMetricsAdvertisersChange([]);
+                  onMetricsCampaignsChange?.([]);
+                }}
+                disabled={selectedMetricsAdvertisers.length === 0 && selectedMetricsCampaigns.length === 0}
+                className="h-9"
+              >
+                Clear
+              </Button>
             </div>
           </div>
         </div>
