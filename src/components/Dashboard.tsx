@@ -147,5 +147,26 @@ const Dashboard = ({
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = []
 }: DashboardProps) => {
-  // ... keep existing code (rest of Dashboard component)
+  const filteredMetricsData = useMemo(() => {
+    // Filter logic for metrics data
+    return metricsData; // Placeholder for actual filtering logic
+  }, [metricsData]);
+
+  const filteredRevenueData = useMemo(() => {
+    // Filter logic for revenue data
+    return revenueData; // Placeholder for actual filtering logic
+  }, [revenueData]);
+
+  return (
+    <div>
+      <h2 className="text-lg font-bold">Dashboard</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MetricCard title="Metrics" anomalies={filteredMetricsData} metric="METRICS" anomalyPeriod="weekly" />
+        <MetricCard title="Revenue" anomalies={filteredRevenueData} metric="REVENUE" anomalyPeriod="weekly" />
+      </div>
+    </div>
+  );
 };
+
+export const Dashboard = Dashboard;
+export default Dashboard;
