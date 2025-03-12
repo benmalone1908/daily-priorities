@@ -184,3 +184,5 @@ const Dashboard = ({
 
   // ... rest of code remains unchanged
 }
+
+export default Dashboard;
