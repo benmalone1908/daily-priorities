@@ -156,10 +156,6 @@ const Dashboard = ({
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
     
-    if (onRevenueAdvertisersChange) {
-      onRevenueAdvertisersChange(selected);
-    }
-    
     if (selected.length > 0 && onMetricsCampaignsChange) {
       const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
         const match = campaign.match(/SM:\s+([^-]+)/);
@@ -168,6 +164,12 @@ const Dashboard = ({
       });
       
       onMetricsCampaignsChange(validCampaigns);
+    }
+  };
+
+  const handleRevenueAdvertisersChange = (selected: string[]) => {
+    if (onRevenueAdvertisersChange) {
+      onRevenueAdvertisersChange(selected);
     }
   };
 
@@ -720,7 +722,7 @@ const Dashboard = ({
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
-              {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+              {advertiserOptions.length > 0 && (
                 <MultiSelect
                   options={advertiserOptions}
                   selected={selectedMetricsAdvertisers}
@@ -808,7 +810,7 @@ const Dashboard = ({
                 <MultiSelect
                   options={advertiserOptions}
                   selected={selectedRevenueAdvertisers}
-                  onChange={onRevenueAdvertisersChange}
+                  onChange={handleRevenueAdvertisersChange}
                   placeholder="Advertiser"
                   className="w-[200px]"
                 />
@@ -1012,4 +1014,3 @@ const Dashboard = ({
 };
 
 export default Dashboard;
-
