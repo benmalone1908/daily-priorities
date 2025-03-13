@@ -165,6 +165,22 @@ const Dashboard = ({
       
       onMetricsCampaignsChange(validCampaigns);
     }
+    
+    if (selected.length > 0) {
+      const matchingCampaigns = campaigns.filter(campaign => {
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
+      });
+      
+      if (selectedMetricsCampaigns.length === 0 || !selectedMetricsCampaigns.some(campaign => matchingCampaigns.includes(campaign))) {
+        if (onMetricsCampaignsChange) {
+          onMetricsCampaignsChange(matchingCampaigns);
+        }
+      }
+    } else if (selected.length === 0 && onMetricsCampaignsChange) {
+      onMetricsCampaignsChange([]);
+    }
   };
 
   const handleRevenueAdvertisersChange = (selected: string[]) => {
@@ -1014,3 +1030,4 @@ const Dashboard = ({
 };
 
 export default Dashboard;
+
