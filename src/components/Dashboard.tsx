@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -156,6 +155,10 @@ const Dashboard = ({
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
+    
+    if (onRevenueAdvertisersChange) {
+      onRevenueAdvertisersChange(selected);
+    }
     
     if (selected.length > 0 && onMetricsCampaignsChange) {
       const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
