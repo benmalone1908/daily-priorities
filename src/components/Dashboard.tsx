@@ -717,13 +717,15 @@ const Dashboard = ({
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
-              <MultiSelect
-                options={advertiserOptions}
-                selected={selectedMetricsAdvertisers}
-                onChange={handleMetricsAdvertisersChange}
-                placeholder="Advertiser"
-                className="w-[200px]"
-              />
+              {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedMetricsAdvertisers}
+                  onChange={handleMetricsAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+              )}
               
               {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
                 <MultiSelect
@@ -1007,3 +1009,4 @@ const Dashboard = ({
 };
 
 export default Dashboard;
+
