@@ -476,47 +476,39 @@ const Dashboard = ({
         return [];
       }
 
-      const mostRecentDate = filteredData.reduce((latest, row) => {
-        if (!row.DATE) return latest;
-        
-        try {
-          const rowDate = new Date(row.DATE);
-          if (isNaN(rowDate.getTime())) return latest;
-          
-          return rowDate > latest ? rowDate : latest;
-        } catch (err) {
-          console.error("Error comparing dates:", err);
-          return latest;
-        }
-      }, new Date(0));
-
-      const earliestDate = filteredData.reduce((earliest, row) => {
-        if (!row.DATE) return earliest;
-        
-        try {
-          const rowDate = new Date(row.DATE);
-          if (isNaN(rowDate.getTime())) return earliest;
-          
-          return rowDate < earliest ? rowDate : earliest;
-        } catch (err) {
-          console.error("Error comparing dates:", err);
-          return earliest;
-        }
-      }, new Date());
-
-      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24));
-      const maxPeriods = Math.floor(totalDays / 7);
+      const dates = filteredData
+        .map(row => new Date(row.DATE))
+        .filter(date => !isNaN(date.getTime()));
       
-      const periodsToCreate = Math.min(maxPeriods, 12);
+      if (!dates.length) {
+        console.log("No valid dates in data");
+        return [];
+      }
 
+      const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      
+      console.log(`Date range: ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
+      
+      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const completeWeeks = Math.floor(totalDays / 7);
+      
+      console.log(`Total days: ${totalDays}, Complete weeks: ${completeWeeks}`);
+      
       const periods: WeeklyData[] = [];
-
-      for (let i = 0; i < periodsToCreate; i++) {
+      
+      for (let i = 0; i < completeWeeks; i++) {
         const periodEnd = new Date(mostRecentDate);
-        periodEnd.setDate(periodEnd.getDate() - (i * 7));
+        if (i > 0) {
+          periodEnd.setDate(periodEnd.getDate() - (i * 7));
+        }
         
         const periodStart = new Date(periodEnd);
         periodStart.setDate(periodEnd.getDate() - 6);
+        
+        if (periodStart < earliestDate) {
+          break;
+        }
         
         const periodStartStr = periodStart.toISOString().split('T')[0];
         const periodEndStr = periodEnd.toISOString().split('T')[0];
@@ -531,7 +523,9 @@ const Dashboard = ({
           count: 0
         });
       }
-
+      
+      console.log(`Created ${periods.length} periods`);
+      
       filteredData.forEach(row => {
         try {
           if (!row.DATE) return;
@@ -1030,4 +1024,3 @@ const Dashboard = ({
 };
 
 export default Dashboard;
-
