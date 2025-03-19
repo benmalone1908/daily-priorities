@@ -15,15 +15,25 @@ import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, Tre
 import { formatNumber } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CampaignSparkChartsProps {
   data: any[];
   dateRange?: DateRange;
 }
 
+type ViewMode = "campaign" | "advertiser";
+
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("campaign");
   
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
@@ -99,7 +109,12 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     return result;
   }, [data, selectedCampaigns, selectedAdvertisers]);
 
-  const campaignData = useMemo(() => {
+  const getAdvertiserFromCampaign = (campaignName: string): string => {
+    const match = campaignName.match(/SM:\s+([^-]+)/);
+    return match ? match[1].trim() : "";
+  };
+
+  const chartData = useMemo(() => {
     if (!filteredData || filteredData.length === 0) return [];
 
     let filteredDataByDate = filteredData;
@@ -124,59 +139,142 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
 
-    const campaigns = Array.from(new Set(filteredDataByDate.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
-    
-    return campaigns.map(campaign => {
-      const campaignRows = filteredDataByDate.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
-      campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+    if (viewMode === "campaign") {
+      const campaigns = Array.from(new Set(filteredDataByDate.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
       
-      const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-      
-      const timeSeriesData = campaignRows.map(row => {
-        const impressions = Number(row.IMPRESSIONS) || 0;
-        const clicks = Number(row.CLICKS) || 0;
-        const transactions = Number(row.TRANSACTIONS) || 0;
-        const revenue = Number(row.REVENUE) || 0;
-        const spend = (impressions / 1000) * 15;
-        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-        const roas = spend > 0 ? revenue / spend : 0;
+      return campaigns.map(campaign => {
+        const campaignRows = filteredDataByDate.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+        campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
         
+        const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        
+        const timeSeriesData = campaignRows.map(row => {
+          const impressions = Number(row.IMPRESSIONS) || 0;
+          const clicks = Number(row.CLICKS) || 0;
+          const transactions = Number(row.TRANSACTIONS) || 0;
+          const revenue = Number(row.REVENUE) || 0;
+          const spend = (impressions / 1000) * 15;
+          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+          const roas = spend > 0 ? revenue / spend : 0;
+          
+          return {
+            date: dateFormat.format(new Date(row.DATE)),
+            rawDate: new Date(row.DATE),
+            impressions,
+            clicks,
+            transactions,
+            revenue,
+            spend,
+            ctr,
+            roas
+          };
+        });
+
+        const totals = {
+          impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+          clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+          transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+          revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+          spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
+        };
+        
+        const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+        const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
+
         return {
-          date: dateFormat.format(new Date(row.DATE)),
-          rawDate: new Date(row.DATE),
-          impressions,
-          clicks,
-          transactions,
-          revenue,
-          spend,
-          ctr,
-          roas
+          name: campaign,
+          timeSeriesData,
+          totals,
+          avgCtr,
+          avgRoas
         };
       });
-
-      const totals = {
-        impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
-        clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
-        transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
-        revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
-        spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
-      };
+    } else {
+      // Aggregate by advertiser
+      const advertisersMap = new Map<string, any[]>();
       
-      const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
-      const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
+      filteredDataByDate.forEach(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const advertiser = getAdvertiserFromCampaign(campaignName);
+        if (!advertiser) return;
+        
+        if (!advertisersMap.has(advertiser)) {
+          advertisersMap.set(advertiser, []);
+        }
+        advertisersMap.get(advertiser)?.push(row);
+      });
+      
+      const advertisers = Array.from(advertisersMap.keys()).sort((a, b) => a.localeCompare(b));
+      
+      return advertisers.map(advertiser => {
+        const advertiserRows = advertisersMap.get(advertiser) || [];
+        
+        // Group by date first
+        const dateGroups = new Map<string, any[]>();
+        advertiserRows.forEach(row => {
+          const date = new Date(row.DATE);
+          const dateString = date.toISOString().split('T')[0];
+          
+          if (!dateGroups.has(dateString)) {
+            dateGroups.set(dateString, []);
+          }
+          dateGroups.get(dateString)?.push(row);
+        });
+        
+        // Create time series data
+        const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+        const dates = Array.from(dateGroups.keys()).sort();
+        
+        const timeSeriesData = dates.map(dateString => {
+          const dateRows = dateGroups.get(dateString) || [];
+          const date = new Date(dateString);
+          
+          const impressions = dateRows.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+          const clicks = dateRows.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
+          const transactions = dateRows.reduce((sum, row) => sum + (Number(row.TRANSACTIONS) || 0), 0);
+          const revenue = dateRows.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
+          const spend = (impressions / 1000) * 15;
+          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+          const roas = spend > 0 ? revenue / spend : 0;
+          
+          return {
+            date: dateFormat.format(date),
+            rawDate: date,
+            impressions,
+            clicks,
+            transactions,
+            revenue,
+            spend,
+            ctr,
+            roas
+          };
+        });
+        
+        // Calculate totals
+        const totals = {
+          impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+          clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+          transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+          revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+          spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
+        };
+        
+        const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+        const avgRoas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
+        
+        return {
+          name: advertiser,
+          timeSeriesData,
+          totals,
+          avgCtr,
+          avgRoas
+        };
+      });
+    }
+  }, [filteredData, dateRange, viewMode]);
 
-      return {
-        name: campaign,
-        timeSeriesData,
-        totals,
-        avgCtr,
-        avgRoas
-      };
-    });
-  }, [filteredData, dateRange]);
-
-  const getSafeId = (campaignName: string) => {
-    return `gradient-${campaignName.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
+  const getSafeId = (name: string) => {
+    return `gradient-${name.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
   };
 
   if (!data || data.length === 0) {
@@ -185,53 +283,71 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end items-center gap-4 mb-4">
-        <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-        
+      <div className="flex justify-between items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <MultiSelect
-            options={advertiserOptions}
-            selected={selectedAdvertisers}
-            onChange={setSelectedAdvertisers}
-            placeholder="Advertiser"
-            className="w-[200px]"
-          />
+          <span className="text-sm font-medium text-muted-foreground">View by:</span>
+          <Select
+            value={viewMode}
+            onValueChange={(value: ViewMode) => setViewMode(value)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Select view" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="campaign">Campaign</SelectItem>
+              <SelectItem value="advertiser">Advertiser</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
           
-          <MultiSelect
-            options={campaignOptions}
-            selected={selectedCampaigns}
-            onChange={setSelectedCampaigns}
-            placeholder="Campaign"
-            className="w-[200px]"
-            popoverClassName="w-[400px]"
-          />
+          <div className="flex items-center gap-2">
+            <MultiSelect
+              options={advertiserOptions}
+              selected={selectedAdvertisers}
+              onChange={setSelectedAdvertisers}
+              placeholder="Advertiser"
+              className="w-[200px]"
+            />
+            
+            <MultiSelect
+              options={campaignOptions}
+              selected={selectedCampaigns}
+              onChange={setSelectedCampaigns}
+              placeholder="Campaign"
+              className="w-[200px]"
+              popoverClassName="w-[400px]"
+            />
+          </div>
         </div>
       </div>
       
-      {campaignData.map((campaign) => {
-        const impressionsId = `impressions-${getSafeId(campaign.name)}`;
-        const clicksId = `clicks-${getSafeId(campaign.name)}`;
-        const transactionsId = `transactions-${getSafeId(campaign.name)}`;
-        const revenueId = `revenue-${getSafeId(campaign.name)}`;
-        const ctrId = `ctr-${getSafeId(campaign.name)}`;
-        const roasId = `roas-${getSafeId(campaign.name)}`;
+      {chartData.map((item) => {
+        const impressionsId = `impressions-${getSafeId(item.name)}`;
+        const clicksId = `clicks-${getSafeId(item.name)}`;
+        const transactionsId = `transactions-${getSafeId(item.name)}`;
+        const revenueId = `revenue-${getSafeId(item.name)}`;
+        const ctrId = `ctr-${getSafeId(item.name)}`;
+        const roasId = `roas-${getSafeId(item.name)}`;
         
         return (
-          <Card key={campaign.name} className="overflow-hidden">
+          <Card key={item.name} className="overflow-hidden">
             <div className="p-4 sm:p-6">
               <div className="flex flex-col space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium truncate" title={campaign.name}>
-                      {campaign.name}
+                    <h3 className="text-lg font-medium truncate" title={item.name}>
+                      {item.name}
                     </h3>
                     <div className="flex items-center mt-1">
                       <p className="text-sm text-muted-foreground mr-3">
-                        {campaign.timeSeriesData.length} days of data
+                        {item.timeSeriesData.length} days of data
                       </p>
                       <div className="flex items-center text-sm font-medium">
                         <DollarSign className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-                        <span>Total Spend: ${formatNumber(campaign.totals.spend, { abbreviate: false })}</span>
+                        <span>Total Spend: ${formatNumber(item.totals.spend, { abbreviate: false })}</span>
                       </div>
                     </div>
                   </div>
@@ -244,7 +360,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <Eye className="h-4 w-4 text-sky-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.impressions, { abbreviate: false })}</p>
+                      <p className="text-sm font-medium">{formatNumber(item.totals.impressions, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Impressions</p>
                     </div>
                   </div>
@@ -254,7 +370,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <MousePointer className="h-4 w-4 text-violet-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.clicks, { abbreviate: false })}</p>
+                      <p className="text-sm font-medium">{formatNumber(item.totals.clicks, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Clicks</p>
                     </div>
                   </div>
@@ -264,7 +380,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <Percent className="h-4 w-4 text-indigo-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.avgCtr, { decimals: 2, suffix: '%' })}</p>
+                      <p className="text-sm font-medium">{formatNumber(item.avgCtr, { decimals: 2, suffix: '%' })}</p>
                       <p className="text-xs text-muted-foreground">CTR</p>
                     </div>
                   </div>
@@ -274,7 +390,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <ShoppingCart className="h-4 w-4 text-orange-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.totals.transactions, { abbreviate: false })}</p>
+                      <p className="text-sm font-medium">{formatNumber(item.totals.transactions, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Transactions</p>
                     </div>
                   </div>
@@ -284,7 +400,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <DollarSign className="h-4 w-4 text-green-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">${formatNumber(campaign.totals.revenue, { abbreviate: false })}</p>
+                      <p className="text-sm font-medium">${formatNumber(item.totals.revenue, { abbreviate: false })}</p>
                       <p className="text-xs text-muted-foreground">Revenue</p>
                     </div>
                   </div>
@@ -294,7 +410,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                       <TrendingUp className="h-4 w-4 text-amber-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{formatNumber(campaign.avgRoas, { decimals: 2, suffix: 'x' })}</p>
+                      <p className="text-sm font-medium">{formatNumber(item.avgRoas, { decimals: 2, suffix: 'x' })}</p>
                       <p className="text-xs text-muted-foreground">ROAS</p>
                     </div>
                   </div>
@@ -303,7 +419,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                 <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 h-24">
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Impressions']}
                           labelFormatter={(label) => `${label}`}
@@ -329,7 +445,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Clicks']}
                           labelFormatter={(label) => `${label}`}
@@ -355,7 +471,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: '%' }), 'CTR']}
                           labelFormatter={(label) => `${label}`}
@@ -381,7 +497,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Transactions']}
                           labelFormatter={(label) => `${label}`}
@@ -407,7 +523,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => ['$' + formatNumber(value, { abbreviate: false }), 'Revenue']}
                           labelFormatter={(label) => `${label}`}
@@ -433,7 +549,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={campaign.timeSeriesData}>
+                      <AreaChart data={item.timeSeriesData}>
                         <Tooltip 
                           formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: 'x' }), 'ROAS']}
                           labelFormatter={(label) => `${label}`}
