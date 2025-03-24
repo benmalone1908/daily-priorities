@@ -89,7 +89,7 @@ const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps
           {anomalies.length > 3 && (
             <button
               className="w-full py-1.5 text-xs font-medium text-center text-muted-foreground hover:text-primary transition-colors"
-              onClick={() => setSelectedIndex(3)}
+              onClick={() => setSelectedIndex(-1)} // Using -1 as a special indicator to view all anomalies
             >
               View {anomalies.length - 3} more...
             </button>

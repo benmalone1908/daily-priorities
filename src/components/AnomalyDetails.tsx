@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,11 +16,18 @@ interface AnomalyDetailsProps {
 const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClose }: AnomalyDetailsProps) => {
   const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showAllAnomalies, setShowAllAnomalies] = useState(false);
 
   useEffect(() => {
-    if (initialIndex !== undefined && anomalies && anomalies[initialIndex]) {
-      setSelectedAnomaly(anomalies[initialIndex]);
-      setDialogOpen(true);
+    if (initialIndex !== undefined) {
+      if (initialIndex === -1) {
+        // Special case: -1 means show all anomalies list view
+        setShowAllAnomalies(true);
+        setDialogOpen(true);
+      } else if (anomalies && anomalies[initialIndex]) {
+        setSelectedAnomaly(anomalies[initialIndex]);
+        setDialogOpen(true);
+      }
     }
   }, [initialIndex, anomalies]);
 
@@ -29,11 +37,13 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
 
   const openDetails = (anomaly: any) => {
     setSelectedAnomaly(anomaly);
+    setShowAllAnomalies(false);
     setDialogOpen(true);
   };
 
   const closeDetails = () => {
     setSelectedAnomaly(null);
+    setShowAllAnomalies(false);
     setDialogOpen(false);
     if (onClose) {
       onClose();
@@ -153,6 +163,72 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
     );
   };
 
+  // Show all anomalies dialog
+  if (showAllAnomalies) {
+    return (
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent 
+          className="max-w-3xl max-h-[80vh] overflow-hidden text-sm"
+          style={{ 
+            width: "1000px", 
+            maxWidth: "1000px !important",
+            minWidth: "1000px",
+            transform: "translate(-50%, -50%)"
+          }}
+        >
+          <DialogHeader className="sticky top-0 bg-background z-10 pb-3">
+            <DialogTitle className="text-base">
+              {metric.charAt(0) + metric.slice(1).toLowerCase()} Anomalies
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Showing all {anomalies.length} {anomalyPeriod} anomalies detected in the data
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 140px)" }}>
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead className="text-xs">Campaign</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{anomalyPeriod === "daily" ? "Date" : "Week"}</TableHead>
+                  <TableHead className="text-xs">Value</TableHead>
+                  <TableHead className="text-xs">Expected</TableHead>
+                  <TableHead className="text-xs">Deviation</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {anomalies.map((anomaly, index) => {
+                  const colorClass = getColorClasses(anomaly.deviation).split(' ').find(c => c.startsWith('text-'));
+                  
+                  // Determine if campaign name should be clickable
+                  const isCampaignClickable = anomalyPeriod === "weekly";
+                  
+                  return (
+                    <TableRow key={index}>
+                      <TableCell 
+                        className={`font-medium text-xs ${isCampaignClickable ? 'cursor-pointer hover:underline hover:text-primary' : ''}`}
+                        onClick={isCampaignClickable ? () => openDetails(anomaly) : undefined}
+                      >
+                        {anomaly.campaign}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs">{anomaly.DATE}</TableCell>
+                      <TableCell className="text-xs">{Math.round(anomaly.actualValue).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs">{Math.round(anomaly.mean).toLocaleString()}</TableCell>
+                      <TableCell className={`text-xs ${colorClass}`}>
+                        {anomaly.deviation > 0 ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // View single anomaly dialog
   return (
     <>
       <Dialog>
