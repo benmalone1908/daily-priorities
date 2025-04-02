@@ -71,6 +71,14 @@ const Dashboard = ({
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
+  const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
+  
+  const renderCountRef = useRef(0);
+  
+  useEffect(() => {
+    renderCountRef.current += 1;
+    console.log(`Dashboard render #${renderCountRef.current}, data rows: ${data?.length || 0}`);
+  });
 
   const campaigns = useMemo(() => {
     if (sortedCampaignOptions.length > 0) return sortedCampaignOptions;
@@ -451,24 +459,20 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod) => {
-    try {
-      console.log("getWeeklyData called with:", { 
-        selectedCampaign, 
-        selectedAdvertisers, 
-        periodLength,
-        dataLength: data?.length || 0
-      });
-      
-      if (!data || !data.length) {
-        console.log("No data available for weekly comparison");
-        return [];
-      }
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, period=${periodLength}`);
+    
+    if (!data || data.length === 0) {
+      console.log("No data available for weekly comparison");
+      return [];
+    }
 
-      let filteredData = [...data]; // Create a copy to avoid mutations
+    try {
+      let filteredData = JSON.parse(JSON.stringify(data));
+      console.log(`Starting with ${filteredData.length} rows of data`);
       
       if (selectedAdvertisers.length > 0) {
-        filteredData = filteredData.filter(row => {
+        filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
@@ -476,36 +480,49 @@ const Dashboard = ({
           const advertiser = match ? match[1].trim() : "";
           return selectedAdvertisers.includes(advertiser);
         });
+        console.log(`After advertiser filter: ${filteredData.length} rows`);
       }
       
       if (selectedCampaign !== "all") {
-        filteredData = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+        filteredData = filteredData.filter((row: any) => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+        console.log(`After campaign filter: ${filteredData.length} rows`);
       }
-
-      console.log(`Filtered data length: ${filteredData.length}`);
       
-      if (!filteredData.length) {
-        console.log("No filtered data available after applying filters");
+      if (filteredData.length === 0) {
+        console.log("No data after filtering");
         return [];
       }
 
-      const dates = filteredData
-        .map(row => {
-          try {
-            if (!row.DATE) return null;
-            const date = new Date(row.DATE);
-            return isNaN(date.getTime()) ? null : date;
-          } catch (e) {
+      const rowsWithDates = filteredData.map((row: any) => {
+        try {
+          if (!row.DATE) return null;
+          
+          const dateStr = typeof row.DATE === 'string' ? row.DATE : String(row.DATE);
+          const date = new Date(dateStr);
+          
+          if (isNaN(date.getTime())) {
+            console.log(`Invalid date found: ${row.DATE}`);
             return null;
           }
-        })
-        .filter(Boolean) as Date[];
+          
+          return {
+            ...row,
+            parsedDate: date
+          };
+        } catch (e) {
+          console.error(`Error parsing date: ${row.DATE}`, e);
+          return null;
+        }
+      }).filter(Boolean);
       
-      if (!dates.length) {
-        console.log("No valid dates in filtered data");
+      console.log(`Rows with valid dates: ${rowsWithDates.length}`);
+      
+      if (rowsWithDates.length === 0) {
+        console.log("No rows with valid dates");
         return [];
       }
 
+      const dates = rowsWithDates.map((row: any) => row.parsedDate);
       const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
       
@@ -521,17 +538,19 @@ const Dashboard = ({
         console.log("Not enough data for even one complete period");
         return [];
       }
-      
+
       const periods: WeeklyData[] = [];
       
       for (let i = 0; i < completePeriods; i++) {
         const periodEnd = new Date(mostRecentDate);
+        periodEnd.setHours(23, 59, 59, 999);
         if (i > 0) {
           periodEnd.setDate(periodEnd.getDate() - (i * daysPeriod));
         }
         
         const periodStart = new Date(periodEnd);
         periodStart.setDate(periodEnd.getDate() - (daysPeriod - 1));
+        periodStart.setHours(0, 0, 0, 0);
         
         if (periodStart < earliestDate) {
           console.log(`Skipping period ${i+1} - starts before earliest data`);
@@ -556,20 +575,17 @@ const Dashboard = ({
       
       console.log(`Created ${periods.length} periods of ${daysPeriod} days each`);
       
-      filteredData.forEach(row => {
+      rowsWithDates.forEach((row: any) => {
         try {
-          if (!row.DATE) return;
-          
-          const rowDate = new Date(row.DATE);
-          if (isNaN(rowDate.getTime())) return;
-          
-          const rowDateStr = rowDate.toISOString().split('T')[0];
+          const rowDate = row.parsedDate;
+          const rowTime = rowDate.getTime();
           
           for (let i = 0; i < periods.length; i++) {
-            const periodStart = periods[i].periodStart;
-            const periodEnd = periods[i].periodEnd;
+            const periodStart = new Date(periods[i].periodStart);
+            const periodEnd = new Date(periods[i].periodEnd);
+            periodEnd.setHours(23, 59, 59, 999);
             
-            if (rowDateStr >= periodStart && rowDateStr <= periodEnd) {
+            if (rowTime >= periodStart.getTime() && rowTime <= periodEnd.getTime()) {
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
               periods[i].CLICKS += Number(row.CLICKS) || 0;
               periods[i].REVENUE += Number(row.REVENUE) || 0;
@@ -652,14 +668,11 @@ const Dashboard = ({
     }
   }, [data]);
 
-  const weeklyData = useMemo(() => {
-    console.log("Recomputing weekly data with:", {
-      dataLength: data?.length || 0,
-      campaign: selectedWeeklyCampaign,
-      advertisers: selectedWeeklyAdvertisers,
-      period: comparisonPeriod
-    });
-    return getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+  useEffect(() => {
+    console.log("Calculating weekly data...");
+    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+    console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
+    setWeeklyDataState(calculatedData);
   }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
@@ -800,6 +813,7 @@ const Dashboard = ({
             </ToggleGroup>
           </div>
         </div>
+        
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard
             title="Impression Anomalies"
@@ -999,7 +1013,7 @@ const Dashboard = ({
             <div>
               <h3 className="text-lg font-semibold">Weekly Comparison</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {weeklyData.length} periods found ({weeklyData.length * parseInt(comparisonPeriod)} days of data)
+                {weeklyDataState.length} periods found ({weeklyDataState.length * parseInt(comparisonPeriod)} days of data)
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1056,11 +1070,11 @@ const Dashboard = ({
           </div>
         </div>
 
-        {weeklyData.length >= 1 ? (
+        {weeklyDataState.length >= 1 ? (
           <ScrollArea className="h-[460px]">
             <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
-              {weeklyData.map((period, index) => {
-                const previousPeriod = weeklyData[index + 1];
+              {weeklyDataState.map((period, index) => {
+                const previousPeriod = weeklyDataState[index + 1];
                 const periodLabel = `${formatDate(period.periodStart)} - ${formatDate(period.periodEnd)}`;
                 
                 const metrics = [
