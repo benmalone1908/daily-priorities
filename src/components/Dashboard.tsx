@@ -453,16 +453,25 @@ const Dashboard = ({
 
   const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod) => {
     try {
+      console.log("getWeeklyData called with:", { 
+        selectedCampaign, 
+        selectedAdvertisers, 
+        periodLength,
+        dataLength: data?.length || 0
+      });
+      
       if (!data || !data.length) {
-        console.log("No data available");
+        console.log("No data available for weekly comparison");
         return [];
       }
 
-      let filteredData = data;
+      let filteredData = [...data]; // Create a copy to avoid mutations
       
       if (selectedAdvertisers.length > 0) {
-        filteredData = data.filter(row => {
-          const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        filteredData = filteredData.filter(row => {
+          if (!row["CAMPAIGN ORDER NAME"]) return false;
+          
+          const campaignName = row["CAMPAIGN ORDER NAME"];
           const match = campaignName.match(/SM:\s+([^-]+)/);
           const advertiser = match ? match[1].trim() : "";
           return selectedAdvertisers.includes(advertiser);
@@ -473,17 +482,27 @@ const Dashboard = ({
         filteredData = filteredData.filter(row => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
       }
 
+      console.log(`Filtered data length: ${filteredData.length}`);
+      
       if (!filteredData.length) {
-        console.log("No filtered data available");
+        console.log("No filtered data available after applying filters");
         return [];
       }
 
       const dates = filteredData
-        .map(row => new Date(row.DATE))
-        .filter(date => !isNaN(date.getTime()));
+        .map(row => {
+          try {
+            if (!row.DATE) return null;
+            const date = new Date(row.DATE);
+            return isNaN(date.getTime()) ? null : date;
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(Boolean) as Date[];
       
       if (!dates.length) {
-        console.log("No valid dates in data");
+        console.log("No valid dates in filtered data");
         return [];
       }
 
@@ -496,7 +515,12 @@ const Dashboard = ({
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const completePeriods = Math.floor(totalDays / daysPeriod);
       
-      console.log(`Total days: ${totalDays}, Complete periods: ${completePeriods}`);
+      console.log(`Total days: ${totalDays}, Days per period: ${daysPeriod}, Complete periods: ${completePeriods}`);
+      
+      if (completePeriods < 1) {
+        console.log("Not enough data for even one complete period");
+        return [];
+      }
       
       const periods: WeeklyData[] = [];
       
@@ -510,11 +534,14 @@ const Dashboard = ({
         periodStart.setDate(periodEnd.getDate() - (daysPeriod - 1));
         
         if (periodStart < earliestDate) {
-          break;
+          console.log(`Skipping period ${i+1} - starts before earliest data`);
+          continue;
         }
         
         const periodStartStr = periodStart.toISOString().split('T')[0];
         const periodEndStr = periodEnd.toISOString().split('T')[0];
+        
+        console.log(`Creating period ${i+1}: ${periodStartStr} to ${periodEndStr}`);
         
         periods.push({
           periodStart: periodStartStr,
@@ -555,11 +582,22 @@ const Dashboard = ({
         }
       });
 
-      periods.forEach(period => {
+      const nonEmptyPeriods = periods.filter(period => period.count > 0);
+      
+      nonEmptyPeriods.forEach(period => {
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
+      
+      console.log(`Final periods with data: ${nonEmptyPeriods.length}`);
+      
+      if (nonEmptyPeriods.length > 0) {
+        console.log("First period data:", JSON.stringify(nonEmptyPeriods[0]));
+        if (nonEmptyPeriods.length > 1) {
+          console.log("Second period data:", JSON.stringify(nonEmptyPeriods[1]));
+        }
+      }
 
-      return periods;
+      return nonEmptyPeriods;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
       return [];
@@ -569,14 +607,24 @@ const Dashboard = ({
   const availablePeriods = useMemo(() => {
     try {
       if (!data || !data.length) {
+        console.log("No data for period calculation");
         return ["7"];
       }
 
       const dates = data
-        .map(row => new Date(row.DATE))
-        .filter(date => !isNaN(date.getTime()));
+        .map(row => {
+          try {
+            if (!row.DATE) return null;
+            const date = new Date(row.DATE);
+            return isNaN(date.getTime()) ? null : date;
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(Boolean) as Date[];
       
       if (!dates.length) {
+        console.log("No valid dates found for period calculation");
         return ["7"];
       }
 
@@ -584,6 +632,7 @@ const Dashboard = ({
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
       
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      console.log(`Total days available for period calculation: ${totalDays}`);
       
       const periods: ComparisonPeriod[] = ["7"];
       
@@ -595,6 +644,7 @@ const Dashboard = ({
         periods.push("30");
       }
       
+      console.log(`Available periods: ${periods.join(", ")}`);
       return periods;
     } catch (error) {
       console.error("Error calculating available periods:", error);
@@ -602,9 +652,16 @@ const Dashboard = ({
     }
   }, [data]);
 
-  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod), 
-    [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
-    
+  const weeklyData = useMemo(() => {
+    console.log("Recomputing weekly data with:", {
+      dataLength: data?.length || 0,
+      campaign: selectedWeeklyCampaign,
+      advertisers: selectedWeeklyAdvertisers,
+      period: comparisonPeriod
+    });
+    return getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
+
   const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
   const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
 
