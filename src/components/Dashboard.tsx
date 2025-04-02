@@ -11,7 +11,7 @@ import {
   Bar,
   ComposedChart,
 } from "recharts";
-import { AlertTriangle, TrendingDown, TrendingUp, Filter } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Filter, Calendar } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AnomalyDetails from "./AnomalyDetails";
 import { getColorClasses } from "@/utils/anomalyColors";
@@ -51,6 +51,7 @@ interface WeeklyAggregation {
 }
 
 type AnomalyPeriod = "daily" | "weekly";
+type ComparisonPeriod = "7" | "14" | "30";
 
 const Dashboard = ({ 
   data,
@@ -69,6 +70,7 @@ const Dashboard = ({
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
+  const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
 
   const campaigns = useMemo(() => {
     if (sortedCampaignOptions.length > 0) return sortedCampaignOptions;
@@ -449,7 +451,7 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[]) => {
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod) => {
     try {
       if (!data || !data.length) {
         console.log("No data available");
@@ -490,21 +492,22 @@ const Dashboard = ({
       
       console.log(`Date range: ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       
+      const daysPeriod = parseInt(periodLength, 10);
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const completeWeeks = Math.floor(totalDays / 7);
+      const completePeriods = Math.floor(totalDays / daysPeriod);
       
-      console.log(`Total days: ${totalDays}, Complete weeks: ${completeWeeks}`);
+      console.log(`Total days: ${totalDays}, Complete periods: ${completePeriods}`);
       
       const periods: WeeklyData[] = [];
       
-      for (let i = 0; i < completeWeeks; i++) {
+      for (let i = 0; i < completePeriods; i++) {
         const periodEnd = new Date(mostRecentDate);
         if (i > 0) {
-          periodEnd.setDate(periodEnd.getDate() - (i * 7));
+          periodEnd.setDate(periodEnd.getDate() - (i * daysPeriod));
         }
         
         const periodStart = new Date(periodEnd);
-        periodStart.setDate(periodEnd.getDate() - 6);
+        periodStart.setDate(periodEnd.getDate() - (daysPeriod - 1));
         
         if (periodStart < earliestDate) {
           break;
@@ -524,7 +527,7 @@ const Dashboard = ({
         });
       }
       
-      console.log(`Created ${periods.length} periods`);
+      console.log(`Created ${periods.length} periods of ${daysPeriod} days each`);
       
       filteredData.forEach(row => {
         try {
@@ -563,8 +566,44 @@ const Dashboard = ({
     }
   };
 
-  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers), 
-    [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers]);
+  const availablePeriods = useMemo(() => {
+    try {
+      if (!data || !data.length) {
+        return ["7"];
+      }
+
+      const dates = data
+        .map(row => new Date(row.DATE))
+        .filter(date => !isNaN(date.getTime()));
+      
+      if (!dates.length) {
+        return ["7"];
+      }
+
+      const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      
+      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const periods: ComparisonPeriod[] = ["7"];
+      
+      if (totalDays >= 28) { // Need at least 2 x 14-day periods
+        periods.push("14");
+      }
+      
+      if (totalDays >= 60) { // Need at least 2 x 30-day periods
+        periods.push("30");
+      }
+      
+      return periods;
+    } catch (error) {
+      console.error("Error calculating available periods:", error);
+      return ["7"];
+    }
+  }, [data]);
+
+  const weeklyData = useMemo(() => getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod), 
+    [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
     
   const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
   const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
@@ -901,12 +940,35 @@ const Dashboard = ({
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold">7-Day Period Comparison</h3>
+              <h3 className="text-lg font-semibold">Weekly Comparison</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {weeklyData.length} periods found ({weeklyData.length * 7} days of data)
+                {weeklyData.length} periods found ({weeklyData.length * parseInt(comparisonPeriod)} days of data)
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Period:</span>
+                <Select 
+                  value={comparisonPeriod} 
+                  onValueChange={(value) => setComparisonPeriod(value as ComparisonPeriod)}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Period length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePeriods.includes("7") && (
+                      <SelectItem value="7">7 days</SelectItem>
+                    )}
+                    {availablePeriods.includes("14") && (
+                      <SelectItem value="14">14 days</SelectItem>
+                    )}
+                    {availablePeriods.includes("30") && (
+                      <SelectItem value="30">30 days</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
               <span className="text-sm font-medium mr-1">Filter by:</span>
               <div className="flex items-center gap-2">
                 <MultiSelect
