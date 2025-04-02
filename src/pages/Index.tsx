@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -161,7 +162,7 @@ const Index = () => {
         <>
           <div className="space-y-2 text-center animate-fade-in">
             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-              Marketing Anomaly Detector
+              Display Campaign Monitor
             </h1>
             <p className="text-muted-foreground">
               Upload your campaign data to identify potential anomalies and trends
