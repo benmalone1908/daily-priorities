@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
+import { cn, formatDateToDisplay } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -67,6 +68,16 @@ export default function DateRangePicker({
     setEndOpen(false);
   };
 
+  const formatDisplayDate = (date: Date) => {
+    try {
+      // Use MM/DD/YYYY format for consistency with the dataset
+      return formatDateToDisplay(date);
+    } catch (e) {
+      console.error("Error formatting date:", e);
+      return format(date, "LLL dd, y");
+    }
+  };
+
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center gap-2">
@@ -84,7 +95,7 @@ export default function DateRangePicker({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.from ? (
-                format(dateRange.from, "LLL dd, y")
+                formatDisplayDate(dateRange.from)
               ) : (
                 <span>Start Date</span>
               )}
@@ -116,7 +127,7 @@ export default function DateRangePicker({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.to ? (
-                format(dateRange.to, "LLL dd, y")
+                formatDisplayDate(dateRange.to)
               ) : (
                 <span>End Date</span>
               )}

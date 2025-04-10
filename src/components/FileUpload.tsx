@@ -1,10 +1,9 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
-import { normalizeDate, logDateDetails, parseCsvDate } from "@/lib/utils";
+import { parseCsvDate, logDateDetails } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
@@ -92,16 +91,14 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
-                    // Direct date handling with original string preservation
                     try {
                       const dateStr = String(value).trim();
                       
-                      // First log the original string for debugging
+                      // Log for debugging
                       if (rowIndex < 5 || rowIndex > results.data.length - 7) {
                         console.log(`Row ${rowIndex + 1} original date: "${dateStr}"`);
                       }
                       
-                      // Directly use the parseCsvDate function to handle dates (MM/DD/YYYY format)
                       const normalizedDate = parseCsvDate(dateStr);
                       
                       if (!normalizedDate) {
@@ -110,7 +107,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                       } else {
                         processed[header] = normalizedDate;
                         
-                        // Log first few and last few dates for debugging
+                        // Log for debugging
                         if (rowIndex < 5 || rowIndex > results.data.length - 7) {
                           console.log(`Row ${rowIndex + 1} parsed date: "${dateStr}" -> "${normalizedDate}"`);
                         }
@@ -162,7 +159,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 dateCounts[date] = (dateCounts[date] || 0) + 1;
               });
               
-              // Log count of rows per date
               console.log("Rows per date:", dateCounts);
               
               // Focus on most recent date to check for issues
@@ -179,9 +175,10 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {
                 try {
-                  const dateA = new Date(a.DATE);
-                  const dateB = new Date(b.DATE);
-                  return dateA.getTime() - dateB.getTime();
+                  // Use the normalized dates for comparison
+                  const dateA = a.DATE;
+                  const dateB = b.DATE;
+                  return dateA.localeCompare(dateB);
                 } catch (e) {
                   return 0;
                 }

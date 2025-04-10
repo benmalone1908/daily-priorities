@@ -8,7 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
+import { 
+  setToStartOfDay, 
+  setToEndOfDay, 
+  logDateDetails, 
+  formatDateToDisplay 
+} from "@/lib/utils";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
@@ -36,9 +41,13 @@ const Index = () => {
         // Auto-set date range to include full dataset if not already set
         if (!dateRange || !dateRange.from) {
           try {
+            const minDateStr = uniqueDates[0];
+            const maxDateStr = uniqueDates[uniqueDates.length - 1];
+            
             // Parse dates using consistent noon time to avoid timezone issues
-            const minDate = new Date(`${uniqueDates[0]}T12:00:00`);
-            const maxDate = new Date(`${uniqueDates[uniqueDates.length - 1]}T12:00:00`);
+            const minDate = new Date(`${minDateStr}T12:00:00`);
+            const maxDate = new Date(`${maxDateStr}T12:00:00`);
+            
             if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
               setDateRange({ from: minDate, to: maxDate });
               console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
@@ -73,8 +82,6 @@ const Index = () => {
         }
       }
       
-      // Dates are already properly parsed in FileUpload.tsx, 
-      // so we don't need to reprocess them here. Just use the data as is.
       setData(uploadedData);
       
       // Log date range in the data to confirm it's correct
@@ -200,8 +207,9 @@ const Index = () => {
     const fromDate = dateRange.from;
     const toDate = dateRange.to || fromDate;
     
-    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
-    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
+    // Use the formatDateToDisplay utility function
+    const fromStr = formatDateToDisplay(fromDate);
+    const toStr = formatDateToDisplay(toDate);
     
     return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
   };
