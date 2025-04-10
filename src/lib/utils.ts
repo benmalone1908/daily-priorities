@@ -31,7 +31,7 @@ export function formatNumber(value: number, options: {
   return `${prefix}${value.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${suffix}`;
 }
 
-// Enhanced utility function to standardize date handling with timezone correction
+// Utility function to standardize date handling without timezone complications
 export function normalizeDate(date: Date | string): string {
   if (!date) return '';
   
@@ -42,7 +42,7 @@ export function normalizeDate(date: Date | string): string {
       return '';
     }
     
-    // Get the date components in local timezone (not UTC)
+    // Extract date components without timezone adjustments
     const year = dateObj.getFullYear();
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
     const day = String(dateObj.getDate()).padStart(2, '0');
@@ -54,7 +54,7 @@ export function normalizeDate(date: Date | string): string {
   }
 }
 
-// Enhanced helper for consistent date comparison
+// Helper for consistent date comparison
 export function isSameDay(date1: Date | string, date2: Date | string): boolean {
   if (!date1 || !date2) return false;
   
@@ -68,21 +68,21 @@ export function isSameDay(date1: Date | string, date2: Date | string): boolean {
   }
 }
 
-// Enhanced helper to set time to end of day (23:59:59.999) for inclusive comparison
+// Helper to set time to end of day (23:59:59.999) for inclusive comparison
 export function setToEndOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(23, 59, 59, 999);
   return result;
 }
 
-// Enhanced helper to set time to start of day (00:00:00.000)
+// Helper to set time to start of day (00:00:00.000)
 export function setToStartOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
   return result;
 }
 
-// New helper to log date details for debugging
+// Helper to log date details for debugging
 export function logDateDetails(label: string, date: Date | string, extraInfo: string = ''): void {
   try {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -112,32 +112,42 @@ export function createConsistentDate(date: Date | string): Date {
   return date;
 }
 
-// Added function to parse and normalize CSV date strings
+// Improved function to parse date strings from CSV without timezone issues
 export function parseCsvDate(dateStr: string): string {
   if (!dateStr) return '';
   
   try {
-    // First try standard parsing
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-      return normalizeDate(date);
-    }
-    
-    // Handle MM/DD/YYYY format
+    // Handle MM/DD/YYYY format (most common in CSV files)
     const mdyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (mdyMatch) {
       const month = String(parseInt(mdyMatch[1], 10)).padStart(2, '0');
       const day = String(parseInt(mdyMatch[2], 10)).padStart(2, '0');
       const year = mdyMatch[3];
+      console.log(`Parsed date ${dateStr} to ${year}-${month}-${day}`);
       return `${year}-${month}-${day}`;
     }
     
-    // Handle M/D/YYYY format
-    const shortMdyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (shortMdyMatch) {
-      const month = String(parseInt(shortMdyMatch[1], 10)).padStart(2, '0');
-      const day = String(parseInt(shortMdyMatch[2], 10)).padStart(2, '0');
-      const year = shortMdyMatch[3];
+    // Handle DD/MM/YYYY format (less common but possible)
+    const dmyMatch = dateStr.match(/^(\d{1,2})[.-](\d{1,2})[.-](\d{4})$/);
+    if (dmyMatch) {
+      const day = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
+      const month = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
+      const year = dmyMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Handle YYYY-MM-DD format (directly return)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    
+    // Last resort - try standard parsing but be careful with timezone
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      // Create a string in YYYY-MM-DD format from local date components
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
     

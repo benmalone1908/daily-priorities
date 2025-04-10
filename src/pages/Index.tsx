@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -36,8 +35,9 @@ const Index = () => {
         // Auto-set date range to include full dataset if not already set
         if (!dateRange || !dateRange.from) {
           try {
-            const minDate = new Date(uniqueDates[0]);
-            const maxDate = new Date(uniqueDates[uniqueDates.length - 1]);
+            // Parse dates using consistent noon time to avoid timezone issues
+            const minDate = new Date(`${uniqueDates[0]}T12:00:00`);
+            const maxDate = new Date(`${uniqueDates[uniqueDates.length - 1]}T12:00:00`);
             if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
               setDateRange({ from: minDate, to: maxDate });
               console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
@@ -72,55 +72,25 @@ const Index = () => {
         }
       }
       
-      const processedData = uploadedData.map(row => {
-        const newRow = { ...row };
-        
-        if (newRow.DATE) {
-          try {
-            // Enhanced date handling
-            const date = new Date(newRow.DATE);
-            if (!isNaN(date.getTime())) {
-              // Store date as YYYY-MM-DD, ensuring consistent format
-              newRow.DATE = normalizeDate(date);
-              // Log April dates for debugging
-              if (newRow.DATE.includes('-04-09') || newRow.DATE.includes('-04-08')) {
-                logDateDetails(`Processed date for row:`, date, `-> ${newRow.DATE} (original: ${row.DATE})`);
-              }
-            } else {
-              console.error(`Invalid date format: ${newRow.DATE}`);
-            }
-          } catch (e) {
-            console.error("Error parsing date:", e);
-          }
-        }
-        
-        ["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].forEach(field => {
-          const normalizedField = Object.keys(newRow).find(key => key.toUpperCase() === field);
-          if (normalizedField) {
-            newRow[normalizedField] = Number(newRow[normalizedField]) || 0;
-          }
-        });
-        
-        return newRow;
-      });
+      // Dates are already properly parsed in FileUpload.tsx, 
+      // so we don't need to reprocess them here. Just use the data as is.
+      setData(uploadedData);
       
-      setData(processedData);
-      
-      // Log date range in the processed data
-      const dates = processedData.map(row => row.DATE).filter(Boolean).sort();
+      // Log date range in the data to confirm it's correct
+      const dates = uploadedData.map(row => row.DATE).filter(Boolean).sort();
       if (dates.length > 0) {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);
         
         // Log rows per date
         const dateCounts: Record<string, number> = {};
-        processedData.forEach(row => {
+        uploadedData.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
         });
         console.log("Rows per date:", dateCounts);
       }
       
-      toast.success(`Successfully loaded ${processedData.length} rows of data`);
+      toast.success(`Successfully loaded ${uploadedData.length} rows of data`);
     } catch (error) {
       console.error("Error processing uploaded data:", error);
       toast.error("Failed to process the uploaded data");
@@ -146,11 +116,8 @@ const Index = () => {
           return false;
         }
         
-        // Normalize the date format
-        const normalizedDateStr = normalizeDate(row.DATE);
-        if (!normalizedDateStr) return false;
-        
-        const rowDate = new Date(`${normalizedDateStr}T12:00:00`); // Use noon to avoid timezone issues
+        // Create date object with noon time to avoid timezone issues
+        const rowDate = new Date(`${row.DATE}T12:00:00`);
         if (isNaN(rowDate.getTime())) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
@@ -162,9 +129,9 @@ const Index = () => {
         const isInRange = isAfterFrom && isBeforeTo;
         
         // Log for specific dates we want to track
-        if (normalizedDateStr.endsWith('-04-09') || normalizedDateStr.endsWith('-04-08')) {
-          console.log(`Date filtering for ${normalizedDateStr}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
-          logDateDetails("Row date", rowDate, `compared to fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`);
+        if (['2023-03-12', '2023-04-09'].includes(row.DATE)) {
+          console.log(`Date filtering for ${row.DATE}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
+          console.log(`Comparing date ${rowDate.toISOString()} with fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`);
         }
         
         return isInRange;
@@ -184,8 +151,6 @@ const Index = () => {
     
     return filteredRows;
   };
-
-  const filteredData = getFilteredData();
 
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredData;
@@ -238,6 +203,32 @@ const Index = () => {
     const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
     
     return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
+  };
+
+  const filteredData = getFilteredData();
+  
+  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
+    let filtered = filteredData;
+    
+    if (advertisers.length > 0) {
+      filtered = getFilteredDataByAdvertisers(advertisers);
+    }
+    
+    if (campaigns.length > 0) {
+      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    }
+    
+    return filtered;
+  };
+
+  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
+    if (!advertisers.length) return filteredData;
+    return filteredData.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return advertisers.includes(advertiser);
+    });
   };
 
   return (

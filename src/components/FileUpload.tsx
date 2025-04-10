@@ -92,11 +92,16 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
-                    // Enhanced date handling with better logging
+                    // Direct date handling with original string preservation
                     try {
                       const dateStr = String(value).trim();
                       
-                      // Use our custom date parser for consistent handling
+                      // First log the original string for debugging
+                      if (rowIndex < 5 || rowIndex > results.data.length - 7) {
+                        console.log(`Row ${rowIndex + 1} original date: "${dateStr}"`);
+                      }
+                      
+                      // Directly use the parseCsvDate function to handle dates (MM/DD/YYYY format)
                       const normalizedDate = parseCsvDate(dateStr);
                       
                       if (!normalizedDate) {
@@ -105,9 +110,9 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                       } else {
                         processed[header] = normalizedDate;
                         
-                        // Log sample dates for debugging
-                        if (rowIndex % 100 === 0 || normalizedDate.includes('-04-')) {
-                          logDateDetails(`Row ${rowIndex + 1} date parsing`, dateStr, `-> ${normalizedDate}`);
+                        // Log first few and last few dates for debugging
+                        if (rowIndex < 5 || rowIndex > results.data.length - 7) {
+                          console.log(`Row ${rowIndex + 1} parsed date: "${dateStr}" -> "${normalizedDate}"`);
                         }
                       }
                     } catch (e) {
