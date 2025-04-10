@@ -31,7 +31,7 @@ export function formatNumber(value: number, options: {
   return `${prefix}${value.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${suffix}`;
 }
 
-// Enhanced utility function to standardize date handling
+// Enhanced utility function to standardize date handling with timezone correction
 export function normalizeDate(date: Date | string): string {
   if (!date) return '';
   
@@ -42,7 +42,7 @@ export function normalizeDate(date: Date | string): string {
       return '';
     }
     
-    // Ensure we're working with local date (yyyy-MM-dd)
+    // Get the date components in local timezone (not UTC)
     const year = dateObj.getFullYear();
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
     const day = String(dateObj.getDate()).padStart(2, '0');
@@ -110,4 +110,41 @@ export function createConsistentDate(date: Date | string): Date {
     return new Date(date);
   }
   return date;
+}
+
+// Added function to parse and normalize CSV date strings
+export function parseCsvDate(dateStr: string): string {
+  if (!dateStr) return '';
+  
+  try {
+    // First try standard parsing
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return normalizeDate(date);
+    }
+    
+    // Handle MM/DD/YYYY format
+    const mdyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdyMatch) {
+      const month = String(parseInt(mdyMatch[1], 10)).padStart(2, '0');
+      const day = String(parseInt(mdyMatch[2], 10)).padStart(2, '0');
+      const year = mdyMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Handle M/D/YYYY format
+    const shortMdyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (shortMdyMatch) {
+      const month = String(parseInt(shortMdyMatch[1], 10)).padStart(2, '0');
+      const day = String(parseInt(shortMdyMatch[2], 10)).padStart(2, '0');
+      const year = shortMdyMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+    
+    console.error(`Could not parse date string: ${dateStr}`);
+    return '';
+  } catch (error) {
+    console.error(`Error parsing CSV date ${dateStr}:`, error);
+    return '';
+  }
 }

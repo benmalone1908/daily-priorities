@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
-import { normalizeDate, logDateDetails } from "@/lib/utils";
+import { normalizeDate, logDateDetails, parseCsvDate } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
@@ -95,18 +95,18 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                     // Enhanced date handling with better logging
                     try {
                       const dateStr = String(value).trim();
-                      const date = new Date(dateStr);
                       
-                      if (isNaN(date.getTime())) {
+                      // Use our custom date parser for consistent handling
+                      const normalizedDate = parseCsvDate(dateStr);
+                      
+                      if (!normalizedDate) {
                         console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
                         processed[header] = ""; // Use empty string for invalid date
                       } else {
-                        // Normalize to YYYY-MM-DD format for consistent comparison
-                        const normalizedDate = normalizeDate(date);
                         processed[header] = normalizedDate;
                         
-                        // Log all dates in more detail
-                        if (rowIndex % 100 === 0 || normalizedDate.endsWith('-09') || normalizedDate.endsWith('-08')) {
+                        // Log sample dates for debugging
+                        if (rowIndex % 100 === 0 || normalizedDate.includes('-04-')) {
                           logDateDetails(`Row ${rowIndex + 1} date parsing`, dateStr, `-> ${normalizedDate}`);
                         }
                       }
