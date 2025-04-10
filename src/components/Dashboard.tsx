@@ -19,6 +19,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
+import { Toggle } from "./ui/toggle";
 
 interface DashboardProps {
   data: any[];
@@ -50,6 +51,7 @@ interface WeeklyAggregation {
   rows: any[];
 }
 
+type ChartViewMode = "date" | "dayOfWeek";
 type AnomalyPeriod = "daily" | "weekly";
 type ComparisonPeriod = "7" | "14" | "30";
 
@@ -72,6 +74,9 @@ const Dashboard = ({
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
   const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
+  const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
+  const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
+  const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
   
   const renderCountRef = useRef(0);
   
@@ -449,6 +454,46 @@ const Dashboard = ({
     }
   };
 
+  const getAggregatedDataByDayOfWeek = (filteredData: any[]) => {
+    try {
+      if (!filteredData || !filteredData.length) return [];
+      
+      const dayOfWeekGroups: Record<number, any> = {
+        0: { dayNum: 0, DAY_OF_WEEK: "Sunday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        1: { dayNum: 1, DAY_OF_WEEK: "Monday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        2: { dayNum: 2, DAY_OF_WEEK: "Tuesday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        3: { dayNum: 3, DAY_OF_WEEK: "Wednesday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        4: { dayNum: 4, DAY_OF_WEEK: "Thursday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        5: { dayNum: 5, DAY_OF_WEEK: "Friday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
+        6: { dayNum: 6, DAY_OF_WEEK: "Saturday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 }
+      };
+      
+      filteredData.forEach(row => {
+        if (!row || !row.DATE) return;
+        
+        try {
+          const date = new Date(row.DATE);
+          if (isNaN(date.getTime())) return;
+          
+          const dayOfWeek = date.getDay();
+          
+          dayOfWeekGroups[dayOfWeek].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+          dayOfWeekGroups[dayOfWeek].CLICKS += Number(row.CLICKS) || 0;
+          dayOfWeekGroups[dayOfWeek].REVENUE += Number(row.REVENUE) || 0;
+          dayOfWeekGroups[dayOfWeek].count += 1;
+        } catch (err) {
+          console.error("Error processing row for day of week:", err);
+        }
+      });
+      
+      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
+      
+    } catch (error) {
+      console.error("Error in getAggregatedDataByDayOfWeek:", error);
+      return [];
+    }
+  };
+
   const calculateROAS = (revenue: number, impressions: number): number => {
     try {
       const spend = (impressions * 15) / 1000;
@@ -675,8 +720,21 @@ const Dashboard = ({
     setWeeklyDataState(calculatedData);
   }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
 
-  const processedMetricsData = useMemo(() => getAggregatedData(metricsData || data), [metricsData]);
-  const processedRevenueData = useMemo(() => getAggregatedData(revenueData || data), [revenueData]);
+  const processedMetricsData = useMemo(() => {
+    if (metricsViewMode === "date") {
+      return getAggregatedData(metricsData || data);
+    } else {
+      return getAggregatedDataByDayOfWeek(metricsData || data);
+    }
+  }, [metricsViewMode, metricsData, data]);
+  
+  const processedRevenueData = useMemo(() => {
+    if (revenueViewMode === "date") {
+      return getAggregatedData(revenueData || data);
+    } else {
+      return getAggregatedDataByDayOfWeek(revenueData || data);
+    }
+  }, [revenueViewMode, revenueData, data]);
 
   const formatNumber = (value: number) => {
     try {
@@ -699,7 +757,7 @@ const Dashboard = ({
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Date";
+      if (isNaN(date.getTime())) return dateString;
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -798,48 +856,61 @@ const Dashboard = ({
         </div>
       )}
       
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium">Anomaly period:</span>
-            <ToggleGroup type="single" value={anomalyPeriod} onValueChange={(value) => value && setAnomalyPeriod(value as AnomalyPeriod)}>
-              <ToggleGroupItem value="daily" aria-label="Daily anomalies" className="text-sm">
-                Daily
-              </ToggleGroupItem>
-              <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-sm">
-                Weekly
-              </ToggleGroupItem>
-            </ToggleGroup>
+      {showAnomalySection && (
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Anomaly period:</span>
+              <ToggleGroup type="single" value={anomalyPeriod} onValueChange={(value) => value && setAnomalyPeriod(value as AnomalyPeriod)}>
+                <ToggleGroupItem value="daily" aria-label="Daily anomalies" className="text-sm">
+                  Daily
+                </ToggleGroupItem>
+                <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-sm">
+                  Weekly
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
+          
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricCard
+              title="Impression Anomalies"
+              anomalies={anomalies.IMPRESSIONS?.anomalies || []}
+              metric="IMPRESSIONS"
+              anomalyPeriod={anomalyPeriod}
+            />
+            <MetricCard
+              title="Click Anomalies"
+              anomalies={anomalies.CLICKS?.anomalies || []}
+              metric="CLICKS"
+              anomalyPeriod={anomalyPeriod}
+            />
+            <MetricCard
+              title="Revenue Anomalies"
+              anomalies={anomalies.REVENUE?.anomalies || []}
+              metric="REVENUE"
+              anomalyPeriod={anomalyPeriod}
+            />
           </div>
         </div>
-        
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard
-            title="Impression Anomalies"
-            anomalies={anomalies.IMPRESSIONS?.anomalies || []}
-            metric="IMPRESSIONS"
-            anomalyPeriod={anomalyPeriod}
-          />
-          <MetricCard
-            title="Click Anomalies"
-            anomalies={anomalies.CLICKS?.anomalies || []}
-            metric="CLICKS"
-            anomalyPeriod={anomalyPeriod}
-          />
-          <MetricCard
-            title="Revenue Anomalies"
-            anomalies={anomalies.REVENUE?.anomalies || []}
-            metric="REVENUE"
-            anomalyPeriod={anomalyPeriod}
-          />
-        </div>
-      </div>
+      )}
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 mr-4">
+              <span className="text-sm font-medium">View:</span>
+              <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value) => value && setMetricsViewMode(value as ChartViewMode)}>
+                <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                  By Date
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                  By Day of Week
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
               {advertiserOptions.length > 0 && (
@@ -871,8 +942,9 @@ const Dashboard = ({
               <ComposedChart data={processedMetricsData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="DATE" 
+                  dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
                   style={axisStyle}
+                  tickFormatter={metricsViewMode === "date" ? formatDate : undefined}
                 />
                 <YAxis 
                   yAxisId="left"
@@ -893,6 +965,7 @@ const Dashboard = ({
                 <Tooltip 
                   formatter={(value: number, name: string) => [formatNumber(value), name]}
                   contentStyle={{ fontSize: '0.75rem' }}
+                  labelFormatter={metricsViewMode === "date" ? formatDate : undefined}
                 />
                 <Bar
                   yAxisId="left"
@@ -924,6 +997,17 @@ const Dashboard = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 mr-4">
+              <span className="text-sm font-medium">View:</span>
+              <ToggleGroup type="single" value={revenueViewMode} onValueChange={(value) => value && setRevenueViewMode(value as ChartViewMode)}>
+                <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                  By Date
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                  By Day of Week
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
               {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
@@ -955,8 +1039,9 @@ const Dashboard = ({
               <ComposedChart data={processedRevenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="DATE" 
+                  dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
                   style={axisStyle}
+                  tickFormatter={revenueViewMode === "date" ? formatDate : undefined}
                 />
                 <YAxis 
                   yAxisId="left"
@@ -980,6 +1065,7 @@ const Dashboard = ({
                     return [formatNumber(value), name];
                   }}
                   contentStyle={{ fontSize: '0.75rem' }}
+                  labelFormatter={revenueViewMode === "date" ? formatDate : undefined}
                 />
                 <Bar
                   yAxisId="left"
