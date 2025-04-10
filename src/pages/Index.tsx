@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -206,30 +207,6 @@ const Index = () => {
   };
 
   const filteredData = getFilteredData();
-  
-  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
-    let filtered = filteredData;
-    
-    if (advertisers.length > 0) {
-      filtered = getFilteredDataByAdvertisers(advertisers);
-    }
-    
-    if (campaigns.length > 0) {
-      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
-    }
-    
-    return filtered;
-  };
-
-  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
-    if (!advertisers.length) return filteredData;
-    return filteredData.filter(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return advertisers.includes(advertiser);
-    });
-  };
 
   return (
     <div className="container py-8 space-y-8">
