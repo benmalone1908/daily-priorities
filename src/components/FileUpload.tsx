@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
-import { normalizeDate } from "@/lib/utils";
+import { normalizeDate, logDateDetails } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
@@ -105,10 +105,9 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                         const normalizedDate = normalizeDate(date);
                         processed[header] = normalizedDate;
                         
-                        // Log April dates in more detail
-                        if (normalizedDate.includes('2023-04-') || normalizedDate.includes('2023-03-') || 
-                            normalizedDate.includes('2024-04-') || normalizedDate.includes('2024-03-')) {
-                          console.log(`Row ${rowIndex + 1}: Parsed "${dateStr}" as "${normalizedDate}"`);
+                        // Log all dates in more detail
+                        if (rowIndex % 100 === 0 || normalizedDate.endsWith('-09') || normalizedDate.endsWith('-08')) {
+                          logDateDetails(`Row ${rowIndex + 1} date parsing`, dateStr, `-> ${normalizedDate}`);
                         }
                       }
                     } catch (e) {
@@ -151,10 +150,33 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               console.log(`Found ${dates.length} unique dates from ${dates[0]} to ${dates[dates.length - 1]}`);
               console.log(`All dates in dataset: ${dates.join(', ')}`);
               
+              // Count data by date
+              const dateCounts: Record<string, number> = {};
+              processedData.forEach(row => {
+                const date = row.DATE;
+                dateCounts[date] = (dateCounts[date] || 0) + 1;
+              });
+              
+              // Log count of rows per date
+              console.log("Rows per date:", dateCounts);
+              
+              // Focus on most recent date to check for issues
+              if (dates.length > 0) {
+                const mostRecentDate = dates[dates.length - 1];
+                console.log(`Most recent date: ${mostRecentDate}, rows: ${dateCounts[mostRecentDate]}`);
+                
+                // Log a sample of rows from the most recent date
+                const recentDateRows = processedData.filter(row => row.DATE === mostRecentDate);
+                console.log(`Sample rows from ${mostRecentDate} (${recentDateRows.length} total):`, 
+                  recentDateRows.slice(0, 5));
+              }
+              
               // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {
                 try {
-                  return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+                  const dateA = new Date(a.DATE);
+                  const dateB = new Date(b.DATE);
+                  return dateA.getTime() - dateB.getTime();
                 } catch (e) {
                   return 0;
                 }
