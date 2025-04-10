@@ -1,9 +1,8 @@
 
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { cn, formatDateToDisplay } from "@/lib/utils";
+import { cn, formatDateToDisplay, createConsistentDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -31,27 +30,38 @@ export default function DateRangePicker({
   const [endOpen, setEndOpen] = useState(false);
 
   const handleStartDateSelect = (date: Date | undefined) => {
+    // Use noon-based date to avoid timezone issues
+    const selectedDate = date ? createConsistentDate(date) : undefined;
+    
     const newRange: DateRange = {
-      from: date,
+      from: selectedDate,
       to: dateRange?.to
     };
     
-    onDateRangeChange(date ? newRange : undefined);
+    onDateRangeChange(selectedDate ? newRange : undefined);
     setStartOpen(false);
+    
+    console.log(`Selected start date: ${selectedDate?.toISOString() || 'undefined'}`);
+    if (selectedDate) {
+      console.log(`Normalized start date display: ${formatDateToDisplay(selectedDate)}`);
+    }
   };
 
   const handleEndDateSelect = (date: Date | undefined) => {
+    // Use noon-based date to avoid timezone issues
+    const selectedDate = date ? createConsistentDate(date) : undefined;
+    
     // Only set the end date if there's a start date
-    if (!dateRange?.from && date) {
+    if (!dateRange?.from && selectedDate) {
       const newRange: DateRange = {
-        from: date,
-        to: date
+        from: selectedDate,
+        to: selectedDate
       };
       onDateRangeChange(newRange);
-    } else if (date) {
+    } else if (selectedDate) {
       const newRange: DateRange = {
         from: dateRange?.from,
-        to: date
+        to: selectedDate
       };
       onDateRangeChange(newRange);
     } else {
@@ -60,22 +70,18 @@ export default function DateRangePicker({
     }
     
     setEndOpen(false);
+    
+    console.log(`Selected end date: ${selectedDate?.toISOString() || 'undefined'}`);
+    if (selectedDate) {
+      console.log(`Normalized end date display: ${formatDateToDisplay(selectedDate)}`);
+    }
   };
 
   const handleReset = () => {
     onDateRangeChange(undefined);
     setStartOpen(false);
     setEndOpen(false);
-  };
-
-  const formatDisplayDate = (date: Date) => {
-    try {
-      // Use MM/DD/YYYY format for consistency with the dataset
-      return formatDateToDisplay(date);
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return format(date, "LLL dd, y");
-    }
+    console.log("Date range reset");
   };
 
   return (
@@ -95,7 +101,7 @@ export default function DateRangePicker({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.from ? (
-                formatDisplayDate(dateRange.from)
+                formatDateToDisplay(dateRange.from)
               ) : (
                 <span>Start Date</span>
               )}
@@ -127,7 +133,7 @@ export default function DateRangePicker({
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateRange?.to ? (
-                formatDisplayDate(dateRange.to)
+                formatDateToDisplay(dateRange.to)
               ) : (
                 <span>End Date</span>
               )}

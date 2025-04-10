@@ -12,7 +12,8 @@ import {
   setToStartOfDay, 
   setToEndOfDay, 
   logDateDetails, 
-  formatDateToDisplay 
+  formatDateToDisplay,
+  createConsistentDate
 } from "@/lib/utils";
 
 const Index = () => {
@@ -44,13 +45,14 @@ const Index = () => {
             const minDateStr = uniqueDates[0];
             const maxDateStr = uniqueDates[uniqueDates.length - 1];
             
-            // Parse dates using consistent noon time to avoid timezone issues
-            const minDate = new Date(`${minDateStr}T12:00:00`);
-            const maxDate = new Date(`${maxDateStr}T12:00:00`);
+            // Create dates using consistent noon time to avoid timezone issues
+            const minDate = createConsistentDate(minDateStr);
+            const maxDate = createConsistentDate(maxDateStr);
             
             if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
               setDateRange({ from: minDate, to: maxDate });
               console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
+              console.log(`Formatted display dates: ${formatDateToDisplay(minDate)} to ${formatDateToDisplay(maxDate)}`);
             }
           } catch (e) {
             console.error("Error auto-setting date range:", e);
@@ -90,6 +92,9 @@ const Index = () => {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);
         
+        // Sample some dates to see format
+        console.log("Sample dates from dataset:", dates.slice(0, 5));
+        
         // Log rows per date
         const dateCounts: Record<string, number> = {};
         uploadedData.forEach(row => {
@@ -124,8 +129,9 @@ const Index = () => {
           return false;
         }
         
-        // Create date object with noon time to avoid timezone issues
-        const rowDate = new Date(`${row.DATE}T12:00:00`);
+        // Create date with noon time to avoid timezone issues
+        const rowDate = createConsistentDate(`${row.DATE}T12:00:00`);
+        
         if (isNaN(rowDate.getTime())) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
@@ -160,6 +166,9 @@ const Index = () => {
     return filteredRows;
   };
 
+  const filteredData = getFilteredData();
+
+  // Helper functions for filtering data by campaigns and advertisers
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredData;
     return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -207,14 +216,12 @@ const Index = () => {
     const fromDate = dateRange.from;
     const toDate = dateRange.to || fromDate;
     
-    // Use the formatDateToDisplay utility function
+    // Use the formatDateToDisplay utility function for consistent date formatting
     const fromStr = formatDateToDisplay(fromDate);
     const toStr = formatDateToDisplay(toDate);
     
     return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
   };
-
-  const filteredData = getFilteredData();
 
   return (
     <div className="container py-8 space-y-8">

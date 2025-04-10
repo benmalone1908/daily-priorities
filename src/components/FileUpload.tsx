@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
@@ -99,6 +100,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                         console.log(`Row ${rowIndex + 1} original date: "${dateStr}"`);
                       }
                       
+                      // Improved date parsing that handles multiple formats
                       const normalizedDate = parseCsvDate(dateStr);
                       
                       if (!normalizedDate) {
