@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon } from "lucide-react";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
 import {
@@ -119,24 +119,56 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
     let filteredDataByDate = filteredData;
     if (dateRange?.from) {
+      console.log(`Filtering spark chart data with date range: ${dateRange.from.toISOString()} to ${dateRange.to ? dateRange.to.toISOString() : 'now'}`);
+      
       filteredDataByDate = filteredData.filter(row => {
-        const rowDate = new Date(row.DATE);
-        if (isNaN(rowDate.getTime())) return false;
-        
-        if (dateRange.from && !dateRange.to) {
-          const fromDate = new Date(dateRange.from);
-          return rowDate >= fromDate;
+        if (!row.DATE) {
+          console.warn(`Row missing DATE: ${JSON.stringify(row)}`);
+          return false;
         }
         
-        if (dateRange.from && dateRange.to) {
-          const fromDate = new Date(dateRange.from);
-          const toDate = new Date(dateRange.to);
-          toDate.setHours(23, 59, 59, 999);
-          return rowDate >= fromDate && rowDate <= toDate;
+        try {
+          // Normalize the date format
+          const normalizedDateStr = normalizeDate(row.DATE);
+          if (!normalizedDateStr) return false;
+          
+          const rowDate = new Date(normalizedDateStr);
+          if (isNaN(rowDate.getTime())) {
+            console.warn(`Invalid date in row: ${row.DATE}`);
+            return false;
+          }
+          
+          // Create date objects with time set appropriately for comparison
+          const fromDate = setToStartOfDay(dateRange.from);
+          
+          if (!dateRange.to) {
+            const isAfterFrom = rowDate >= fromDate;
+            if (normalizedDateStr.includes('2023-04-09') || normalizedDateStr.includes('2023-04-08')) {
+              console.log(`Spark chart date comparison for ${normalizedDateStr}: fromDate=${fromDate.toISOString()}, isAfterFrom=${isAfterFrom}`);
+            }
+            return isAfterFrom;
+          }
+          
+          // Use end of day for the to date to make comparisons inclusive
+          const toDate = setToEndOfDay(dateRange.to);
+          
+          const isInRange = rowDate >= fromDate && rowDate <= toDate;
+          if (normalizedDateStr.includes('2023-04-09') || normalizedDateStr.includes('2023-04-08')) {
+            console.log(`Spark chart date comparison for ${normalizedDateStr}: fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, isInRange=${isInRange}`);
+          }
+          return isInRange;
+        } catch (error) {
+          console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
+          return false;
         }
-        
-        return true;
       });
+      
+      // Log filtered data dates
+      const filteredDates = filteredDataByDate.map(row => row.DATE).sort();
+      console.log(`Filtered spark chart data has ${filteredDataByDate.length} rows across ${new Set(filteredDates).size} unique dates`);
+      if (filteredDates.length > 0) {
+        console.log(`Filtered date range: ${filteredDates[0]} to ${filteredDates[filteredDates.length-1]}`);
+      }
     }
 
     if (viewMode === "campaign") {

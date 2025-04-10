@@ -4,6 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
+import { normalizeDate } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
@@ -91,14 +92,24 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
-                    // Ensure dates are valid
+                    // Enhanced date handling with better logging
                     try {
-                      const date = new Date(value);
+                      const dateStr = String(value).trim();
+                      const date = new Date(dateStr);
+                      
                       if (isNaN(date.getTime())) {
-                        console.warn(`Invalid date in row ${rowIndex + 1}: ${value}`);
+                        console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
                         processed[header] = ""; // Use empty string for invalid date
                       } else {
-                        processed[header] = date.toISOString().split('T')[0]; // Store as YYYY-MM-DD
+                        // Normalize to YYYY-MM-DD format for consistent comparison
+                        const normalizedDate = normalizeDate(date);
+                        processed[header] = normalizedDate;
+                        
+                        // Log April dates in more detail
+                        if (normalizedDate.includes('2023-04-') || normalizedDate.includes('2023-03-') || 
+                            normalizedDate.includes('2024-04-') || normalizedDate.includes('2024-03-')) {
+                          console.log(`Row ${rowIndex + 1}: Parsed "${dateStr}" as "${normalizedDate}"`);
+                        }
                       }
                     } catch (e) {
                       console.warn(`Error parsing date in row ${rowIndex + 1}:`, e);
@@ -129,6 +140,16 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               }
 
               console.log(`Processed ${processedData.length} valid rows`);
+              
+              // Log date statistics
+              const dateSet = new Set<string>();
+              processedData.forEach(row => {
+                if (row.DATE) dateSet.add(row.DATE);
+              });
+              
+              const dates = Array.from(dateSet).sort();
+              console.log(`Found ${dates.length} unique dates from ${dates[0]} to ${dates[dates.length - 1]}`);
+              console.log(`All dates in dataset: ${dates.join(', ')}`);
               
               // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {

@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
+import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 
 interface DashboardProps {
   data: any[];
@@ -423,31 +424,67 @@ const Dashboard = ({
     try {
       if (!filteredData || !filteredData.length) return [];
       
-      const dateGroups = filteredData.reduce((acc, row) => {
-        if (!row || !row.DATE) return acc;
+      console.log(`Aggregating ${filteredData.length} rows of data`);
+      
+      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
+      if (allDates.length > 0) {
+        const sortedDates = [...allDates].sort();
+        console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
+        console.log(`Unique dates in input: ${new Set(allDates).size}`);
+      }
+      
+      const dateGroups: Record<string, any> = {};
+      
+      filteredData.forEach(row => {
+        if (!row || !row.DATE) {
+          console.warn(`Skipping row with missing date: ${JSON.stringify(row)}`);
+          return;
+        }
         
-        const date = row.DATE;
-        if (!acc[date]) {
-          acc[date] = {
-            DATE: date,
+        const normalizedDate = normalizeDate(row.DATE);
+        if (!normalizedDate) {
+          console.warn(`Invalid date in row: ${row.DATE}`);
+          return;
+        }
+        
+        if (normalizedDate.includes('-04-')) {
+          console.log(`Processing April data: ${normalizedDate}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
+        }
+        
+        if (!dateGroups[normalizedDate]) {
+          dateGroups[normalizedDate] = {
+            DATE: normalizedDate,
             IMPRESSIONS: 0,
             CLICKS: 0,
             REVENUE: 0
           };
         }
-        acc[date].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        acc[date].CLICKS += Number(row.CLICKS) || 0;
-        acc[date].REVENUE += Number(row.REVENUE) || 0;
-        return acc;
-      }, {});
+        
+        dateGroups[normalizedDate].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        dateGroups[normalizedDate].CLICKS += Number(row.CLICKS) || 0;
+        dateGroups[normalizedDate].REVENUE += Number(row.REVENUE) || 0;
+      });
 
-      return Object.values(dateGroups).sort((a: any, b: any) => {
+      const result = Object.values(dateGroups).sort((a: any, b: any) => {
         try {
           return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
         } catch (err) {
+          console.error(`Error sorting dates: ${a.DATE} vs ${b.DATE}`, err);
           return 0;
         }
       });
+      
+      console.log(`Aggregated data has ${result.length} dates`);
+      if (result.length > 0) {
+        console.log(`Aggregated date range: ${result[0].DATE} to ${result[result.length-1].DATE}`);
+        result.forEach(row => {
+          if (row.DATE && row.DATE.includes('-04-')) {
+            console.log(`Aggregated April data: ${row.DATE}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
+          }
+        });
+      }
+      
+      return result;
     } catch (error) {
       console.error("Error in getAggregatedData:", error);
       return [];
@@ -457,6 +494,8 @@ const Dashboard = ({
   const getAggregatedDataByDayOfWeek = (filteredData: any[]) => {
     try {
       if (!filteredData || !filteredData.length) return [];
+      
+      console.log(`Aggregating ${filteredData.length} rows by day of week`);
       
       const dayOfWeekGroups: Record<number, any> = {
         0: { dayNum: 0, DAY_OF_WEEK: "Sunday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
@@ -468,26 +507,33 @@ const Dashboard = ({
         6: { dayNum: 6, DAY_OF_WEEK: "Saturday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 }
       };
       
+      const includedDates = new Set<string>();
+      
       filteredData.forEach(row => {
         if (!row || !row.DATE) return;
         
-        try {
-          const date = new Date(row.DATE);
-          if (isNaN(date.getTime())) return;
-          
-          const dayOfWeek = date.getDay();
-          
-          dayOfWeekGroups[dayOfWeek].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-          dayOfWeekGroups[dayOfWeek].CLICKS += Number(row.CLICKS) || 0;
-          dayOfWeekGroups[dayOfWeek].REVENUE += Number(row.REVENUE) || 0;
-          dayOfWeekGroups[dayOfWeek].count += 1;
-        } catch (err) {
-          console.error("Error processing row for day of week:", err);
+        const normalizedDate = normalizeDate(row.DATE);
+        if (!normalizedDate) {
+          console.warn(`Invalid date in row: ${row.DATE}`);
+          return;
         }
+        
+        includedDates.add(normalizedDate);
+        
+        const date = new Date(normalizedDate);
+        if (isNaN(date.getTime())) return;
+        
+        const dayOfWeek = date.getDay();
+        
+        dayOfWeekGroups[dayOfWeek].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        dayOfWeekGroups[dayOfWeek].CLICKS += Number(row.CLICKS) || 0;
+        dayOfWeekGroups[dayOfWeek].REVENUE += Number(row.REVENUE) || 0;
+        dayOfWeekGroups[dayOfWeek].count += 1;
       });
       
-      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
+      console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
+      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
       return [];
@@ -516,6 +562,12 @@ const Dashboard = ({
       let filteredData = JSON.parse(JSON.stringify(data));
       console.log(`Starting with ${filteredData.length} rows of data`);
       
+      const allDates = filteredData.map((row: any) => row.DATE).filter(Boolean);
+      if (allDates.length > 0) {
+        const sortedDates = [...allDates].sort();
+        console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
+      }
+      
       if (selectedAdvertisers.length > 0) {
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
@@ -542,17 +594,12 @@ const Dashboard = ({
         try {
           if (!row.DATE) return null;
           
-          const dateStr = typeof row.DATE === 'string' ? row.DATE : String(row.DATE);
-          const date = new Date(dateStr);
-          
-          if (isNaN(date.getTime())) {
-            console.log(`Invalid date found: ${row.DATE}`);
-            return null;
-          }
+          const normalizedDate = normalizeDate(row.DATE);
+          if (!normalizedDate) return null;
           
           return {
             ...row,
-            parsedDate: date
+            parsedDate: new Date(normalizedDate)
           };
         } catch (e) {
           console.error(`Error parsing date: ${row.DATE}`, e);
@@ -676,8 +723,9 @@ const Dashboard = ({
         .map(row => {
           try {
             if (!row.DATE) return null;
-            const date = new Date(row.DATE);
-            return isNaN(date.getTime()) ? null : date;
+            const normalizedDate = normalizeDate(row.DATE);
+            if (!normalizedDate) return null;
+            return new Date(normalizedDate);
           } catch (e) {
             return null;
           }
@@ -693,7 +741,7 @@ const Dashboard = ({
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
       
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      console.log(`Total days available for period calculation: ${totalDays}`);
+      console.log(`Total days available for period calculation: ${totalDays}, from ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       
       const periods: ComparisonPeriod[] = ["7"];
       
@@ -721,6 +769,7 @@ const Dashboard = ({
   }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => {
+    console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
     if (metricsViewMode === "date") {
       return getAggregatedData(metricsData || data);
     } else {
@@ -729,6 +778,7 @@ const Dashboard = ({
   }, [metricsViewMode, metricsData, data]);
   
   const processedRevenueData = useMemo(() => {
+    console.log(`Processing revenue data with view mode: ${revenueViewMode}`);
     if (revenueViewMode === "date") {
       return getAggregatedData(revenueData || data);
     } else {

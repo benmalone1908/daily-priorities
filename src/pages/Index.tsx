@@ -44,9 +44,14 @@ const Index = () => {
         
         if (newRow.DATE) {
           try {
+            // Enhanced date handling to ensure consistent format
             const date = new Date(newRow.DATE);
             if (!isNaN(date.getTime())) {
+              // Store date as YYYY-MM-DD, ensuring UTC-consistent dates
               newRow.DATE = date.toISOString().split('T')[0];
+              console.log(`Parsed date: ${newRow.DATE} from input: ${row.DATE}`);
+            } else {
+              console.error(`Invalid date format: ${newRow.DATE}`);
             }
           } catch (e) {
             console.error("Error parsing date:", e);
@@ -64,6 +69,14 @@ const Index = () => {
       });
       
       setData(processedData);
+      
+      // Log date range in the processed data
+      const dates = processedData.map(row => row.DATE).filter(Boolean).sort();
+      if (dates.length > 0) {
+        console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
+        console.log(`Total unique dates: ${new Set(dates).size}`);
+      }
+      
       toast.success(`Successfully loaded ${processedData.length} rows of data`);
     } catch (error) {
       console.error("Error processing uploaded data:", error);
@@ -79,23 +92,34 @@ const Index = () => {
     return data.filter(row => {
       try {
         const rowDate = new Date(row.DATE);
-        if (isNaN(rowDate.getTime())) return false;
+        if (isNaN(rowDate.getTime())) {
+          console.warn(`Invalid date found: ${row.DATE}`);
+          return false;
+        }
+        
+        // Create date objects with time set to midnight for consistent comparison
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
         
         if (dateRange.from && !dateRange.to) {
-          const fromDate = new Date(dateRange.from);
           return rowDate >= fromDate;
         }
         
         if (dateRange.from && dateRange.to) {
-          const fromDate = new Date(dateRange.from);
           const toDate = new Date(dateRange.to);
+          // Set time to end of day for inclusive comparison
           toDate.setHours(23, 59, 59, 999);
-          return rowDate >= fromDate && rowDate <= toDate;
+          
+          const isInRange = rowDate >= fromDate && rowDate <= toDate;
+          if (rowDate.toISOString().includes('2023-04-09') || rowDate.toISOString().includes('2023-04-08')) {
+            console.log(`Date ${row.DATE}: fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, isInRange=${isInRange}`);
+          }
+          return isInRange;
         }
         
         return true;
       } catch (error) {
-        console.error("Error filtering by date:", error);
+        console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
         return false;
       }
     });
