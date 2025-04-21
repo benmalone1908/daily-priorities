@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
-import { parseCsvDate, logDateDetails } from "@/lib/utils";
+import { normalizeDate, logDateDetails } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
@@ -92,26 +92,22 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
+                    // Enhanced date handling with better logging
                     try {
                       const dateStr = String(value).trim();
+                      const date = new Date(dateStr);
                       
-                      // Log for debugging
-                      if (rowIndex < 5 || rowIndex > results.data.length - 7) {
-                        console.log(`Row ${rowIndex + 1} original date: "${dateStr}"`);
-                      }
-                      
-                      // Improved date parsing that handles multiple formats
-                      const normalizedDate = parseCsvDate(dateStr);
-                      
-                      if (!normalizedDate) {
+                      if (isNaN(date.getTime())) {
                         console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
                         processed[header] = ""; // Use empty string for invalid date
                       } else {
+                        // Normalize to YYYY-MM-DD format for consistent comparison
+                        const normalizedDate = normalizeDate(date);
                         processed[header] = normalizedDate;
                         
-                        // Log for debugging
-                        if (rowIndex < 5 || rowIndex > results.data.length - 7) {
-                          console.log(`Row ${rowIndex + 1} parsed date: "${dateStr}" -> "${normalizedDate}"`);
+                        // Log all dates in more detail
+                        if (rowIndex % 100 === 0 || normalizedDate.endsWith('-09') || normalizedDate.endsWith('-08')) {
+                          logDateDetails(`Row ${rowIndex + 1} date parsing`, dateStr, `-> ${normalizedDate}`);
                         }
                       }
                     } catch (e) {
@@ -161,6 +157,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 dateCounts[date] = (dateCounts[date] || 0) + 1;
               });
               
+              // Log count of rows per date
               console.log("Rows per date:", dateCounts);
               
               // Focus on most recent date to check for issues
@@ -177,10 +174,9 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {
                 try {
-                  // Use the normalized dates for comparison
-                  const dateA = a.DATE;
-                  const dateB = b.DATE;
-                  return dateA.localeCompare(dateB);
+                  const dateA = new Date(a.DATE);
+                  const dateB = new Date(b.DATE);
+                  return dateA.getTime() - dateB.getTime();
                 } catch (e) {
                   return 0;
                 }

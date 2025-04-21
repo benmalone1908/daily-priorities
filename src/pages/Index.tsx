@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -7,15 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import { 
-  setToStartOfDay, 
-  setToEndOfDay, 
-  logDateDetails, 
-  formatDateToDisplay,
-  createConsistentDate,
-  parseCsvDate,
-  dateToComparableNumber
-} from "@/lib/utils";
+import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
@@ -43,17 +36,11 @@ const Index = () => {
         // Auto-set date range to include full dataset if not already set
         if (!dateRange || !dateRange.from) {
           try {
-            const minDateStr = uniqueDates[0];
-            const maxDateStr = uniqueDates[uniqueDates.length - 1];
-            
-            // Create dates using consistent noon time to avoid timezone issues
-            const minDate = createConsistentDate(minDateStr);
-            const maxDate = createConsistentDate(maxDateStr);
-            
+            const minDate = new Date(uniqueDates[0]);
+            const maxDate = new Date(uniqueDates[uniqueDates.length - 1]);
             if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
               setDateRange({ from: minDate, to: maxDate });
               console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
-              console.log(`Formatted display dates: ${formatDateToDisplay(minDate)} to ${formatDateToDisplay(maxDate)}`);
             }
           } catch (e) {
             console.error("Error auto-setting date range:", e);
@@ -85,26 +72,55 @@ const Index = () => {
         }
       }
       
-      setData(uploadedData);
+      const processedData = uploadedData.map(row => {
+        const newRow = { ...row };
+        
+        if (newRow.DATE) {
+          try {
+            // Enhanced date handling
+            const date = new Date(newRow.DATE);
+            if (!isNaN(date.getTime())) {
+              // Store date as YYYY-MM-DD, ensuring consistent format
+              newRow.DATE = normalizeDate(date);
+              // Log April dates for debugging
+              if (newRow.DATE.includes('-04-09') || newRow.DATE.includes('-04-08')) {
+                logDateDetails(`Processed date for row:`, date, `-> ${newRow.DATE} (original: ${row.DATE})`);
+              }
+            } else {
+              console.error(`Invalid date format: ${newRow.DATE}`);
+            }
+          } catch (e) {
+            console.error("Error parsing date:", e);
+          }
+        }
+        
+        ["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].forEach(field => {
+          const normalizedField = Object.keys(newRow).find(key => key.toUpperCase() === field);
+          if (normalizedField) {
+            newRow[normalizedField] = Number(newRow[normalizedField]) || 0;
+          }
+        });
+        
+        return newRow;
+      });
       
-      // Log date range in the data to confirm it's correct
-      const dates = uploadedData.map(row => row.DATE).filter(Boolean).sort();
+      setData(processedData);
+      
+      // Log date range in the processed data
+      const dates = processedData.map(row => row.DATE).filter(Boolean).sort();
       if (dates.length > 0) {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);
         
-        // Sample some dates to see format
-        console.log("Sample dates from dataset:", dates.slice(0, 5));
-        
         // Log rows per date
         const dateCounts: Record<string, number> = {};
-        uploadedData.forEach(row => {
+        processedData.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
         });
         console.log("Rows per date:", dateCounts);
       }
       
-      toast.success(`Successfully loaded ${uploadedData.length} rows of data`);
+      toast.success(`Successfully loaded ${processedData.length} rows of data`);
     } catch (error) {
       console.error("Error processing uploaded data:", error);
       toast.error("Failed to process the uploaded data");
@@ -116,17 +132,12 @@ const Index = () => {
       return data;
     }
 
-    // Enhanced date filtering with better logging and numerical comparison
-    const fromDate = formatDateToDisplay(setToStartOfDay(dateRange.from));
-    const toDate = dateRange.to ? formatDateToDisplay(setToEndOfDay(dateRange.to)) : formatDateToDisplay(setToEndOfDay(new Date()));
+    // Enhanced date filtering with better logging
+    const fromDate = setToStartOfDay(dateRange.from);
+    const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
     
-    console.log(`Filtering data from ${fromDate} to ${toDate}`);
-    
-    // Convert range dates to comparable numbers
-    const fromNum = dateToComparableNumber(fromDate);
-    const toNum = dateToComparableNumber(toDate);
-    
-    console.log(`Comparable date numbers - from: ${fromNum}, to: ${toNum}`);
+    logDateDetails("Filtering data with from date", fromDate);
+    logDateDetails("Filtering data with to date", toDate);
     
     const filteredRows = data.filter(row => {
       try {
@@ -135,23 +146,28 @@ const Index = () => {
           return false;
         }
         
-        // Ensure date is in MM/DD/YYYY format
-        const normalizedDate = parseCsvDate(row.DATE);
-        if (!normalizedDate) {
+        // Normalize the date format
+        const normalizedDateStr = normalizeDate(row.DATE);
+        if (!normalizedDateStr) return false;
+        
+        const rowDate = new Date(`${normalizedDateStr}T12:00:00`); // Use noon to avoid timezone issues
+        if (isNaN(rowDate.getTime())) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
         }
         
-        // Convert row date to comparable number
-        const rowNum = dateToComparableNumber(normalizedDate);
+        // Check if date is in range (inclusive)
+        const isAfterFrom = rowDate >= fromDate;
+        const isBeforeTo = rowDate <= toDate;
+        const isInRange = isAfterFrom && isBeforeTo;
         
-        // Log for specific dates to help debug
-        if (normalizedDate === '3/24/2025' || normalizedDate === '4/20/2025') {
-          console.log(`Comparing row date ${normalizedDate} (${rowNum}) with range: ${fromNum}-${toNum}`);
-          console.log(`isAfterFrom=${rowNum >= fromNum}, isBeforeTo=${rowNum <= toNum}`);
+        // Log for specific dates we want to track
+        if (normalizedDateStr.endsWith('-04-09') || normalizedDateStr.endsWith('-04-08')) {
+          console.log(`Date filtering for ${normalizedDateStr}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
+          logDateDetails("Row date", rowDate, `compared to fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`);
         }
         
-        return rowNum >= fromNum && rowNum <= toNum;
+        return isInRange;
       } catch (error) {
         console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
         return false;
@@ -159,10 +175,11 @@ const Index = () => {
     });
     
     // Log filtered data statistics
-    console.log(`Filtered ${filteredRows.length} rows from ${data.length} total`);
-    if (filteredRows.length > 0) {
-      const dates = Array.from(new Set(filteredRows.map(row => row.DATE))).sort();
-      console.log(`Filtered date range: ${dates[0]} to ${dates[dates.length-1]}`);
+    console.log(`Filtered data: ${filteredRows.length} rows (from ${data.length} total)`);
+    const filteredDates = Array.from(new Set(filteredRows.map(row => row.DATE))).sort();
+    if (filteredDates.length > 0) {
+      console.log(`Filtered date range: ${filteredDates[0]} to ${filteredDates[filteredDates.length-1]}`);
+      console.log(`Total unique dates after filtering: ${filteredDates.length}`);
     }
     
     return filteredRows;
@@ -170,7 +187,6 @@ const Index = () => {
 
   const filteredData = getFilteredData();
 
-  // Helper functions for filtering data by campaigns and advertisers
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredData;
     return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -218,9 +234,8 @@ const Index = () => {
     const fromDate = dateRange.from;
     const toDate = dateRange.to || fromDate;
     
-    // Use the formatDateToDisplay utility function for consistent date formatting
-    const fromStr = formatDateToDisplay(fromDate);
-    const toStr = formatDateToDisplay(toDate);
+    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
+    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
     
     return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
   };
