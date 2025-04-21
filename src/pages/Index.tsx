@@ -116,11 +116,11 @@ const Index = () => {
     }
 
     // Enhanced date filtering with better logging
-    const fromDate = setToStartOfDay(dateRange.from);
-    const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
+    const fromDate = formatDateToDisplay(setToStartOfDay(dateRange.from));
+    const toDate = dateRange.to ? formatDateToDisplay(setToEndOfDay(dateRange.to)) : formatDateToDisplay(setToEndOfDay(new Date()));
     
-    logDateDetails("Filtering data with from date", fromDate);
-    logDateDetails("Filtering data with to date", toDate);
+    console.log(`Filtering data with from date: ${fromDate}`);
+    console.log(`Filtering data with to date: ${toDate}`);
     
     const filteredRows = data.filter(row => {
       try {
@@ -129,23 +129,23 @@ const Index = () => {
           return false;
         }
         
-        // Create date with noon time to avoid timezone issues
-        const rowDate = createConsistentDate(`${row.DATE}T12:00:00`);
+        // Ensure date is in MM/DD/YYYY format
+        const rowDate = parseCsvDate(row.DATE);
         
-        if (isNaN(rowDate.getTime())) {
+        if (!rowDate) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
         }
         
-        // Check if date is in range (inclusive)
+        // Simple string comparison since all dates are in MM/DD/YYYY format
         const isAfterFrom = rowDate >= fromDate;
         const isBeforeTo = rowDate <= toDate;
         const isInRange = isAfterFrom && isBeforeTo;
         
-        // Log for specific dates we want to track
-        if (['2023-03-12', '2023-04-09'].includes(row.DATE)) {
+        // Log for debugging
+        if (['3/24/2025', '4/20/2025'].includes(row.DATE)) {
           console.log(`Date filtering for ${row.DATE}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
-          console.log(`Comparing date ${rowDate.toISOString()} with fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`);
+          console.log(`Comparing date ${rowDate} with fromDate=${fromDate}, toDate=${toDate}`);
         }
         
         return isInRange;

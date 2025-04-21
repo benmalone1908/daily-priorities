@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -39,25 +38,24 @@ export function createConsistentDate(date: Date | string): Date {
   if (!date) throw new Error('Date cannot be empty');
   
   if (typeof date === 'string') {
-    // Handle YYYY-MM-DD format explicitly to avoid timezone issues
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [year, month, day] = date.split('-').map(Number);
-      // Create date at noon to avoid timezone issues
-      return new Date(year, month - 1, day, 12, 0, 0);
-    }
-    
     // Handle MM/DD/YYYY format explicitly
     const mdyMatch = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (mdyMatch) {
       const month = parseInt(mdyMatch[1], 10) - 1; // JS months are 0-indexed
       const day = parseInt(mdyMatch[2], 10);
       const year = parseInt(mdyMatch[3], 10);
+      // Create date at noon to avoid timezone issues
       return new Date(year, month, day, 12, 0, 0);
     }
     
-    // For other formats, use standard parsing but set to noon
+    // Handle YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-').map(Number);
+      return new Date(year, month - 1, day, 12, 0, 0);
+    }
+    
+    // For other formats, parse but set to noon
     const parsedDate = new Date(date);
-    // Reset time to noon to avoid timezone issues
     return new Date(
       parsedDate.getFullYear(),
       parsedDate.getMonth(),
@@ -139,60 +137,35 @@ export function logDateDetails(label: string, date: Date | string, extraInfo: st
   }
 }
 
-/**
- * Improved function to parse date strings from CSV without timezone issues
- * Handles multiple formats including MM/DD/YYYY and YYYY-MM-DD
- */
+// Improved function to parse CSV dates while preserving MM/DD/YYYY format
 export function parseCsvDate(dateStr: string): string {
   if (!dateStr) return '';
   
   try {
-    // Ensure string
     const trimmedDateStr = String(dateStr).trim();
-    console.log(`Parsing CSV date: "${trimmedDateStr}"`);
     
-    // Handle MM/DD/YYYY format (most common in CSV files)
+    // Handle MM/DD/YYYY format - return as is
     const mdyMatch = trimmedDateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (mdyMatch) {
       const month = String(parseInt(mdyMatch[1], 10)).padStart(2, '0');
       const day = String(parseInt(mdyMatch[2], 10)).padStart(2, '0');
       const year = mdyMatch[3];
-      const normalized = `${year}-${month}-${day}`;
-      console.log(`Parsed MM/DD/YYYY: "${trimmedDateStr}" -> "${normalized}"`);
-      return normalized;
+      return `${month}/${day}/${year}`;
     }
     
-    // Handle YYYY-MM-DD format (directly return)
+    // Handle YYYY-MM-DD format - convert to MM/DD/YYYY
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDateStr)) {
-      console.log(`Already in YYYY-MM-DD format: "${trimmedDateStr}"`);
-      return trimmedDateStr;
+      const [year, month, day] = trimmedDateStr.split('-');
+      return `${month}/${day}/${year}`;
     }
     
-    // Handle DD-MM-YYYY or DD.MM.YYYY format
-    const dmyMatch = trimmedDateStr.match(/^(\d{1,2})[.-](\d{1,2})[.-](\d{4})$/);
-    if (dmyMatch) {
-      const day = String(parseInt(dmyMatch[1], 10)).padStart(2, '0');
-      const month = String(parseInt(dmyMatch[2], 10)).padStart(2, '0');
-      const year = dmyMatch[3];
-      const normalized = `${year}-${month}-${day}`;
-      console.log(`Parsed DD-MM-YYYY: "${trimmedDateStr}" -> "${normalized}"`);
-      return normalized;
-    }
-    
-    // Last resort - try standard parsing but be careful with timezone
-    try {
-      const date = new Date(trimmedDateStr);
-      if (!isNaN(date.getTime())) {
-        // Create a string in YYYY-MM-DD format from local date components
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const normalized = `${year}-${month}-${day}`;
-        console.log(`Parsed with standard Date: "${trimmedDateStr}" -> "${normalized}"`);
-        return normalized;
-      }
-    } catch (e) {
-      console.error(`Standard date parsing failed for "${trimmedDateStr}":`, e);
+    // For other formats, try to parse and format as MM/DD/YYYY
+    const date = new Date(trimmedDateStr);
+    if (!isNaN(date.getTime())) {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
     }
     
     console.error(`Could not parse date string: "${trimmedDateStr}"`);
@@ -204,12 +177,18 @@ export function parseCsvDate(dateStr: string): string {
 }
 
 /**
- * Format date to MM/DD/YYYY for consistent display
+ * Format date consistently as MM/DD/YYYY for display
  */
 export function formatDateToDisplay(date: Date | string): string {
   if (!date) return '';
   
   try {
+    // If it's already in MM/DD/YYYY format, return as is
+    if (typeof date === 'string') {
+      const mdyMatch = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mdyMatch) return date;
+    }
+    
     // Use consistent date creation to handle timezone issues
     const dateObj = createConsistentDate(date);
     
@@ -223,3 +202,4 @@ export function formatDateToDisplay(date: Date | string): string {
     return '';
   }
 }
+
