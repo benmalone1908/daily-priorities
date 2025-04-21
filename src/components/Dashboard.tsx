@@ -1,3 +1,4 @@
+
 import { formatDateToDisplay } from "@/lib/utils";
 import {
   ResponsiveContainer,
@@ -21,7 +22,6 @@ import {
 
 // Define a function for formatting dates in the chart
 const formatDate = (value: string) => {
-  // Convert to properly formatted date string
   return formatDateToDisplay(value);
 };
 
@@ -37,12 +37,10 @@ const customTickFormatter = (value: string) => {
     '3/24/2025', '3/30/2025', '4/7/2025', '4/14/2025', '4/20/2025'
   ];
   
-  // If it's an exact match to one of our interval dates, always show
   if (intervalDates.includes(value)) {
     return formatDate(value);
   }
   
-  // For the full range, show every 3rd date
   const index = allDates.indexOf(value);
   return index % 3 === 0 ? formatDate(value) : '';
 };
@@ -92,7 +90,7 @@ const Dashboard = (props: DashboardProps) => {
     entry.clicks += Number(row.CLICKS) || 0;
   });
   
-  // Process revenue data separately to ensure we get the correct totals
+  // Process revenue data separately
   revenueData.forEach(row => {
     const date = row.DATE;
     if (!chartDataByDate.has(date)) {
