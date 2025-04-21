@@ -1,3 +1,10 @@
+import { formatDateToDisplay } from "@/lib/utils";
+
+// Define a function for formatting dates in the chart
+const formatDate = (value: string) => {
+  // Convert to properly formatted date string
+  return formatDateToDisplay(value);
+};
 
 const customTickFormatter = (value: string) => {
   const allDates = [
@@ -20,3 +27,78 @@ const customTickFormatter = (value: string) => {
   const index = allDates.indexOf(value);
   return index % 3 === 0 ? formatDate(value) : '';
 };
+
+interface DashboardProps {
+  data: any[];
+  metricsData: any[];
+  revenueData: any[];
+  selectedMetricsCampaigns: string[];
+  selectedRevenueCampaigns: string[];
+  selectedRevenueAdvertisers: string[];
+  onMetricsCampaignsChange: (selected: string[]) => void;
+  onRevenueCampaignsChange: (selected: string[]) => void;
+  onRevenueAdvertisersChange: (selected: string[]) => void;
+  sortedCampaignOptions: string[];
+  sortedAdvertiserOptions: string[];
+}
+
+const Dashboard = (props: DashboardProps) => {
+  const {
+    data,
+    metricsData,
+    revenueData,
+    selectedMetricsCampaigns,
+    selectedRevenueCampaigns,
+    selectedRevenueAdvertisers,
+    onMetricsCampaignsChange,
+    onRevenueCampaignsChange,
+    onRevenueAdvertisersChange,
+    sortedCampaignOptions,
+    sortedAdvertiserOptions
+  } = props;
+
+  const filteredMetricsData = metricsData.filter(row => selectedMetricsCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
+  const filteredRevenueData = revenueData.filter(row => 
+    selectedRevenueCampaigns.includes(row["CAMPAIGN ORDER NAME"]) ||
+    (row["CAMPAIGN ORDER NAME"] && selectedRevenueAdvertisers.some(advertiser => row["CAMPAIGN ORDER NAME"].includes(advertiser)))
+  );
+
+  // Calculate total impressions, clicks, and revenue
+  const totalImpressions = filteredMetricsData.reduce((sum, row) => sum + row.IMPRESSIONS, 0);
+  const totalClicks = filteredMetricsData.reduce((sum, row) => sum + row.CLICKS, 0);
+  const totalRevenue = filteredRevenueData.reduce((sum, row) => sum + row.REVENUE, 0);
+
+  // Prepare data for the charts
+  const chartData = data.map(row => ({
+    date: row.DATE,
+    impressions: row.IMPRESSIONS,
+    clicks: row.CLICKS,
+    revenue: row.REVENUE
+  }));
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-2">Total Impressions</h3>
+        <p className="text-2xl font-bold">{totalImpressions.toLocaleString()}</p>
+      </div>
+      <div className="bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-2">Total Clicks</h3>
+        <p className="text-2xl font-bold">{totalClicks.toLocaleString()}</p>
+      </div>
+      <div className="bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-2">Total Revenue</h3>
+        <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
+      </div>
+
+      <div className="md:col-span-2 lg:col-span-3">
+        <h3 className="text-lg font-semibold mb-2">Impressions Over Time</h3>
+        {/* Example chart using Recharts */}
+        {/* Replace with your actual chart implementation */}
+        <p>Chart goes here...</p>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
