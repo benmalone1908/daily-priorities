@@ -20,7 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
-import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
+import { normalizeDate, setToEndOfDay, setToStartOfDay, formatDateToDisplay, parseCsvDate } from "@/lib/utils";
 
 interface DashboardProps {
   data: any[];
@@ -441,14 +441,10 @@ const Dashboard = ({
           return;
         }
         
-        const normalizedDate = normalizeDate(row.DATE);
+        const normalizedDate = parseCsvDate(row.DATE);
         if (!normalizedDate) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return;
-        }
-        
-        if (normalizedDate.includes('-04-')) {
-          console.log(`Processing April data: ${normalizedDate}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
         }
         
         if (!dateGroups[normalizedDate]) {
@@ -467,7 +463,9 @@ const Dashboard = ({
 
       const result = Object.values(dateGroups).sort((a: any, b: any) => {
         try {
-          return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
+          const aDate = new Date(a.DATE.split('/')[2], a.DATE.split('/')[0] - 1, a.DATE.split('/')[1]);
+          const bDate = new Date(b.DATE.split('/')[2], b.DATE.split('/')[0] - 1, b.DATE.split('/')[1]);
+          return aDate.getTime() - bDate.getTime();
         } catch (err) {
           console.error(`Error sorting dates: ${a.DATE} vs ${b.DATE}`, err);
           return 0;
@@ -477,11 +475,6 @@ const Dashboard = ({
       console.log(`Aggregated data has ${result.length} dates`);
       if (result.length > 0) {
         console.log(`Aggregated date range: ${result[0].DATE} to ${result[result.length-1].DATE}`);
-        result.forEach(row => {
-          if (row.DATE && row.DATE.includes('-04-')) {
-            console.log(`Aggregated April data: ${row.DATE}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
-          }
-        });
       }
       
       return result;
@@ -512,7 +505,7 @@ const Dashboard = ({
       filteredData.forEach(row => {
         if (!row || !row.DATE) return;
         
-        const normalizedDate = normalizeDate(row.DATE);
+        const normalizedDate = parseCsvDate(row.DATE);
         if (!normalizedDate) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return;
@@ -594,8 +587,11 @@ const Dashboard = ({
         try {
           if (!row.DATE) return null;
           
-          const normalizedDate = normalizeDate(row.DATE);
-          if (!normalizedDate) return null;
+          const normalizedDate = parseCsvDate(row.DATE);
+          if (!normalizedDate) {
+            console.warn(`Invalid date in row: ${row.DATE}`);
+            return null;
+          }
           
           return {
             ...row,
@@ -723,7 +719,7 @@ const Dashboard = ({
         .map(row => {
           try {
             if (!row.DATE) return null;
-            const normalizedDate = normalizeDate(row.DATE);
+            const normalizedDate = parseCsvDate(row.DATE);
             if (!normalizedDate) return null;
             return new Date(normalizedDate);
           } catch (e) {
@@ -806,9 +802,17 @@ const Dashboard = ({
 
   const formatDate = (dateString: string) => {
     try {
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
+        return dateString;
+      }
+      
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      
+      return `${month}/${day}`;
     } catch (error) {
       console.error("Error formatting date:", error);
       return "Invalid Date";
