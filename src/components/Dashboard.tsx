@@ -18,9 +18,8 @@ import {
   ChartTooltip,
   ChartTooltipContent
 } from "@/components/ui/chart";
-import CampaignSparkCharts from "@/components/CampaignSparkCharts";
+import WeeklySummary from "./WeeklySummary";
 
-// Define a function for formatting dates in the chart
 const formatDate = (value: string) => {
   return formatDateToDisplay(value);
 };
@@ -65,15 +64,12 @@ const Dashboard = (props: DashboardProps) => {
     revenueData,
   } = props;
 
-  // Calculate total metrics from filtered data
   const totalImpressions = metricsData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
   const totalClicks = metricsData.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
   const totalRevenue = revenueData.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
 
-  // Prepare data for the charts - group by date
   const chartDataByDate = new Map();
   
-  // Process metrics data
   metricsData.forEach(row => {
     const date = row.DATE;
     if (!chartDataByDate.has(date)) {
@@ -92,7 +88,6 @@ const Dashboard = (props: DashboardProps) => {
     entry.transactions += Number(row.TRANSACTIONS) || 0;
   });
   
-  // Process revenue data separately
   revenueData.forEach(row => {
     const date = row.DATE;
     if (!chartDataByDate.has(date)) {
@@ -110,7 +105,6 @@ const Dashboard = (props: DashboardProps) => {
     entry.transactions += Number(row.TRANSACTIONS) || 0;
   });
   
-  // Convert map to array and sort by date
   const chartData = Array.from(chartDataByDate.values()).sort((a, b) => {
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
@@ -133,6 +127,23 @@ const Dashboard = (props: DashboardProps) => {
       color: "#10b981"
     }
   };
+
+  const last7DaysData = (() => {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const filteredData = metricsData.filter(row => {
+      const rowDate = new Date(row.DATE);
+      return rowDate >= sevenDaysAgo && rowDate <= today;
+    });
+
+    return {
+      impressions: filteredData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0),
+      clicks: filteredData.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0),
+      transactions: filteredData.reduce((sum, row) => sum + (Number(row.TRANSACTIONS) || 0), 0),
+    };
+  })();
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -229,8 +240,9 @@ const Dashboard = (props: DashboardProps) => {
         </div>
       </div>
 
-      <div className="md:col-span-2 lg:col-span-3">
-        <CampaignSparkCharts data={props.data} />
+      <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-4">7-Day Summary</h3>
+        <WeeklySummary data={last7DaysData} />
       </div>
     </div>
   );
