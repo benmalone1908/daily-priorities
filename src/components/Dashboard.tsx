@@ -1,4 +1,22 @@
+
 import { formatDateToDisplay } from "@/lib/utils";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  AreaChart,
+  Area
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent
+} from "@/components/ui/chart";
 
 // Define a function for formatting dates in the chart
 const formatDate = (value: string) => {
@@ -68,13 +86,45 @@ const Dashboard = (props: DashboardProps) => {
   const totalClicks = filteredMetricsData.reduce((sum, row) => sum + row.CLICKS, 0);
   const totalRevenue = filteredRevenueData.reduce((sum, row) => sum + row.REVENUE, 0);
 
-  // Prepare data for the charts
-  const chartData = data.map(row => ({
-    date: row.DATE,
-    impressions: row.IMPRESSIONS,
-    clicks: row.CLICKS,
-    revenue: row.REVENUE
-  }));
+  // Prepare data for the charts - group by date
+  const chartDataByDate = new Map();
+  
+  data.forEach(row => {
+    const date = row.DATE;
+    if (!chartDataByDate.has(date)) {
+      chartDataByDate.set(date, {
+        date,
+        impressions: 0,
+        clicks: 0,
+        revenue: 0
+      });
+    }
+    
+    const entry = chartDataByDate.get(date);
+    entry.impressions += Number(row.IMPRESSIONS) || 0;
+    entry.clicks += Number(row.CLICKS) || 0;
+    entry.revenue += Number(row.REVENUE) || 0;
+  });
+  
+  // Convert map to array and sort by date
+  const chartData = Array.from(chartDataByDate.values()).sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const chartConfig = {
+    impressions: {
+      label: "Impressions",
+      color: "#0ea5e9"
+    },
+    clicks: {
+      label: "Clicks",
+      color: "#8b5cf6"
+    },
+    revenue: {
+      label: "Revenue",
+      color: "#10b981"
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -91,11 +141,81 @@ const Dashboard = (props: DashboardProps) => {
         <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
       </div>
 
-      <div className="md:col-span-2 lg:col-span-3">
-        <h3 className="text-lg font-semibold mb-2">Impressions Over Time</h3>
-        {/* Example chart using Recharts */}
-        {/* Replace with your actual chart implementation */}
-        <p>Chart goes here...</p>
+      <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-4">Impressions Over Time</h3>
+        <div className="h-[300px]">
+          <ChartContainer
+            config={chartConfig}
+            className="h-full"
+          >
+            <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <defs>
+                <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={customTickFormatter}
+                minTickGap={15}
+              />
+              <YAxis />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="impressions" 
+                name="Impressions"
+                stroke="#0ea5e9" 
+                fillOpacity={1} 
+                fill="url(#colorImpressions)" 
+              />
+            </AreaChart>
+          </ChartContainer>
+        </div>
+      </div>
+      
+      <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-4">Clicks and Revenue</h3>
+        <div className="h-[300px]">
+          <ChartContainer
+            config={chartConfig}
+            className="h-full"
+          >
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={customTickFormatter}
+                minTickGap={15}
+              />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+              />
+              <Legend />
+              <Line 
+                yAxisId="left"
+                type="monotone" 
+                dataKey="clicks" 
+                name="Clicks"
+                stroke="#8b5cf6" 
+                activeDot={{ r: 8 }} 
+              />
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="revenue" 
+                name="Revenue"
+                stroke="#10b981" 
+              />
+            </LineChart>
+          </ChartContainer>
+        </div>
       </div>
     </div>
   );
