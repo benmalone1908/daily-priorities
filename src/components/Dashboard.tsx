@@ -81,6 +81,7 @@ const Dashboard = (props: DashboardProps) => {
         date,
         impressions: 0,
         clicks: 0,
+        transactions: 0,
         revenue: 0
       });
     }
@@ -88,6 +89,7 @@ const Dashboard = (props: DashboardProps) => {
     const entry = chartDataByDate.get(date);
     entry.impressions += Number(row.IMPRESSIONS) || 0;
     entry.clicks += Number(row.CLICKS) || 0;
+    entry.transactions += Number(row.TRANSACTIONS) || 0;
   });
   
   // Process revenue data separately
@@ -98,12 +100,14 @@ const Dashboard = (props: DashboardProps) => {
         date,
         impressions: 0,
         clicks: 0,
+        transactions: 0,
         revenue: 0
       });
     }
     
     const entry = chartDataByDate.get(date);
     entry.revenue += Number(row.REVENUE) || 0;
+    entry.transactions += Number(row.TRANSACTIONS) || 0;
   });
   
   // Convert map to array and sort by date
@@ -119,6 +123,10 @@ const Dashboard = (props: DashboardProps) => {
     clicks: {
       label: "Clicks",
       color: "#8b5cf6"
+    },
+    transactions: {
+      label: "Transactions",
+      color: "#f97316"
     },
     revenue: {
       label: "Revenue",
@@ -142,48 +150,11 @@ const Dashboard = (props: DashboardProps) => {
       </div>
 
       <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
-        <h3 className="text-lg font-semibold mb-4">Impressions Over Time</h3>
-        <div className="h-[300px]">
+        <h3 className="text-lg font-semibold mb-4">Impressions and Clicks</h3>
+        <div className="h-[400px]">
           <ChartContainer
             config={chartConfig}
-            className="h-full"
-          >
-            <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <defs>
-                <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tickFormatter={customTickFormatter}
-                minTickGap={15}
-              />
-              <YAxis />
-              <ChartTooltip
-                content={<ChartTooltipContent />}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="impressions" 
-                name="Impressions"
-                stroke="#0ea5e9" 
-                fillOpacity={1} 
-                fill="url(#colorImpressions)" 
-              />
-            </AreaChart>
-          </ChartContainer>
-        </div>
-      </div>
-      
-      <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
-        <h3 className="text-lg font-semibold mb-4">Clicks and Revenue</h3>
-        <div className="h-[300px]">
-          <ChartContainer
-            config={chartConfig}
-            className="h-full"
+            className="h-full w-full"
           >
             <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -200,22 +171,66 @@ const Dashboard = (props: DashboardProps) => {
               <Legend />
               <Bar
                 yAxisId="left"
-                dataKey="clicks"
-                name="Clicks"
-                fill="#8b5cf6"
+                dataKey="impressions"
+                name="Impressions"
+                fill={chartConfig.impressions.color}
                 radius={[4, 4, 0, 0]}
               />
               <Line 
                 yAxisId="right"
                 type="monotone" 
-                dataKey="revenue" 
-                name="Revenue"
-                stroke="#10b981"
+                dataKey="clicks" 
+                name="Clicks"
+                stroke={chartConfig.clicks.color}
                 dot={false}
               />
             </ComposedChart>
           </ChartContainer>
         </div>
+      </div>
+      
+      <div className="md:col-span-2 lg:col-span-3 bg-white shadow-md rounded-md p-4">
+        <h3 className="text-lg font-semibold mb-4">Impressions and Transactions</h3>
+        <div className="h-[400px]">
+          <ChartContainer
+            config={chartConfig}
+            className="h-full w-full"
+          >
+            <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={customTickFormatter}
+                minTickGap={15}
+              />
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+              />
+              <Legend />
+              <Bar
+                yAxisId="left"
+                dataKey="impressions"
+                name="Impressions"
+                fill={chartConfig.impressions.color}
+                radius={[4, 4, 0, 0]}
+              />
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="transactions" 
+                name="Transactions"
+                stroke={chartConfig.transactions.color}
+                dot={false}
+              />
+            </ComposedChart>
+          </ChartContainer>
+        </div>
+      </div>
+
+      <div className="md:col-span-2 lg:col-span-3">
+        <CampaignSparkCharts data={props.data} />
       </div>
     </div>
   );
