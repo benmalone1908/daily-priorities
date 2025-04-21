@@ -203,3 +203,23 @@ export function formatDateToDisplay(date: Date | string): string {
   }
 }
 
+/**
+ * Convert MM/DD/YYYY date string to comparable number format (YYYYMMDD)
+ */
+export function dateToComparableNumber(dateStr: string): number {
+  if (!dateStr) return 0;
+  
+  try {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return 0;
+    
+    const month = parts[0].padStart(2, '0');
+    const day = parts[1].padStart(2, '0');
+    const year = parts[2];
+    
+    return parseInt(`${year}${month}${day}`);
+  } catch (error) {
+    console.error(`Error converting date ${dateStr} to comparable number:`, error);
+    return 0;
+  }
+}

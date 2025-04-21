@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -14,7 +13,8 @@ import {
   logDateDetails, 
   formatDateToDisplay,
   createConsistentDate,
-  parseCsvDate
+  parseCsvDate,
+  dateToComparableNumber
 } from "@/lib/utils";
 
 const Index = () => {
@@ -116,12 +116,17 @@ const Index = () => {
       return data;
     }
 
-    // Enhanced date filtering with better logging
+    // Enhanced date filtering with better logging and numerical comparison
     const fromDate = formatDateToDisplay(setToStartOfDay(dateRange.from));
     const toDate = dateRange.to ? formatDateToDisplay(setToEndOfDay(dateRange.to)) : formatDateToDisplay(setToEndOfDay(new Date()));
     
-    console.log(`Filtering data with from date: ${fromDate}`);
-    console.log(`Filtering data with to date: ${toDate}`);
+    console.log(`Filtering data from ${fromDate} to ${toDate}`);
+    
+    // Convert range dates to comparable numbers
+    const fromNum = dateToComparableNumber(fromDate);
+    const toNum = dateToComparableNumber(toDate);
+    
+    console.log(`Comparable date numbers - from: ${fromNum}, to: ${toNum}`);
     
     const filteredRows = data.filter(row => {
       try {
@@ -131,25 +136,22 @@ const Index = () => {
         }
         
         // Ensure date is in MM/DD/YYYY format
-        const rowDate = parseCsvDate(row.DATE);
-        
-        if (!rowDate) {
+        const normalizedDate = parseCsvDate(row.DATE);
+        if (!normalizedDate) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
         }
         
-        // Simple string comparison since all dates are in MM/DD/YYYY format
-        const isAfterFrom = rowDate >= fromDate;
-        const isBeforeTo = rowDate <= toDate;
-        const isInRange = isAfterFrom && isBeforeTo;
+        // Convert row date to comparable number
+        const rowNum = dateToComparableNumber(normalizedDate);
         
-        // Log for debugging
-        if (['3/24/2025', '4/20/2025'].includes(row.DATE)) {
-          console.log(`Date filtering for ${row.DATE}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
-          console.log(`Comparing date ${rowDate} with fromDate=${fromDate}, toDate=${toDate}`);
+        // Log for specific dates to help debug
+        if (normalizedDate === '3/24/2025' || normalizedDate === '4/20/2025') {
+          console.log(`Comparing row date ${normalizedDate} (${rowNum}) with range: ${fromNum}-${toNum}`);
+          console.log(`isAfterFrom=${rowNum >= fromNum}, isBeforeTo=${rowNum <= toNum}`);
         }
         
-        return isInRange;
+        return rowNum >= fromNum && rowNum <= toNum;
       } catch (error) {
         console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
         return false;
@@ -157,11 +159,10 @@ const Index = () => {
     });
     
     // Log filtered data statistics
-    console.log(`Filtered data: ${filteredRows.length} rows (from ${data.length} total)`);
-    const filteredDates = Array.from(new Set(filteredRows.map(row => row.DATE))).sort();
-    if (filteredDates.length > 0) {
-      console.log(`Filtered date range: ${filteredDates[0]} to ${filteredDates[filteredDates.length-1]}`);
-      console.log(`Total unique dates after filtering: ${filteredDates.length}`);
+    console.log(`Filtered ${filteredRows.length} rows from ${data.length} total`);
+    if (filteredRows.length > 0) {
+      const dates = Array.from(new Set(filteredRows.map(row => row.DATE))).sort();
+      console.log(`Filtered date range: ${dates[0]} to ${dates[dates.length-1]}`);
     }
     
     return filteredRows;
