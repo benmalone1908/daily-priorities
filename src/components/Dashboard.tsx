@@ -1,4 +1,3 @@
-
 import { formatDateToDisplay } from "@/lib/utils";
 import {
   ResponsiveContainer,
@@ -19,6 +18,7 @@ import {
   ChartTooltip,
   ChartTooltipContent
 } from "@/components/ui/chart";
+import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 
 // Define a function for formatting dates in the chart
 const formatDate = (value: string) => {
