@@ -1,4 +1,3 @@
-
 import { formatDateToDisplay } from "@/lib/utils";
 import {
   ResponsiveContainer,
@@ -10,7 +9,9 @@ import {
   Tooltip,
   Legend,
   AreaChart,
-  Area
+  Area,
+  ComposedChart,
+  Bar
 } from "recharts";
 import {
   ChartContainer,
@@ -62,34 +63,20 @@ interface DashboardProps {
 
 const Dashboard = (props: DashboardProps) => {
   const {
-    data,
     metricsData,
     revenueData,
-    selectedMetricsCampaigns,
-    selectedRevenueCampaigns,
-    selectedRevenueAdvertisers,
-    onMetricsCampaignsChange,
-    onRevenueCampaignsChange,
-    onRevenueAdvertisersChange,
-    sortedCampaignOptions,
-    sortedAdvertiserOptions
   } = props;
 
-  const filteredMetricsData = metricsData.filter(row => selectedMetricsCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
-  const filteredRevenueData = revenueData.filter(row => 
-    selectedRevenueCampaigns.includes(row["CAMPAIGN ORDER NAME"]) ||
-    (row["CAMPAIGN ORDER NAME"] && selectedRevenueAdvertisers.some(advertiser => row["CAMPAIGN ORDER NAME"].includes(advertiser)))
-  );
-
-  // Calculate total impressions, clicks, and revenue
-  const totalImpressions = filteredMetricsData.reduce((sum, row) => sum + row.IMPRESSIONS, 0);
-  const totalClicks = filteredMetricsData.reduce((sum, row) => sum + row.CLICKS, 0);
-  const totalRevenue = filteredRevenueData.reduce((sum, row) => sum + row.REVENUE, 0);
+  // Calculate total metrics from filtered data
+  const totalImpressions = metricsData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+  const totalClicks = metricsData.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
+  const totalRevenue = revenueData.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
 
   // Prepare data for the charts - group by date
   const chartDataByDate = new Map();
   
-  data.forEach(row => {
+  // Process metrics data
+  metricsData.forEach(row => {
     const date = row.DATE;
     if (!chartDataByDate.has(date)) {
       chartDataByDate.set(date, {
@@ -103,6 +90,21 @@ const Dashboard = (props: DashboardProps) => {
     const entry = chartDataByDate.get(date);
     entry.impressions += Number(row.IMPRESSIONS) || 0;
     entry.clicks += Number(row.CLICKS) || 0;
+  });
+  
+  // Process revenue data separately to ensure we get the correct totals
+  revenueData.forEach(row => {
+    const date = row.DATE;
+    if (!chartDataByDate.has(date)) {
+      chartDataByDate.set(date, {
+        date,
+        impressions: 0,
+        clicks: 0,
+        revenue: 0
+      });
+    }
+    
+    const entry = chartDataByDate.get(date);
     entry.revenue += Number(row.REVENUE) || 0;
   });
   
@@ -185,7 +187,7 @@ const Dashboard = (props: DashboardProps) => {
             config={chartConfig}
             className="h-full"
           >
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 
@@ -198,22 +200,22 @@ const Dashboard = (props: DashboardProps) => {
                 content={<ChartTooltipContent />}
               />
               <Legend />
-              <Line 
+              <Bar
                 yAxisId="left"
-                type="monotone" 
-                dataKey="clicks" 
+                dataKey="clicks"
                 name="Clicks"
-                stroke="#8b5cf6" 
-                activeDot={{ r: 8 }} 
+                fill="#8b5cf6"
+                radius={[4, 4, 0, 0]}
               />
               <Line 
                 yAxisId="right"
                 type="monotone" 
                 dataKey="revenue" 
                 name="Revenue"
-                stroke="#10b981" 
+                stroke="#10b981"
+                dot={false}
               />
-            </LineChart>
+            </ComposedChart>
           </ChartContainer>
         </div>
       </div>
