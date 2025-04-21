@@ -893,6 +893,18 @@ const Dashboard = ({
     ? `${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}`
     : "All time";
 
+  const customTickFormatter = (value: string) => {
+    const datesToShow = [
+      '3/24/2025', 
+      '3/30/2025', 
+      '4/7/2025', 
+      '4/14/2025', 
+      '4/20/2025'
+    ];
+    
+    return datesToShow.includes(value) ? formatDate(value) : '';
+  };
+
   if (!anomalies) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -996,9 +1008,10 @@ const Dashboard = ({
               <ComposedChart data={processedMetricsData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                  dataKey="DATE" 
                   style={axisStyle}
-                  tickFormatter={metricsViewMode === "date" ? formatDate : undefined}
+                  tickFormatter={customTickFormatter}
+                  interval={0}
                 />
                 <YAxis 
                   yAxisId="left"
@@ -1019,7 +1032,7 @@ const Dashboard = ({
                 <Tooltip 
                   formatter={(value: number, name: string) => [formatNumber(value), name]}
                   contentStyle={{ fontSize: '0.75rem' }}
-                  labelFormatter={metricsViewMode === "date" ? formatDate : undefined}
+                  labelFormatter={customTickFormatter}
                 />
                 <Bar
                   yAxisId="left"
@@ -1093,9 +1106,10 @@ const Dashboard = ({
               <ComposedChart data={processedRevenueData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                  dataKey="DATE" 
                   style={axisStyle}
-                  tickFormatter={revenueViewMode === "date" ? formatDate : undefined}
+                  tickFormatter={customTickFormatter}
+                  interval={0}
                 />
                 <YAxis 
                   yAxisId="left"
@@ -1119,7 +1133,7 @@ const Dashboard = ({
                     return [formatNumber(value), name];
                   }}
                   contentStyle={{ fontSize: '0.75rem' }}
-                  labelFormatter={revenueViewMode === "date" ? formatDate : undefined}
+                  labelFormatter={customTickFormatter}
                 />
                 <Bar
                   yAxisId="left"
