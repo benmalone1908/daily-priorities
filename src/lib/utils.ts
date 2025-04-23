@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -27,22 +26,56 @@ export function formatNumber(value: number, options: {
     }
   }
   
-  // Round to specified decimal places and add commas
   return `${prefix}${value.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${suffix}`;
 }
 
-// Enhanced utility function to standardize date handling
+function parseDateString(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  
+  try {
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    
+    const month = parseInt(parts[0], 10) - 1;
+    const day = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    
+    if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
+    if (month < 0 || month > 11) return null;
+    if (day < 1 || day > 31) return null;
+    
+    const date = new Date(year, month, day);
+    date.setHours(12, 0, 0, 0);
+    
+    if (isNaN(date.getTime())) return null;
+    return date;
+  } catch (error) {
+    console.error(`Error parsing date string: ${dateStr}`, error);
+    return null;
+  }
+}
+
 export function normalizeDate(date: Date | string): string {
   if (!date) return '';
   
   try {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    if (isNaN(dateObj.getTime())) {
+    let dateObj: Date | null;
+    
+    if (typeof date === 'string') {
+      dateObj = parseDateString(date);
+      
+      if (!dateObj) {
+        dateObj = new Date(date);
+      }
+    } else {
+      dateObj = date;
+    }
+    
+    if (!dateObj || isNaN(dateObj.getTime())) {
       console.error(`Invalid date: ${date}`);
       return '';
     }
     
-    // Ensure we're working with local date (yyyy-MM-dd)
     const year = dateObj.getFullYear();
     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
     const day = String(dateObj.getDate()).padStart(2, '0');
@@ -54,7 +87,6 @@ export function normalizeDate(date: Date | string): string {
   }
 }
 
-// Enhanced helper for consistent date comparison
 export function isSameDay(date1: Date | string, date2: Date | string): boolean {
   if (!date1 || !date2) return false;
   
@@ -68,21 +100,18 @@ export function isSameDay(date1: Date | string, date2: Date | string): boolean {
   }
 }
 
-// Enhanced helper to set time to end of day (23:59:59.999) for inclusive comparison
 export function setToEndOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(23, 59, 59, 999);
   return result;
 }
 
-// Enhanced helper to set time to start of day (00:00:00.000)
 export function setToStartOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
   return result;
 }
 
-// New helper to log date details for debugging
 export function logDateDetails(label: string, date: Date | string, extraInfo: string = ''): void {
   try {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -97,14 +126,11 @@ export function logDateDetails(label: string, date: Date | string, extraInfo: st
   }
 }
 
-// Helper to create a date object that correctly handles different formats
 export function createConsistentDate(date: Date | string): Date {
   if (!date) throw new Error('Date cannot be empty');
   
   if (typeof date === 'string') {
-    // Handle YYYY-MM-DD format
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      // Create date at noon to avoid timezone issues
       return new Date(`${date}T12:00:00`);
     }
     return new Date(date);

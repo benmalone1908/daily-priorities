@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
@@ -92,27 +91,22 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
-                    // Enhanced date handling with better logging
+                    // Enhanced date handling with more detailed logging
                     try {
                       const dateStr = String(value).trim();
-                      const date = new Date(dateStr);
+                      console.log(`Processing date from CSV: ${dateStr} in row ${rowIndex + 1}`);
                       
-                      if (isNaN(date.getTime())) {
+                      const normalizedDate = normalizeDate(dateStr);
+                      if (!normalizedDate) {
                         console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
-                        processed[header] = ""; // Use empty string for invalid date
-                      } else {
-                        // Normalize to YYYY-MM-DD format for consistent comparison
-                        const normalizedDate = normalizeDate(date);
-                        processed[header] = normalizedDate;
-                        
-                        // Log all dates in more detail
-                        if (rowIndex % 100 === 0 || normalizedDate.endsWith('-09') || normalizedDate.endsWith('-08')) {
-                          logDateDetails(`Row ${rowIndex + 1} date parsing`, dateStr, `-> ${normalizedDate}`);
-                        }
+                        return null;
                       }
+                      
+                      processed[header] = normalizedDate;
+                      logDateDetails(`Processed date in row ${rowIndex + 1}`, normalizedDate);
                     } catch (e) {
-                      console.warn(`Error parsing date in row ${rowIndex + 1}:`, e);
-                      processed[header] = ""; // Use empty string for invalid date
+                      console.error(`Error parsing date in row ${rowIndex + 1}:`, e);
+                      return null;
                     }
                   } 
                   // Convert numerical fields to numbers
@@ -193,12 +187,9 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
             console.error("CSV parsing error:", error);
             toast.error(`CSV parsing error: ${error.message}`);
           },
-          header: false, // We'll handle headers manually for better control
+          header: false,
           skipEmptyLines: true,
-          transformHeader: (header) => {
-            // Trim whitespace from headers
-            return header.trim();
-          }
+          transformHeader: (header) => header.trim()
         });
       } catch (err) {
         console.error("Error parsing CSV:", err);
