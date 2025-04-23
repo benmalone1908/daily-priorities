@@ -91,19 +91,22 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   const value = row[index];
                   
                   if (header.toUpperCase() === "DATE") {
-                    // Enhanced date handling with more detailed logging
                     try {
                       const dateStr = String(value).trim();
-                      console.log(`Processing date from CSV: ${dateStr} in row ${rowIndex + 1}`);
+                      console.log(`Processing date from CSV row ${rowIndex + 1}: ${dateStr}`);
                       
-                      const normalizedDate = normalizeDate(dateStr);
-                      if (!normalizedDate) {
+                      // Keep original date format
+                      processed[header] = dateStr;
+                      
+                      // Validate the date can be parsed
+                      const parsedDate = parseDateString(dateStr);
+                      if (!parsedDate) {
                         console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
                         return null;
                       }
                       
-                      processed[header] = normalizedDate;
-                      logDateDetails(`Processed date in row ${rowIndex + 1}`, normalizedDate);
+                      // Log successful date processing
+                      console.log(`Successfully processed date in row ${rowIndex + 1}: ${dateStr}`);
                     } catch (e) {
                       console.error(`Error parsing date in row ${rowIndex + 1}:`, e);
                       return null;
@@ -118,12 +121,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   }
                 });
                 
-                // Final validation - ensure we have a valid date and campaign name
-                if (!processed.DATE || !processed["CAMPAIGN ORDER NAME"]) {
-                  console.warn(`Row ${rowIndex + 1} missing DATE or CAMPAIGN ORDER NAME`);
-                  return null;
-                }
-                
                 return processed;
               }).filter((row): row is Record<string, any> => row !== null);
               
@@ -134,15 +131,16 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
               console.log(`Processed ${processedData.length} valid rows`);
               
-              // Log date statistics
-              const dateSet = new Set<string>();
-              processedData.forEach(row => {
-                if (row.DATE) dateSet.add(row.DATE);
-              });
+              // Log date statistics after processing
+              const dates = processedData
+                .map(row => row.DATE)
+                .filter(Boolean)
+                .sort();
               
-              const dates = Array.from(dateSet).sort();
-              console.log(`Found ${dates.length} unique dates from ${dates[0]} to ${dates[dates.length - 1]}`);
-              console.log(`All dates in dataset: ${dates.join(', ')}`);
+              if (dates.length > 0) {
+                console.log(`Processed date range: ${dates[0]} to ${dates[dates.length - 1]}`);
+                console.log(`Total unique dates: ${new Set(dates).size}`);
+              }
               
               // Count data by date
               const dateCounts: Record<string, number> = {};

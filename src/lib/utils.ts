@@ -34,20 +34,37 @@ function parseDateString(dateStr: string): Date | null {
   
   try {
     const parts = dateStr.split('/');
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.warn(`Invalid date format: ${dateStr} - expected MM/DD/YYYY`);
+      return null;
+    }
     
-    const month = parseInt(parts[0], 10) - 1;
+    const month = parseInt(parts[0], 10);
     const day = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
     
-    if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
-    if (month < 0 || month > 11) return null;
-    if (day < 1 || day > 31) return null;
+    if (isNaN(month) || isNaN(day) || isNaN(year)) {
+      console.warn(`Invalid date parts: month=${parts[0]}, day=${parts[1]}, year=${parts[2]}`);
+      return null;
+    }
     
-    const date = new Date(year, month, day);
-    date.setHours(12, 0, 0, 0);
+    if (month < 1 || month > 12) {
+      console.warn(`Invalid month: ${month}`);
+      return null;
+    }
+    if (day < 1 || day > 31) {
+      console.warn(`Invalid day: ${day}`);
+      return null;
+    }
     
-    if (isNaN(date.getTime())) return null;
+    const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+    
+    if (isNaN(date.getTime())) {
+      console.warn(`Invalid date created from: ${dateStr}`);
+      return null;
+    }
+    
+    console.log(`Parsed date string: ${dateStr} -> ${date.toISOString()}`);
     return date;
   } catch (error) {
     console.error(`Error parsing date string: ${dateStr}`, error);
@@ -76,11 +93,11 @@ export function normalizeDate(date: Date | string): string {
       return '';
     }
     
+    const month = String(dateObj.getMonth() + 1);
+    const day = String(dateObj.getDate());
     const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
     
-    return `${year}-${month}-${day}`;
+    return `${month}/${day}/${year}`;
   } catch (error) {
     console.error(`Error normalizing date ${date}:`, error);
     return '';
