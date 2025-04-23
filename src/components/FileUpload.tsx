@@ -1,9 +1,10 @@
+
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
-import { normalizeDate, logDateDetails } from "@/lib/utils";
+import { normalizeDate, logDateDetails, parseDateString } from "@/lib/utils";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;

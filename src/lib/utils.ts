@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -29,7 +30,7 @@ export function formatNumber(value: number, options: {
   return `${prefix}${value.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${suffix}`;
 }
 
-function parseDateString(dateStr: string): Date | null {
+export function parseDateString(dateStr: string): Date | null {
   if (!dateStr) return null;
   
   try {
