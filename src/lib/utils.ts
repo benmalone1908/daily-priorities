@@ -34,39 +34,72 @@ export function parseDateString(dateStr: string): Date | null {
   if (!dateStr) return null;
   
   try {
-    const parts = dateStr.split('/');
-    if (parts.length !== 3) {
-      console.warn(`Invalid date format: ${dateStr} - expected MM/DD/YYYY`);
-      return null;
+    // Handle MM/DD/YYYY format
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length !== 3) {
+        console.warn(`Invalid date format: ${dateStr} - expected MM/DD/YYYY`);
+        return null;
+      }
+      
+      const month = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
+      const year = parseInt(parts[2], 10);
+      
+      if (isNaN(month) || isNaN(day) || isNaN(year)) {
+        console.warn(`Invalid date parts: month=${parts[0]}, day=${parts[1]}, year=${parts[2]}`);
+        return null;
+      }
+      
+      if (month < 1 || month > 12) {
+        console.warn(`Invalid month: ${month}`);
+        return null;
+      }
+      if (day < 1 || day > 31) {
+        console.warn(`Invalid day: ${day}`);
+        return null;
+      }
+      
+      // Use noon (12:00) to avoid timezone issues
+      const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+      
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date created from: ${dateStr}`);
+        return null;
+      }
+      
+      console.log(`Parsed date string: ${dateStr} -> ${date.toISOString()}`);
+      return date;
+    } 
+    // Handle YYYY-MM-DD format
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      // Create date at noon to avoid timezone issues
+      const date = new Date(`${dateStr}T12:00:00`);
+      
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid ISO date: ${dateStr}`);
+        return null;
+      }
+      
+      console.log(`Parsed ISO date string: ${dateStr} -> ${date.toISOString()}`);
+      return date;
     }
-    
-    const month = parseInt(parts[0], 10);
-    const day = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-    
-    if (isNaN(month) || isNaN(day) || isNaN(year)) {
-      console.warn(`Invalid date parts: month=${parts[0]}, day=${parts[1]}, year=${parts[2]}`);
-      return null;
+    // Try standard JS Date parsing as fallback
+    else {
+      const date = new Date(dateStr);
+      
+      if (isNaN(date.getTime())) {
+        console.warn(`Failed to parse date: ${dateStr}`);
+        return null;
+      }
+      
+      // Set to noon to avoid timezone issues
+      const safeDate = new Date(date);
+      safeDate.setHours(12, 0, 0, 0);
+      
+      console.log(`Parsed general date: ${dateStr} -> ${safeDate.toISOString()}`);
+      return safeDate;
     }
-    
-    if (month < 1 || month > 12) {
-      console.warn(`Invalid month: ${month}`);
-      return null;
-    }
-    if (day < 1 || day > 31) {
-      console.warn(`Invalid day: ${day}`);
-      return null;
-    }
-    
-    const date = new Date(year, month - 1, day, 12, 0, 0, 0);
-    
-    if (isNaN(date.getTime())) {
-      console.warn(`Invalid date created from: ${dateStr}`);
-      return null;
-    }
-    
-    console.log(`Parsed date string: ${dateStr} -> ${date.toISOString()}`);
-    return date;
   } catch (error) {
     console.error(`Error parsing date string: ${dateStr}`, error);
     return null;
@@ -80,20 +113,33 @@ export function normalizeDate(date: Date | string): string {
     let dateObj: Date | null;
     
     if (typeof date === 'string') {
+      // Try parsing with our custom parser first
       dateObj = parseDateString(date);
       
+      // If that fails, try direct Date constructor
       if (!dateObj) {
-        dateObj = new Date(date);
+        try {
+          dateObj = new Date(date);
+          if (isNaN(dateObj.getTime())) {
+            console.error(`Invalid date string: ${date}`);
+            return '';
+          }
+        } catch (e) {
+          console.error(`Error creating date from string: ${date}`, e);
+          return '';
+        }
       }
     } else {
+      // If we already have a Date object, use it directly
       dateObj = date;
     }
     
     if (!dateObj || isNaN(dateObj.getTime())) {
-      console.error(`Invalid date: ${date}`);
+      console.error(`Invalid date object: ${date}`);
       return '';
     }
     
+    // Format consistently as MM/DD/YYYY
     const month = String(dateObj.getMonth() + 1);
     const day = String(dateObj.getDate());
     const year = dateObj.getFullYear();
@@ -119,20 +165,57 @@ export function isSameDay(date1: Date | string, date2: Date | string): boolean {
 }
 
 export function setToEndOfDay(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(23, 59, 59, 999);
-  return result;
+  try {
+    if (!date || isNaN(date.getTime())) {
+      console.warn('Invalid date passed to setToEndOfDay');
+      return new Date(); // Return current date as fallback
+    }
+    
+    const result = new Date(date);
+    result.setHours(23, 59, 59, 999);
+    return result;
+  } catch (error) {
+    console.error('Error in setToEndOfDay', error);
+    return date; // Return original as fallback
+  }
 }
 
 export function setToStartOfDay(date: Date): Date {
-  const result = new Date(date);
-  result.setHours(0, 0, 0, 0);
-  return result;
+  try {
+    if (!date || isNaN(date.getTime())) {
+      console.warn('Invalid date passed to setToStartOfDay');
+      return new Date(); // Return current date as fallback
+    }
+    
+    const result = new Date(date);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  } catch (error) {
+    console.error('Error in setToStartOfDay', error);
+    return date; // Return original as fallback
+  }
 }
 
 export function logDateDetails(label: string, date: Date | string, extraInfo: string = ''): void {
   try {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    if (!date) {
+      console.error(`${label}: Empty date ${extraInfo}`);
+      return;
+    }
+    
+    let dateObj: Date;
+    
+    if (typeof date === 'string') {
+      const parsed = parseDateString(date);
+      if (!parsed) {
+        console.error(`${label}: Failed to parse date: ${date} ${extraInfo}`);
+        return;
+      }
+      dateObj = parsed;
+    } else {
+      dateObj = date;
+    }
+    
     if (isNaN(dateObj.getTime())) {
       console.error(`${label}: Invalid date: ${date} ${extraInfo}`);
       return;
@@ -147,11 +230,35 @@ export function logDateDetails(label: string, date: Date | string, extraInfo: st
 export function createConsistentDate(date: Date | string): Date {
   if (!date) throw new Error('Date cannot be empty');
   
-  if (typeof date === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return new Date(`${date}T12:00:00`);
+  try {
+    if (typeof date === 'string') {
+      // For ISO format strings (YYYY-MM-DD), create at noon
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return new Date(`${date}T12:00:00`);
+      }
+      
+      // For MM/DD/YYYY format, use parseDateString
+      if (date.includes('/')) {
+        const parsed = parseDateString(date);
+        if (parsed) return parsed;
+      }
+      
+      // Fallback - create date and set to noon
+      const d = new Date(date);
+      if (isNaN(d.getTime())) {
+        throw new Error(`Invalid date string: ${date}`);
+      }
+      
+      d.setHours(12, 0, 0, 0);
+      return d;
     }
-    return new Date(date);
+    
+    // If already a date object, create a new one at noon
+    const d = new Date(date);
+    d.setHours(12, 0, 0, 0);
+    return d;
+  } catch (error) {
+    console.error(`Error creating consistent date from ${date}:`, error);
+    throw new Error(`Failed to create consistent date: ${error}`);
   }
-  return date;
 }

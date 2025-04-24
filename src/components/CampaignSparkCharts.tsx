@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
@@ -12,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon } from "lucide-react";
-import { formatNumber, normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
+import { formatNumber, normalizeDate, setToEndOfDay, setToStartOfDay, parseDateString, createConsistentDate } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
 import {
@@ -128,33 +127,29 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         }
         
         try {
-          // Normalize the date format
-          const normalizedDateStr = normalizeDate(row.DATE);
-          if (!normalizedDateStr) return false;
+          const dateStr = String(row.DATE).trim();
           
-          const rowDate = new Date(normalizedDateStr);
-          if (isNaN(rowDate.getTime())) {
-            console.warn(`Invalid date in row: ${row.DATE}`);
+          const rowDate = parseDateString(dateStr);
+          if (!rowDate) {
+            console.warn(`Could not parse date in row: ${dateStr}`);
             return false;
           }
           
-          // Create date objects with time set appropriately for comparison
-          const fromDate = setToStartOfDay(dateRange.from);
+          const fromDate = setToStartOfDay(createConsistentDate(dateRange.from));
           
           if (!dateRange.to) {
             const isAfterFrom = rowDate >= fromDate;
-            if (normalizedDateStr.includes('2023-04-09') || normalizedDateStr.includes('2023-04-08')) {
-              console.log(`Spark chart date comparison for ${normalizedDateStr}: fromDate=${fromDate.toISOString()}, isAfterFrom=${isAfterFrom}`);
+            if (dateStr.includes('2023-04-09') || dateStr.includes('2023-04-08')) {
+              console.log(`Spark chart date comparison for ${dateStr}: fromDate=${fromDate.toISOString()}, rowDate=${rowDate.toISOString()}, isAfterFrom=${isAfterFrom}`);
             }
             return isAfterFrom;
           }
           
-          // Use end of day for the to date to make comparisons inclusive
-          const toDate = setToEndOfDay(dateRange.to);
+          const toDate = setToEndOfDay(createConsistentDate(dateRange.to));
           
           const isInRange = rowDate >= fromDate && rowDate <= toDate;
-          if (normalizedDateStr.includes('2023-04-09') || normalizedDateStr.includes('2023-04-08')) {
-            console.log(`Spark chart date comparison for ${normalizedDateStr}: fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, isInRange=${isInRange}`);
+          if (dateStr.includes('2023-04-09') || dateStr.includes('2023-04-08')) {
+            console.log(`Spark chart date comparison for ${dateStr}: fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, rowDate=${rowDate.toISOString()}, isInRange=${isInRange}`);
           }
           return isInRange;
         } catch (error) {
@@ -163,7 +158,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         }
       });
       
-      // Log filtered data dates
       const filteredDates = filteredDataByDate.map(row => row.DATE).sort();
       console.log(`Filtered spark chart data has ${filteredDataByDate.length} rows across ${new Set(filteredDates).size} unique dates`);
       if (filteredDates.length > 0) {
@@ -176,31 +170,58 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       
       return campaigns.map(campaign => {
         const campaignRows = filteredDataByDate.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
-        campaignRows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+        
+        campaignRows.sort((a, b) => {
+          try {
+            const dateA = parseDateString(a.DATE);
+            const dateB = parseDateString(b.DATE);
+            
+            if (!dateA || !dateB) return 0;
+            return dateA.getTime() - dateB.getTime();
+          } catch (error) {
+            console.error(`Error sorting dates: ${a.DATE} vs ${b.DATE}`, error);
+            return 0;
+          }
+        });
         
         const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         
         const timeSeriesData = campaignRows.map(row => {
-          const impressions = Number(row.IMPRESSIONS) || 0;
-          const clicks = Number(row.CLICKS) || 0;
-          const transactions = Number(row.TRANSACTIONS) || 0;
-          const revenue = Number(row.REVENUE) || 0;
-          const spend = (impressions / 1000) * 15;
-          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-          const roas = spend > 0 ? revenue / spend : 0;
-          
-          return {
-            date: dateFormat.format(new Date(row.DATE)),
-            rawDate: new Date(row.DATE),
-            impressions,
-            clicks,
-            transactions,
-            revenue,
-            spend,
-            ctr,
-            roas
-          };
-        });
+          try {
+            const parsedDate = parseDateString(row.DATE);
+            if (!parsedDate) {
+              console.warn(`Invalid date while creating time series: ${row.DATE}`);
+              return null;
+            }
+            
+            const impressions = Number(row.IMPRESSIONS) || 0;
+            const clicks = Number(row.CLICKS) || 0;
+            const transactions = Number(row.TRANSACTIONS) || 0;
+            const revenue = Number(row.REVENUE) || 0;
+            const spend = (impressions / 1000) * 15;
+            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+            const roas = spend > 0 ? revenue / spend : 0;
+            
+            return {
+              date: dateFormat.format(parsedDate),
+              rawDate: parsedDate,
+              impressions,
+              clicks,
+              transactions,
+              revenue,
+              spend,
+              ctr,
+              roas
+            };
+          } catch (error) {
+            console.error(`Error processing row for time series: ${row.DATE}`, error);
+            return null;
+          }
+        }).filter(Boolean);
+
+        if (timeSeriesData.length === 0) {
+          return null;
+        }
 
         const totals = {
           impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
@@ -220,9 +241,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           avgCtr,
           avgRoas
         };
-      });
+      }).filter(Boolean);
     } else {
-      // Aggregate by advertiser
       const advertisersMap = new Map<string, any[]>();
       
       filteredDataByDate.forEach(row => {
@@ -241,48 +261,63 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return advertisers.map(advertiser => {
         const advertiserRows = advertisersMap.get(advertiser) || [];
         
-        // Group by date first
         const dateGroups = new Map<string, any[]>();
         advertiserRows.forEach(row => {
-          const date = new Date(row.DATE);
-          const dateString = date.toISOString().split('T')[0];
-          
-          if (!dateGroups.has(dateString)) {
-            dateGroups.set(dateString, []);
+          try {
+            const parsedDate = parseDateString(row.DATE);
+            if (!parsedDate) {
+              console.warn(`Invalid date in advertiser aggregation: ${row.DATE}`);
+              return;
+            }
+            
+            const dateString = parsedDate.toISOString().split('T')[0];
+            
+            if (!dateGroups.has(dateString)) {
+              dateGroups.set(dateString, []);
+            }
+            dateGroups.get(dateString)?.push(row);
+          } catch (error) {
+            console.error(`Error processing advertiser row by date: ${row.DATE}`, error);
           }
-          dateGroups.get(dateString)?.push(row);
         });
         
-        // Create time series data
         const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         const dates = Array.from(dateGroups.keys()).sort();
         
         const timeSeriesData = dates.map(dateString => {
-          const dateRows = dateGroups.get(dateString) || [];
-          const date = new Date(dateString);
-          
-          const impressions = dateRows.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
-          const clicks = dateRows.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
-          const transactions = dateRows.reduce((sum, row) => sum + (Number(row.TRANSACTIONS) || 0), 0);
-          const revenue = dateRows.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
-          const spend = (impressions / 1000) * 15;
-          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-          const roas = spend > 0 ? revenue / spend : 0;
-          
-          return {
-            date: dateFormat.format(date),
-            rawDate: date,
-            impressions,
-            clicks,
-            transactions,
-            revenue,
-            spend,
-            ctr,
-            roas
-          };
-        });
+          try {
+            const dateRows = dateGroups.get(dateString) || [];
+            const date = new Date(`${dateString}T12:00:00Z`);
+            
+            const impressions = dateRows.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+            const clicks = dateRows.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
+            const transactions = dateRows.reduce((sum, row) => sum + (Number(row.TRANSACTIONS) || 0), 0);
+            const revenue = dateRows.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
+            const spend = (impressions / 1000) * 15;
+            const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+            const roas = spend > 0 ? revenue / spend : 0;
+            
+            return {
+              date: dateFormat.format(date),
+              rawDate: date,
+              impressions,
+              clicks,
+              transactions,
+              revenue,
+              spend,
+              ctr,
+              roas
+            };
+          } catch (error) {
+            console.error(`Error creating time series for date ${dateString}`, error);
+            return null;
+          }
+        }).filter(Boolean);
         
-        // Calculate totals
+        if (timeSeriesData.length === 0) {
+          return null;
+        }
+        
         const totals = {
           impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
           clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
@@ -301,7 +336,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           avgCtr,
           avgRoas
         };
-      });
+      }).filter(Boolean);
     }
   }, [filteredData, dateRange, viewMode]);
 

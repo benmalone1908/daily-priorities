@@ -107,7 +107,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                       }
                       
                       // Log successful date processing
-                      console.log(`Successfully processed date in row ${rowIndex + 1}: ${dateStr}`);
+                      console.log(`Successfully processed date in row ${rowIndex + 1}: ${dateStr} -> ${parsedDate.toISOString()}`);
                     } catch (e) {
                       console.error(`Error parsing date in row ${rowIndex + 1}:`, e);
                       return null;
@@ -167,10 +167,18 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {
                 try {
-                  const dateA = new Date(a.DATE);
-                  const dateB = new Date(b.DATE);
+                  // Use our safe date parsing to ensure consistent comparison
+                  const dateA = parseDateString(a.DATE);
+                  const dateB = parseDateString(b.DATE);
+                  
+                  if (!dateA || !dateB) {
+                    console.warn(`Failed to parse date for sorting: ${a.DATE} or ${b.DATE}`);
+                    return 0;
+                  }
+                  
                   return dateA.getTime() - dateB.getTime();
                 } catch (e) {
+                  console.error("Error comparing dates for sorting:", e);
                   return 0;
                 }
               });
