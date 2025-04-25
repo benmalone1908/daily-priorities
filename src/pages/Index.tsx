@@ -8,7 +8,7 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
-import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
+import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 
 const Index = () => {
@@ -21,20 +21,17 @@ const Index = () => {
 
   useEffect(() => {
     if (data.length > 0) {
-      // Log dates in the dataset for debugging
       const uniqueDates = Array.from(new Set(data.map(row => row.DATE))).sort();
       console.log(`Dataset has ${uniqueDates.length} unique dates:`, uniqueDates);
       
       if (uniqueDates.length > 0) {
         console.log(`Date range in dataset: ${uniqueDates[0]} to ${uniqueDates[uniqueDates.length - 1]}`);
-        // Log counts per date
         const dateCounts: Record<string, number> = {};
         data.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
         });
         console.log("Rows per date:", dateCounts);
         
-        // Auto-set date range to include full dataset if not already set
         if (!dateRange || !dateRange.from) {
           try {
             const minDate = new Date(uniqueDates[0]);
@@ -78,12 +75,9 @@ const Index = () => {
         
         if (newRow.DATE) {
           try {
-            // Enhanced date handling
             const date = new Date(newRow.DATE);
             if (!isNaN(date.getTime())) {
-              // Store date as YYYY-MM-DD, ensuring consistent format
               newRow.DATE = normalizeDate(date);
-              // Log April dates for debugging
               if (newRow.DATE.includes('-04-09') || newRow.DATE.includes('-04-08')) {
                 logDateDetails(`Processed date for row:`, date, `-> ${newRow.DATE} (original: ${row.DATE})`);
               }
@@ -107,13 +101,11 @@ const Index = () => {
       
       setData(processedData);
       
-      // Log date range in the processed data
       const dates = processedData.map(row => row.DATE).filter(Boolean).sort();
       if (dates.length > 0) {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);
         
-        // Log rows per date
         const dateCounts: Record<string, number> = {};
         processedData.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
@@ -135,7 +127,6 @@ const Index = () => {
       return filtered;
     }
 
-    // Enhanced date filtering with better logging
     const fromDate = setToStartOfDay(dateRange.from);
     const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
     
@@ -149,17 +140,15 @@ const Index = () => {
           return false;
         }
         
-        // Normalize the date format
         const normalizedDateStr = normalizeDate(row.DATE);
         if (!normalizedDateStr) return false;
         
-        const rowDate = new Date(`${normalizedDateStr}T12:00:00`); // Use noon to avoid timezone issues
+        const rowDate = new Date(`${normalizedDateStr}T12:00:00`);
         if (isNaN(rowDate.getTime())) {
           console.warn(`Invalid date in row: ${row.DATE}`);
           return false;
         }
         
-        // Check if date is in range (inclusive)
         const isAfterFrom = rowDate >= fromDate;
         const isBeforeTo = rowDate <= toDate;
         return isAfterFrom && isBeforeTo;
@@ -179,8 +168,8 @@ const Index = () => {
   };
 
   const filteredData = getFilteredData();
+  const { showLiveOnly } = useCampaignFilter();
   const filteredDataByLiveStatus = useMemo(() => {
-    const { showLiveOnly } = useCampaignFilter();
     if (!showLiveOnly) return filteredData;
 
     const mostRecentDate = getMostRecentDate();
@@ -188,7 +177,7 @@ const Index = () => {
 
     console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
     return filteredData.filter(row => row.DATE === mostRecentDate);
-  }, [filteredData]);
+  }, [filteredData, showLiveOnly]);
 
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredDataByLiveStatus;
