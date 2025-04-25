@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -9,10 +8,9 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
-import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
+import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 
-// Create a separate component for the dashboard content
 const DashboardContent = ({ 
   data, 
   dateRange, 
@@ -26,6 +24,8 @@ const DashboardContent = ({
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  
+  const { showLiveOnly } = useCampaignFilter();
 
   const getMostRecentDate = () => {
     if (!data || data.length === 0) return null;
@@ -75,9 +75,6 @@ const DashboardContent = ({
   };
 
   const filteredData = getFilteredData();
-  
-  // Import and use the hook inside the nested component where the provider is available
-  const { showLiveOnly } = useCampaignFilter();
   
   const filteredDataByLiveStatus = useMemo(() => {
     if (!showLiveOnly) return filteredData;
@@ -201,7 +198,6 @@ const DashboardContent = ({
   );
 };
 
-// Main Index component
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
