@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -30,8 +29,20 @@ const DashboardContent = ({
 
   const getMostRecentDate = () => {
     if (!data || data.length === 0) return null;
-    const dates = data.map(row => row.DATE).filter(Boolean).sort();
-    return dates[dates.length - 1];
+    const dates = data
+      .map(row => row.DATE)
+      .filter(date => date && date !== 'Totals')
+      .sort((a, b) => {
+        try {
+          const dateA = new Date(a);
+          const dateB = new Date(b);
+          return dateB.getTime() - dateA.getTime();
+        } catch (e) {
+          return 0;
+        }
+      });
+    
+    return dates.length > 0 ? dates[0] : null;
   };
 
   const getFilteredData = () => {
@@ -54,6 +65,8 @@ const DashboardContent = ({
           return false;
         }
         
+        if (row.DATE === 'Totals') return true;
+        
         const normalizedDateStr = normalizeDate(row.DATE);
         if (!normalizedDateStr) return false;
         
@@ -75,10 +88,8 @@ const DashboardContent = ({
     return filtered;
   };
 
-  // Filter the data by date range first
   const filteredData = getFilteredData();
   
-  // Then apply the live campaign filter if needed
   const filteredDataByLiveStatus = useMemo(() => {
     if (!showLiveOnly) return filteredData;
 
@@ -86,10 +97,9 @@ const DashboardContent = ({
     if (!mostRecentDate) return filteredData;
 
     console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
-    // Filter to only include rows with the most recent date
+    
     const liveData = filteredData.filter(row => {
-      // Skip rows with 'Totals' as the date
-      if (row.DATE === 'Totals') return false;
+      if (row.DATE === 'Totals') return true;
       return row.DATE === mostRecentDate;
     });
     
@@ -97,7 +107,6 @@ const DashboardContent = ({
     return liveData;
   }, [filteredData, showLiveOnly]);
 
-  // Use filteredDataByLiveStatus for all subsequent filtering operations
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredDataByLiveStatus;
     return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -148,7 +157,6 @@ const DashboardContent = ({
     const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
     const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
     
-    // Update to show actual filtered records count
     const recordCount = showLiveOnly ? filteredDataByLiveStatus.length : filteredData.length;
     
     return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
