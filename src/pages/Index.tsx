@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
 import DateRangePicker from "@/components/DateRangePicker";
@@ -172,16 +172,32 @@ const Index = () => {
     return filtered;
   };
 
+  const getMostRecentDate = () => {
+    if (!data || data.length === 0) return null;
+    const dates = data.map(row => row.DATE).filter(Boolean).sort();
+    return dates[dates.length - 1];
+  };
+
   const filteredData = getFilteredData();
+  const filteredDataByLiveStatus = useMemo(() => {
+    const { showLiveOnly } = useCampaignFilter();
+    if (!showLiveOnly) return filteredData;
+
+    const mostRecentDate = getMostRecentDate();
+    if (!mostRecentDate) return filteredData;
+
+    console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
+    return filteredData.filter(row => row.DATE === mostRecentDate);
+  }, [filteredData]);
 
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
-    if (!campaigns.length) return filteredData;
-    return filteredData.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    if (!campaigns.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
   };
 
   const getFilteredDataByAdvertisers = (advertisers: string[]) => {
-    if (!advertisers.length) return filteredData;
-    return filteredData.filter(row => {
+    if (!advertisers.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       const match = campaignName.match(/SM:\s+([^-]+)/);
       const advertiser = match ? match[1].trim() : "";
@@ -190,7 +206,7 @@ const Index = () => {
   };
 
   const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
-    let filtered = filteredData;
+    let filtered = filteredDataByLiveStatus;
     
     if (advertisers.length > 0) {
       filtered = getFilteredDataByAdvertisers(advertisers);

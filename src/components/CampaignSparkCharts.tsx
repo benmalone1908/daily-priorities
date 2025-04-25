@@ -91,6 +91,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
   const filteredData = useMemo(() => {
     let result = data;
+    console.log('CampaignSparkCharts received data length:', data.length);
     
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
@@ -105,6 +106,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
+    console.log('CampaignSparkCharts filtered data length:', result.length);
     return result;
   }, [data, selectedCampaigns, selectedAdvertisers]);
 
