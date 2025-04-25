@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -74,8 +75,10 @@ const DashboardContent = ({
     return filtered;
   };
 
+  // Filter the data by date range first
   const filteredData = getFilteredData();
   
+  // Then apply the live campaign filter if needed
   const filteredDataByLiveStatus = useMemo(() => {
     if (!showLiveOnly) return filteredData;
 
@@ -83,9 +86,18 @@ const DashboardContent = ({
     if (!mostRecentDate) return filteredData;
 
     console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
-    return filteredData.filter(row => row.DATE === mostRecentDate);
+    // Filter to only include rows with the most recent date
+    const liveData = filteredData.filter(row => {
+      // Skip rows with 'Totals' as the date
+      if (row.DATE === 'Totals') return false;
+      return row.DATE === mostRecentDate;
+    });
+    
+    console.log(`Filtered from ${filteredData.length} rows to ${liveData.length} live rows`);
+    return liveData;
   }, [filteredData, showLiveOnly]);
 
+  // Use filteredDataByLiveStatus for all subsequent filtering operations
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredDataByLiveStatus;
     return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -136,7 +148,10 @@ const DashboardContent = ({
     const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
     const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
     
-    return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
+    // Update to show actual filtered records count
+    const recordCount = showLiveOnly ? filteredDataByLiveStatus.length : filteredData.length;
+    
+    return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
   };
 
   return (
@@ -179,7 +194,7 @@ const DashboardContent = ({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard">
           <DashboardWrapper 
-            data={filteredData} 
+            data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
             metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
             revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
             selectedMetricsCampaigns={selectedMetricsCampaigns}
@@ -191,7 +206,7 @@ const DashboardContent = ({
           />
         </TabsContent>
         <TabsContent value="sparks">
-          <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
+          <CampaignSparkCharts data={showLiveOnly ? filteredDataByLiveStatus : filteredData} dateRange={dateRange} />
         </TabsContent>
       </Tabs>
     </>
