@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -8,16 +9,202 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
-import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 
-const Index = () => {
-  const [data, setData] = useState<any[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+// Create a separate component for the dashboard content
+const DashboardContent = ({ 
+  data, 
+  dateRange, 
+  onDateRangeChange 
+}: { 
+  data: any[]; 
+  dateRange: DateRange | undefined; 
+  onDateRangeChange: (range: DateRange | undefined) => void; 
+}) => {
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const getMostRecentDate = () => {
+    if (!data || data.length === 0) return null;
+    const dates = data.map(row => row.DATE).filter(Boolean).sort();
+    return dates[dates.length - 1];
+  };
+
+  const getFilteredData = () => {
+    let filtered = data;
+    
+    if (!dateRange || !dateRange.from) {
+      return filtered;
+    }
+
+    const fromDate = setToStartOfDay(dateRange.from);
+    const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
+    
+    logDateDetails("Filtering data with from date", fromDate);
+    logDateDetails("Filtering data with to date", toDate);
+    
+    filtered = data.filter(row => {
+      try {
+        if (!row.DATE) {
+          console.warn(`Row missing DATE: ${JSON.stringify(row)}`);
+          return false;
+        }
+        
+        const normalizedDateStr = normalizeDate(row.DATE);
+        if (!normalizedDateStr) return false;
+        
+        const rowDate = new Date(`${normalizedDateStr}T12:00:00`);
+        if (isNaN(rowDate.getTime())) {
+          console.warn(`Invalid date in row: ${row.DATE}`);
+          return false;
+        }
+        
+        const isAfterFrom = rowDate >= fromDate;
+        const isBeforeTo = rowDate <= toDate;
+        return isAfterFrom && isBeforeTo;
+      } catch (error) {
+        console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
+        return false;
+      }
+    });
+
+    return filtered;
+  };
+
+  const filteredData = getFilteredData();
+  
+  // Import and use the hook inside the nested component where the provider is available
+  const { showLiveOnly } = useCampaignFilter();
+  
+  const filteredDataByLiveStatus = useMemo(() => {
+    if (!showLiveOnly) return filteredData;
+
+    const mostRecentDate = getMostRecentDate();
+    if (!mostRecentDate) return filteredData;
+
+    console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
+    return filteredData.filter(row => row.DATE === mostRecentDate);
+  }, [filteredData, showLiveOnly]);
+
+  const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
+    if (!campaigns.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+  };
+
+  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
+    if (!advertisers.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return advertisers.includes(advertiser);
+    });
+  };
+
+  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
+    let filtered = filteredDataByLiveStatus;
+    
+    if (advertisers.length > 0) {
+      filtered = getFilteredDataByAdvertisers(advertisers);
+    }
+    
+    if (campaigns.length > 0) {
+      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    }
+    
+    return filtered;
+  };
+
+  const handleMetricsCampaignsChange = (selected: string[]) => {
+    setSelectedMetricsCampaigns(selected);
+  };
+
+  const handleRevenueCampaignsChange = (selected: string[]) => {
+    setSelectedRevenueCampaigns(selected);
+  };
+
+  const handleRevenueAdvertisersChange = (selected: string[]) => {
+    setSelectedRevenueAdvertisers(selected);
+  };
+
+  const getDateRangeDisplayText = () => {
+    if (!dateRange || !dateRange.from) return null;
+    
+    const fromDate = dateRange.from;
+    const toDate = dateRange.to || fromDate;
+    
+    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
+    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
+    
+    return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
+  };
+
+  return (
+    <>
+      <div className="border-b animate-fade-in">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <img 
+              src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
+              alt="Display Campaign Monitor" 
+              className="h-14 w-auto"
+            />
+            <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+          </div>
+          
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <CampaignStatusToggle />
+            <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="dashboard">
+                  <LayoutDashboard className="mr-2" size={16} />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="sparks">
+                  <ChartLine className="mr-2" size={16} />
+                  Trends
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <DateRangePicker 
+              dateRange={dateRange}
+              onDateRangeChange={onDateRangeChange}
+              displayDateRangeSummary={!!dateRange?.from}
+              dateRangeSummaryText={getDateRangeDisplayText()}
+            />
+          </div>
+        </div>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsContent value="dashboard">
+          <DashboardWrapper 
+            data={filteredData} 
+            metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+            revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
+            selectedMetricsCampaigns={selectedMetricsCampaigns}
+            selectedRevenueCampaigns={selectedRevenueCampaigns}
+            selectedRevenueAdvertisers={selectedRevenueAdvertisers}
+            onMetricsCampaignsChange={handleMetricsCampaignsChange}
+            onRevenueCampaignsChange={handleRevenueCampaignsChange}
+            onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+          />
+        </TabsContent>
+        <TabsContent value="sparks">
+          <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+};
+
+// Main Index component
+const Index = () => {
+  const [data, setData] = useState<any[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     if (data.length > 0) {
@@ -120,118 +307,6 @@ const Index = () => {
     }
   };
 
-  const getFilteredData = () => {
-    let filtered = data;
-    
-    if (!dateRange || !dateRange.from) {
-      return filtered;
-    }
-
-    const fromDate = setToStartOfDay(dateRange.from);
-    const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
-    
-    logDateDetails("Filtering data with from date", fromDate);
-    logDateDetails("Filtering data with to date", toDate);
-    
-    filtered = data.filter(row => {
-      try {
-        if (!row.DATE) {
-          console.warn(`Row missing DATE: ${JSON.stringify(row)}`);
-          return false;
-        }
-        
-        const normalizedDateStr = normalizeDate(row.DATE);
-        if (!normalizedDateStr) return false;
-        
-        const rowDate = new Date(`${normalizedDateStr}T12:00:00`);
-        if (isNaN(rowDate.getTime())) {
-          console.warn(`Invalid date in row: ${row.DATE}`);
-          return false;
-        }
-        
-        const isAfterFrom = rowDate >= fromDate;
-        const isBeforeTo = rowDate <= toDate;
-        return isAfterFrom && isBeforeTo;
-      } catch (error) {
-        console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
-        return false;
-      }
-    });
-
-    return filtered;
-  };
-
-  const getMostRecentDate = () => {
-    if (!data || data.length === 0) return null;
-    const dates = data.map(row => row.DATE).filter(Boolean).sort();
-    return dates[dates.length - 1];
-  };
-
-  const filteredData = getFilteredData();
-  const { showLiveOnly } = useCampaignFilter();
-  const filteredDataByLiveStatus = useMemo(() => {
-    if (!showLiveOnly) return filteredData;
-
-    const mostRecentDate = getMostRecentDate();
-    if (!mostRecentDate) return filteredData;
-
-    console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
-    return filteredData.filter(row => row.DATE === mostRecentDate);
-  }, [filteredData, showLiveOnly]);
-
-  const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
-    if (!campaigns.length) return filteredDataByLiveStatus;
-    return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
-  };
-
-  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
-    if (!advertisers.length) return filteredDataByLiveStatus;
-    return filteredDataByLiveStatus.filter(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return advertisers.includes(advertiser);
-    });
-  };
-
-  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
-    let filtered = filteredDataByLiveStatus;
-    
-    if (advertisers.length > 0) {
-      filtered = getFilteredDataByAdvertisers(advertisers);
-    }
-    
-    if (campaigns.length > 0) {
-      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
-    }
-    
-    return filtered;
-  };
-
-  const handleMetricsCampaignsChange = (selected: string[]) => {
-    setSelectedMetricsCampaigns(selected);
-  };
-
-  const handleRevenueCampaignsChange = (selected: string[]) => {
-    setSelectedRevenueCampaigns(selected);
-  };
-
-  const handleRevenueAdvertisersChange = (selected: string[]) => {
-    setSelectedRevenueAdvertisers(selected);
-  };
-
-  const getDateRangeDisplayText = () => {
-    if (!dateRange || !dateRange.from) return null;
-    
-    const fromDate = dateRange.from;
-    const toDate = dateRange.to || fromDate;
-    
-    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
-    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
-    
-    return `Showing data for: ${fromStr} to ${toStr} (${filteredData.length} records)`;
-  };
-
   return (
     <CampaignFilterProvider>
       <div className="container py-8 space-y-8">
@@ -251,61 +326,11 @@ const Index = () => {
             </div>
           </>
         ) : (
-          <>
-            <div className="border-b animate-fade-in">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  <img 
-                    src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
-                    alt="Display Campaign Monitor" 
-                    className="h-14 w-auto"
-                  />
-                  <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
-                </div>
-                
-                <div className="flex flex-col md:flex-row items-center gap-6">
-                  <CampaignStatusToggle />
-                  <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="dashboard">
-                        <LayoutDashboard className="mr-2" size={16} />
-                        Dashboard
-                      </TabsTrigger>
-                      <TabsTrigger value="sparks">
-                        <ChartLine className="mr-2" size={16} />
-                        Trends
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  <DateRangePicker 
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                    displayDateRangeSummary={!!dateRange?.from}
-                    dateRangeSummaryText={getDateRangeDisplayText()}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsContent value="dashboard">
-                <DashboardWrapper 
-                  data={filteredData} 
-                  metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-                  revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
-                  selectedMetricsCampaigns={selectedMetricsCampaigns}
-                  selectedRevenueCampaigns={selectedRevenueCampaigns}
-                  selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-                  onMetricsCampaignsChange={handleMetricsCampaignsChange}
-                  onRevenueCampaignsChange={handleRevenueCampaignsChange}
-                  onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
-                />
-              </TabsContent>
-              <TabsContent value="sparks">
-                <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
-              </TabsContent>
-            </Tabs>
-          </>
+          <DashboardContent 
+            data={data} 
+            dateRange={dateRange} 
+            onDateRangeChange={setDateRange} 
+          />
         )}
       </div>
     </CampaignFilterProvider>
