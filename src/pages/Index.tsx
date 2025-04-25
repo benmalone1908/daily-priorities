@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -9,6 +8,8 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
+import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
+import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
@@ -128,8 +129,10 @@ const Index = () => {
   };
 
   const getFilteredData = () => {
+    let filtered = data;
+    
     if (!dateRange || !dateRange.from) {
-      return data;
+      return filtered;
     }
 
     // Enhanced date filtering with better logging
@@ -139,7 +142,7 @@ const Index = () => {
     logDateDetails("Filtering data with from date", fromDate);
     logDateDetails("Filtering data with to date", toDate);
     
-    const filteredRows = data.filter(row => {
+    filtered = data.filter(row => {
       try {
         if (!row.DATE) {
           console.warn(`Row missing DATE: ${JSON.stringify(row)}`);
@@ -159,30 +162,14 @@ const Index = () => {
         // Check if date is in range (inclusive)
         const isAfterFrom = rowDate >= fromDate;
         const isBeforeTo = rowDate <= toDate;
-        const isInRange = isAfterFrom && isBeforeTo;
-        
-        // Log for specific dates we want to track
-        if (normalizedDateStr.endsWith('-04-09') || normalizedDateStr.endsWith('-04-08')) {
-          console.log(`Date filtering for ${normalizedDateStr}: isAfterFrom=${isAfterFrom}, isBeforeTo=${isBeforeTo}, isInRange=${isInRange}`);
-          logDateDetails("Row date", rowDate, `compared to fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`);
-        }
-        
-        return isInRange;
+        return isAfterFrom && isBeforeTo;
       } catch (error) {
         console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
         return false;
       }
     });
-    
-    // Log filtered data statistics
-    console.log(`Filtered data: ${filteredRows.length} rows (from ${data.length} total)`);
-    const filteredDates = Array.from(new Set(filteredRows.map(row => row.DATE))).sort();
-    if (filteredDates.length > 0) {
-      console.log(`Filtered date range: ${filteredDates[0]} to ${filteredDates[filteredDates.length-1]}`);
-      console.log(`Total unique dates after filtering: ${filteredDates.length}`);
-    }
-    
-    return filteredRows;
+
+    return filtered;
   };
 
   const filteredData = getFilteredData();
@@ -241,80 +228,82 @@ const Index = () => {
   };
 
   return (
-    <div className="container py-8 space-y-8">
-      {data.length === 0 ? (
-        <>
-          <div className="space-y-2 text-center animate-fade-in">
-            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-              Display Campaign Monitor
-            </h1>
-            <p className="text-muted-foreground">
-              Upload your campaign data to identify potential anomalies and trends
-            </p>
-          </div>
+    <CampaignFilterProvider>
+      <div className="container py-8 space-y-8">
+        {data.length === 0 ? (
+          <>
+            <div className="space-y-2 text-center animate-fade-in">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                Display Campaign Monitor
+              </h1>
+              <p className="text-muted-foreground">
+                Upload your campaign data to identify potential anomalies and trends
+              </p>
+            </div>
 
-          <div className="max-w-2xl mx-auto">
-            <FileUpload onDataLoaded={handleDataLoaded} />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="border-b animate-fade-in">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <img 
-                  src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
-                  alt="Display Campaign Monitor" 
-                  className="h-14 w-auto"
-                />
-                <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
-              </div>
-              
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="dashboard">
-                      <LayoutDashboard className="mr-2" size={16} />
-                      Dashboard
-                    </TabsTrigger>
-                    <TabsTrigger value="sparks">
-                      <ChartLine className="mr-2" size={16} />
-                      Trends
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+            <div className="max-w-2xl mx-auto">
+              <FileUpload onDataLoaded={handleDataLoaded} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="border-b animate-fade-in">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <img 
+                    src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
+                    alt="Display Campaign Monitor" 
+                    className="h-14 w-auto"
+                  />
+                  <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+                </div>
                 
-                <DateRangePicker 
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  displayDateRangeSummary={!!dateRange?.from}
-                  dateRangeSummaryText={getDateRangeDisplayText()}
-                />
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <CampaignStatusToggle />
+                  <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="dashboard">
+                        <LayoutDashboard className="mr-2" size={16} />
+                        Dashboard
+                      </TabsTrigger>
+                      <TabsTrigger value="sparks">
+                        <ChartLine className="mr-2" size={16} />
+                        Trends
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <DateRangePicker 
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                    displayDateRangeSummary={!!dateRange?.from}
+                    dateRangeSummaryText={getDateRangeDisplayText()}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsContent value="dashboard">
-              <DashboardWrapper 
-                data={filteredData} 
-                metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-                revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
-                selectedMetricsCampaigns={selectedMetricsCampaigns}
-                selectedRevenueCampaigns={selectedRevenueCampaigns}
-                selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-                onMetricsCampaignsChange={handleMetricsCampaignsChange}
-                onRevenueCampaignsChange={handleRevenueCampaignsChange}
-                onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
-              />
-            </TabsContent>
-            <TabsContent value="sparks">
-              <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
-    </div>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsContent value="dashboard">
+                <DashboardWrapper 
+                  data={filteredData} 
+                  metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+                  revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
+                  selectedMetricsCampaigns={selectedMetricsCampaigns}
+                  selectedRevenueCampaigns={selectedRevenueCampaigns}
+                  selectedRevenueAdvertisers={selectedRevenueAdvertisers}
+                  onMetricsCampaignsChange={handleMetricsCampaignsChange}
+                  onRevenueCampaignsChange={handleRevenueCampaignsChange}
+                  onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+                />
+              </TabsContent>
+              <TabsContent value="sparks">
+                <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </div>
+    </CampaignFilterProvider>
   );
 };
 
