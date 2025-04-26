@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon } from "lucide-react";
-import { formatNumber, normalizeDate, setToEndOfDay, setToStartOfDay, parseDateString, createConsistentDate } from "@/lib/utils";
+import { formatNumber, setToEndOfDay, setToStartOfDay, parseDateString } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
 import {
@@ -89,9 +89,54 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }
   }, [selectedAdvertisers, data]);
 
+  const filteredDataByDate = useMemo(() => {
+    if (!data || data.length === 0) {
+      console.log('No data provided to CampaignSparkCharts');
+      return [];
+    }
+    
+    console.log(`CampaignSparkCharts filtering ${data.length} rows with dateRange:`, dateRange);
+    
+    if (!dateRange?.from) {
+      return data;
+    }
+    
+    const fromDate = setToStartOfDay(dateRange.from);
+    const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
+    
+    console.log(`Filtering between ${fromDate.toISOString()} and ${toDate.toISOString()}`);
+    
+    return data.filter(row => {
+      if (!row.DATE || row.DATE === 'Totals') {
+        return true;
+      }
+      
+      try {
+        const dateStr = String(row.DATE).trim();
+        const rowDate = parseDateString(dateStr);
+        
+        if (!rowDate) {
+          console.warn(`Could not parse date in CampaignSparkCharts filtering: ${dateStr}`);
+          return false;
+        }
+        
+        const isInRange = rowDate >= fromDate && rowDate <= toDate;
+        if (dateStr.includes('4/9/') || dateStr.includes('4/8/')) {
+          console.log(`Date comparison for ${dateStr}: rowDate=${rowDate.toISOString()}, fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, isInRange=${isInRange}`);
+        }
+        
+        return isInRange;
+      } catch (error) {
+        console.error(`Error in date filtering for row ${JSON.stringify(row)}:`, error);
+        return false;
+      }
+    });
+  }, [data, dateRange]);
+
   const filteredData = useMemo(() => {
-    let result = data;
+    let result = filteredDataByDate;
     console.log('CampaignSparkCharts received data length:', data.length);
+    console.log('CampaignSparkCharts filtered by date length:', filteredDataByDate.length);
     
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
@@ -106,9 +151,9 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
-    console.log('CampaignSparkCharts filtered data length:', result.length);
+    console.log('CampaignSparkCharts final filtered data length:', result.length);
     return result;
-  }, [data, selectedCampaigns, selectedAdvertisers]);
+  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers]);
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
     const match = campaignName.match(/SM:\s+([^-]+)/);
@@ -116,62 +161,29 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   };
 
   const chartData = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) return [];
-
-    let filteredDataByDate = filteredData;
-    if (dateRange?.from) {
-      console.log(`Filtering spark chart data with date range: ${dateRange.from.toISOString()} to ${dateRange.to ? dateRange.to.toISOString() : 'now'}`);
-      
-      filteredDataByDate = filteredData.filter(row => {
-        if (!row.DATE) {
-          console.warn(`Row missing DATE: ${JSON.stringify(row)}`);
-          return false;
-        }
-        
-        try {
-          const dateStr = String(row.DATE).trim();
-          
-          const rowDate = parseDateString(dateStr);
-          if (!rowDate) {
-            console.warn(`Could not parse date in row: ${dateStr}`);
-            return false;
-          }
-          
-          const fromDate = setToStartOfDay(createConsistentDate(dateRange.from));
-          
-          if (!dateRange.to) {
-            const isAfterFrom = rowDate >= fromDate;
-            if (dateStr.includes('2023-04-09') || dateStr.includes('2023-04-08')) {
-              console.log(`Spark chart date comparison for ${dateStr}: fromDate=${fromDate.toISOString()}, rowDate=${rowDate.toISOString()}, isAfterFrom=${isAfterFrom}`);
-            }
-            return isAfterFrom;
-          }
-          
-          const toDate = setToEndOfDay(createConsistentDate(dateRange.to));
-          
-          const isInRange = rowDate >= fromDate && rowDate <= toDate;
-          if (dateStr.includes('2023-04-09') || dateStr.includes('2023-04-08')) {
-            console.log(`Spark chart date comparison for ${dateStr}: fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}, rowDate=${rowDate.toISOString()}, isInRange=${isInRange}`);
-          }
-          return isInRange;
-        } catch (error) {
-          console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
-          return false;
-        }
-      });
-      
-      const filteredDates = filteredDataByDate.map(row => row.DATE).sort();
-      console.log(`Filtered spark chart data has ${filteredDataByDate.length} rows across ${new Set(filteredDates).size} unique dates`);
-      if (filteredDates.length > 0) {
-        console.log(`Filtered date range: ${filteredDates[0]} to ${filteredDates[filteredDates.length-1]}`);
-      }
+    if (!filteredData || filteredData.length === 0) {
+      console.log('No filtered data available for chart data generation');
+      return [];
     }
 
+    console.log(`Generating chart data from ${filteredData.length} rows`);
+    
     if (viewMode === "campaign") {
-      const campaigns = Array.from(new Set(filteredDataByDate.map(row => row["CAMPAIGN ORDER NAME"]))).sort();
+      const campaigns = Array.from(new Set(filteredData
+        .filter(row => row.DATE !== 'Totals')
+        .map(row => row["CAMPAIGN ORDER NAME"])))
+        .sort();
+      
+      console.log(`Found ${campaigns.length} unique campaigns for charts`);
       
       return campaigns.map(campaign => {
-        const campaignRows = filteredDataByDate.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+        const campaignRows = filteredData.filter(row => 
+          row["CAMPAIGN ORDER NAME"] === campaign && row.DATE !== 'Totals'
+        );
+        
+        if (campaignRows.length === 0) {
+          return null;
+        }
         
         campaignRows.sort((a, b) => {
           try {
@@ -247,7 +259,9 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     } else {
       const advertisersMap = new Map<string, any[]>();
       
-      filteredDataByDate.forEach(row => {
+      filteredData.forEach(row => {
+        if (row.DATE === 'Totals') return;
+        
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
         const advertiser = getAdvertiserFromCampaign(campaignName);
         if (!advertiser) return;
@@ -340,7 +354,14 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         };
       }).filter(Boolean);
     }
-  }, [filteredData, dateRange, viewMode]);
+  }, [filteredData, viewMode]);
+
+  useEffect(() => {
+    console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
+    if (chartData.length === 0) {
+      console.log('No chart data available. Check date filtering and campaign selection.');
+    }
+  }, [chartData]);
 
   const getSafeId = (name: string) => {
     return `gradient-${name.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
@@ -348,6 +369,58 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
   if (!data || data.length === 0) {
     return <div className="text-center py-8">No data available</div>;
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">View by:</span>
+            <Select
+              value={viewMode}
+              onValueChange={(value: ViewMode) => setViewMode(value)}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Select view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="campaign">Campaign</SelectItem>
+                <SelectItem value="advertiser">Advertiser</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+            
+            <div className="flex items-center gap-2">
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedAdvertisers}
+                onChange={setSelectedAdvertisers}
+                placeholder="Advertiser"
+                className="w-[200px]"
+              />
+              
+              <MultiSelect
+                options={campaignOptions}
+                selected={selectedCampaigns}
+                onChange={setSelectedCampaigns}
+                placeholder="Campaign"
+                className="w-[200px]"
+                popoverClassName="w-[400px]"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-center py-20 bg-muted/30 rounded-lg">
+          <p className="text-muted-foreground">No data available for the selected date range</p>
+          <p className="text-sm text-muted-foreground mt-2">Try adjusting the date filter or campaign selection</p>
+        </div>
+      </div>
+    );
   }
 
   return (

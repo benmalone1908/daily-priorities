@@ -34,11 +34,15 @@ export function parseDateString(dateStr: string): Date | null {
   if (!dateStr) return null;
   
   try {
+    // Standardize the date string
+    const cleanDateStr = dateStr.trim();
+    console.log(`Parsing date string: ${cleanDateStr}`);
+    
     // Handle MM/DD/YYYY format
-    if (dateStr.includes('/')) {
-      const parts = dateStr.split('/');
+    if (cleanDateStr.includes('/')) {
+      const parts = cleanDateStr.split('/');
       if (parts.length !== 3) {
-        console.warn(`Invalid date format: ${dateStr} - expected MM/DD/YYYY`);
+        console.warn(`Invalid date format: ${cleanDateStr} - expected MM/DD/YYYY`);
         return null;
       }
       
@@ -64,32 +68,32 @@ export function parseDateString(dateStr: string): Date | null {
       const date = new Date(year, month - 1, day, 12, 0, 0, 0);
       
       if (isNaN(date.getTime())) {
-        console.warn(`Invalid date created from: ${dateStr}`);
+        console.warn(`Invalid date created from: ${cleanDateStr}`);
         return null;
       }
       
-      console.log(`Parsed date string: ${dateStr} -> ${date.toISOString()}`);
+      console.log(`Parsed date string: ${cleanDateStr} -> ${date.toISOString()}`);
       return date;
     } 
     // Handle YYYY-MM-DD format
-    else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDateStr)) {
       // Create date at noon to avoid timezone issues
-      const date = new Date(`${dateStr}T12:00:00`);
+      const date = new Date(`${cleanDateStr}T12:00:00`);
       
       if (isNaN(date.getTime())) {
-        console.warn(`Invalid ISO date: ${dateStr}`);
+        console.warn(`Invalid ISO date: ${cleanDateStr}`);
         return null;
       }
       
-      console.log(`Parsed ISO date string: ${dateStr} -> ${date.toISOString()}`);
+      console.log(`Parsed ISO date string: ${cleanDateStr} -> ${date.toISOString()}`);
       return date;
     }
     // Try standard JS Date parsing as fallback
     else {
-      const date = new Date(dateStr);
+      const date = new Date(cleanDateStr);
       
       if (isNaN(date.getTime())) {
-        console.warn(`Failed to parse date: ${dateStr}`);
+        console.warn(`Failed to parse date: ${cleanDateStr}`);
         return null;
       }
       
@@ -97,7 +101,7 @@ export function parseDateString(dateStr: string): Date | null {
       const safeDate = new Date(date);
       safeDate.setHours(12, 0, 0, 0);
       
-      console.log(`Parsed general date: ${dateStr} -> ${safeDate.toISOString()}`);
+      console.log(`Parsed general date: ${cleanDateStr} -> ${safeDate.toISOString()}`);
       return safeDate;
     }
   } catch (error) {

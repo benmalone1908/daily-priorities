@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate } from "@/lib/utils";
+import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 
@@ -35,10 +35,13 @@ const DashboardContent = ({
       .filter(date => date && date !== 'Totals')
       .sort((a, b) => {
         try {
-          const dateA = new Date(a);
-          const dateB = new Date(b);
+          // Convert to Date objects for comparison
+          const dateA = parseDateString(a);
+          const dateB = parseDateString(b);
+          if (!dateA || !dateB) return 0;
           return dateB.getTime() - dateA.getTime();
         } catch (e) {
+          console.error("Error sorting dates:", e);
           return 0;
         }
       });
@@ -68,17 +71,16 @@ const DashboardContent = ({
         
         if (row.DATE === 'Totals') return true;
         
-        const normalizedDateStr = normalizeDate(row.DATE);
-        if (!normalizedDateStr) return false;
-        
-        const rowDate = new Date(`${normalizedDateStr}T12:00:00`);
-        if (isNaN(rowDate.getTime())) {
-          console.warn(`Invalid date in row: ${row.DATE}`);
+        const dateStr = String(row.DATE).trim();
+        const rowDate = parseDateString(dateStr);
+        if (!rowDate) {
+          console.warn(`Could not parse date in row: ${dateStr}`);
           return false;
         }
         
         const isAfterFrom = rowDate >= fromDate;
         const isBeforeTo = rowDate <= toDate;
+        
         return isAfterFrom && isBeforeTo;
       } catch (error) {
         console.error(`Error filtering by date for row ${JSON.stringify(row)}:`, error);
@@ -240,7 +242,7 @@ const Index = () => {
 
   useEffect(() => {
     if (data.length > 0) {
-      const uniqueDates = Array.from(new Set(data.map(row => row.DATE))).sort();
+      const uniqueDates = Array.from(new Set(data.map(row => row.DATE))).filter(date => date !== 'Totals').sort();
       console.log(`Dataset has ${uniqueDates.length} unique dates:`, uniqueDates);
       
       if (uniqueDates.length > 0) {
@@ -253,11 +255,22 @@ const Index = () => {
         
         if (!dateRange || !dateRange.from) {
           try {
-            const minDate = new Date(uniqueDates[0]);
-            const maxDate = new Date(uniqueDates[uniqueDates.length - 1]);
-            if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
-              setDateRange({ from: minDate, to: maxDate });
-              console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
+            // Parse dates and create proper Date objects
+            const parsedDates = uniqueDates
+              .map(dateStr => parseDateString(dateStr))
+              .filter(Boolean) as Date[];
+              
+            if (parsedDates.length > 0) {
+              // Sort dates chronologically
+              parsedDates.sort((a, b) => a.getTime() - b.getTime());
+              
+              const minDate = parsedDates[0];
+              const maxDate = parsedDates[parsedDates.length - 1];
+              
+              if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
+                setDateRange({ from: minDate, to: maxDate });
+                console.log(`Auto-set date range: ${minDate.toISOString()} to ${maxDate.toISOString()}`);
+              }
             }
           } catch (e) {
             console.error("Error auto-setting date range:", e);
@@ -294,10 +307,10 @@ const Index = () => {
         
         if (newRow.DATE) {
           try {
-            const date = new Date(newRow.DATE);
-            if (!isNaN(date.getTime())) {
-              newRow.DATE = normalizeDate(date);
-              if (newRow.DATE.includes('-04-09') || newRow.DATE.includes('-04-08')) {
+            const date = parseDateString(newRow.DATE);
+            if (date) {
+              newRow.DATE = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+              if (newRow.DATE.includes('4/9/') || newRow.DATE.includes('4/8/')) {
                 logDateDetails(`Processed date for row:`, date, `-> ${newRow.DATE} (original: ${row.DATE})`);
               }
             } else {
@@ -320,7 +333,7 @@ const Index = () => {
       
       setData(processedData);
       
-      const dates = processedData.map(row => row.DATE).filter(Boolean).sort();
+      const dates = processedData.map(row => row.DATE).filter(date => date && date !== 'Totals').sort();
       if (dates.length > 0) {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);

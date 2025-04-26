@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -35,8 +36,18 @@ export default function DateRangePicker({
       to: dateRange?.to
     };
     
+    // If we're setting a start date later than the end date, adjust the end date
+    if (date && dateRange?.to && date > dateRange.to) {
+      newRange.to = date;
+    }
+    
     onDateRangeChange(date ? newRange : undefined);
     setStartOpen(false);
+    
+    // If there's no end date yet, open the end date picker
+    if (date && !dateRange?.to) {
+      setTimeout(() => setEndOpen(true), 100);
+    }
   };
 
   const handleEndDateSelect = (date: Date | undefined) => {
