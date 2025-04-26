@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -96,14 +97,26 @@ const DashboardContent = ({
     const mostRecentDate = getMostRecentDate();
     if (!mostRecentDate) return filteredData;
 
-    console.log('Filtering for live campaigns with most recent date:', mostRecentDate);
+    console.log('Filtering for campaigns active on most recent date:', mostRecentDate);
     
-    const liveData = filteredData.filter(row => {
-      if (row.DATE === 'Totals') return true;
-      return row.DATE === mostRecentDate;
+    // First get all the campaigns that have impressions on the most recent date
+    const activeCampaignsOnMostRecentDate = new Set<string>();
+    
+    filteredData.forEach(row => {
+      if (row.DATE === mostRecentDate && Number(row.IMPRESSIONS) > 0) {
+        activeCampaignsOnMostRecentDate.add(row["CAMPAIGN ORDER NAME"]);
+      }
     });
     
-    console.log(`Filtered from ${filteredData.length} rows to ${liveData.length} live rows`);
+    console.log(`Found ${activeCampaignsOnMostRecentDate.size} active campaigns on most recent date`);
+    
+    // Now filter to include all dates, but only for campaigns active on most recent date
+    const liveData = filteredData.filter(row => {
+      if (row.DATE === 'Totals') return true;
+      return activeCampaignsOnMostRecentDate.has(row["CAMPAIGN ORDER NAME"]);
+    });
+    
+    console.log(`Filtered from ${filteredData.length} rows to ${liveData.length} live campaign rows`);
     return liveData;
   }, [filteredData, showLiveOnly]);
 
