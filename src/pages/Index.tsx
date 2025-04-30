@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -295,7 +294,6 @@ const DashboardContent = ({
                 selected={selectedAdvertisers}
                 onChange={setSelectedAdvertisers}
                 placeholder="Select advertisers"
-                popoverOpen={true}
               />
             </PopoverContent>
           </Popover>
@@ -318,7 +316,6 @@ const DashboardContent = ({
                 selected={selectedCampaigns}
                 onChange={setSelectedCampaigns}
                 placeholder="Select campaigns"
-                popoverOpen={true}
               />
             </PopoverContent>
           </Popover>
