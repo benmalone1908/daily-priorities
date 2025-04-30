@@ -6,11 +6,18 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine } from "lucide-react";
+import { LayoutDashboard, ChartLine, FilterIcon } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
+import { MultiSelect } from "@/components/MultiSelect";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const DashboardContent = ({ 
   data, 
@@ -21,9 +28,8 @@ const DashboardContent = ({
   dateRange: DateRange | undefined; 
   onDateRangeChange: (range: DateRange | undefined) => void; 
 }) => {
-  const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
-  const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
-  const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
   const { showLiveOnly } = useCampaignFilter();
@@ -122,6 +128,40 @@ const DashboardContent = ({
     return liveData;
   }, [filteredData, showLiveOnly]);
 
+  // Campaign and advertiser options for filters
+  const campaignOptions = useMemo(() => {
+    const campaignSet = new Set<string>();
+    filteredDataByLiveStatus.forEach(row => {
+      if (row["CAMPAIGN ORDER NAME"]) {
+        campaignSet.add(row["CAMPAIGN ORDER NAME"]);
+      }
+    });
+    return Array.from(campaignSet)
+      .sort((a, b) => a.localeCompare(b))
+      .map(campaign => ({
+        value: campaign,
+        label: campaign
+      }));
+  }, [filteredDataByLiveStatus]);
+
+  const advertiserOptions = useMemo(() => {
+    const advertiserSet = new Set<string>();
+    
+    filteredDataByLiveStatus.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      if (advertiser) advertiserSet.add(advertiser);
+    });
+    
+    return Array.from(advertiserSet)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+  }, [filteredDataByLiveStatus]);
+
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredDataByLiveStatus;
     return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
@@ -151,18 +191,6 @@ const DashboardContent = ({
     return filtered;
   };
 
-  const handleMetricsCampaignsChange = (selected: string[]) => {
-    setSelectedMetricsCampaigns(selected);
-  };
-
-  const handleRevenueCampaignsChange = (selected: string[]) => {
-    setSelectedRevenueCampaigns(selected);
-  };
-
-  const handleRevenueAdvertisersChange = (selected: string[]) => {
-    setSelectedRevenueAdvertisers(selected);
-  };
-
   const getDateRangeDisplayText = () => {
     if (!dateRange || !dateRange.from) return null;
     
@@ -175,6 +203,21 @@ const DashboardContent = ({
     const recordCount = showLiveOnly ? filteredDataByLiveStatus.length : filteredData.length;
     
     return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
+  };
+
+  const getActiveFiltersText = () => {
+    const parts = [];
+    
+    if (selectedCampaigns.length > 0) {
+      parts.push(`${selectedCampaigns.length} campaigns`);
+    }
+    
+    if (selectedAdvertisers.length > 0) {
+      parts.push(`${selectedAdvertisers.length} advertisers`);
+    }
+    
+    if (parts.length === 0) return "No filters applied";
+    return parts.join(", ");
   };
 
   return (
@@ -190,7 +233,7 @@ const DashboardContent = ({
             <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
           </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <CampaignStatusToggle />
             <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2">
@@ -209,7 +252,79 @@ const DashboardContent = ({
               onDateRangeChange={onDateRangeChange}
               displayDateRangeSummary={!!dateRange?.from}
               dateRangeSummaryText={getDateRangeDisplayText()}
+              compact={true}
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="py-4 border-b">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">Filters</div>
+          {(selectedCampaigns.length > 0 || selectedAdvertisers.length > 0) && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setSelectedCampaigns([]);
+                setSelectedAdvertisers([]);
+              }}
+              className="text-xs h-7 px-2"
+            >
+              Clear All
+            </Button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                <FilterIcon className="h-3 w-3 mr-1" />
+                Advertisers
+                {selectedAdvertisers.length > 0 && (
+                  <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-xs">
+                    {selectedAdvertisers.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-3" align="start">
+              <MultiSelect
+                options={advertiserOptions}
+                selected={selectedAdvertisers}
+                onChange={setSelectedAdvertisers}
+                placeholder="Select advertisers"
+                popoverOpen={true}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                <FilterIcon className="h-3 w-3 mr-1" />
+                Campaigns
+                {selectedCampaigns.length > 0 && (
+                  <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-xs">
+                    {selectedCampaigns.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-3" align="start">
+              <MultiSelect
+                options={campaignOptions}
+                selected={selectedCampaigns}
+                onChange={setSelectedCampaigns}
+                placeholder="Select campaigns"
+                popoverOpen={true}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <div className="text-xs text-muted-foreground ml-2">
+            {getActiveFiltersText()}
           </div>
         </div>
       </div>
@@ -217,19 +332,22 @@ const DashboardContent = ({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard">
           <DashboardWrapper 
-            data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
-            metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-            revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
-            selectedMetricsCampaigns={selectedMetricsCampaigns}
-            selectedRevenueCampaigns={selectedRevenueCampaigns}
-            selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-            onMetricsCampaignsChange={handleMetricsCampaignsChange}
-            onRevenueCampaignsChange={handleRevenueCampaignsChange}
-            onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+            data={getFilteredDataByCampaignsAndAdvertisers(selectedCampaigns, selectedAdvertisers)} 
+            selectedMetricsCampaigns={selectedCampaigns}
+            selectedRevenueCampaigns={selectedCampaigns}
+            selectedRevenueAdvertisers={selectedAdvertisers}
+            onMetricsCampaignsChange={setSelectedCampaigns}
+            onRevenueCampaignsChange={setSelectedCampaigns}
+            onRevenueAdvertisersChange={setSelectedAdvertisers}
+            sortedCampaignOptions={campaignOptions.map(opt => opt.value)}
+            sortedAdvertiserOptions={advertiserOptions.map(opt => opt.value)}
           />
         </TabsContent>
         <TabsContent value="sparks">
-          <CampaignSparkCharts data={showLiveOnly ? filteredDataByLiveStatus : filteredData} dateRange={dateRange} />
+          <CampaignSparkCharts 
+            data={filteredDataByLiveStatus} 
+            dateRange={dateRange} 
+          />
         </TabsContent>
       </Tabs>
     </>

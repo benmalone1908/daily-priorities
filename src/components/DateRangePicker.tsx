@@ -18,6 +18,7 @@ interface DateRangePickerProps {
   className?: string;
   displayDateRangeSummary?: boolean;
   dateRangeSummaryText?: string | null;
+  compact?: boolean;
 }
 
 export default function DateRangePicker({
@@ -26,6 +27,7 @@ export default function DateRangePicker({
   className,
   displayDateRangeSummary = false,
   dateRangeSummaryText = null,
+  compact = false,
 }: DateRangePickerProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function DateRangePicker({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="flex items-center gap-2">
+      <div className={cn("flex items-center gap-2", compact && "flex-col sm:flex-row")}>
         {/* Start Date Picker */}
         <Popover open={startOpen} onOpenChange={setStartOpen}>
           <PopoverTrigger asChild>
@@ -89,11 +91,12 @@ export default function DateRangePicker({
               variant={"outline"}
               className={cn(
                 "w-full justify-start text-left font-normal",
-                !dateRange?.from && "text-muted-foreground"
+                !dateRange?.from && "text-muted-foreground",
+                compact && "h-9 px-3 text-xs"
               )}
-              size="sm"
+              size={compact ? "sm" : "sm"}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className={cn("mr-2 h-4 w-4", compact && "h-3 w-3")} />
               {dateRange?.from ? (
                 format(dateRange.from, "LLL dd, y")
               ) : (
@@ -121,11 +124,12 @@ export default function DateRangePicker({
               variant={"outline"}
               className={cn(
                 "w-full justify-start text-left font-normal",
-                !dateRange?.to && "text-muted-foreground"
+                !dateRange?.to && "text-muted-foreground",
+                compact && "h-9 px-3 text-xs"
               )}
-              size="sm"
+              size={compact ? "sm" : "sm"}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className={cn("mr-2 h-4 w-4", compact && "h-3 w-3")} />
               {dateRange?.to ? (
                 format(dateRange.to, "LLL dd, y")
               ) : (
@@ -151,9 +155,9 @@ export default function DateRangePicker({
         {/* Reset Button */}
         <Button 
           variant="ghost" 
-          size="sm"
+          size={compact ? "sm" : "sm"}
           onClick={handleReset}
-          className="text-xs h-7 px-2"
+          className={cn("text-xs", compact && "h-9 px-2")}
         >
           Reset
         </Button>
