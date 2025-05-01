@@ -1,7 +1,10 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { Option } from './MultiSelect';
+
+type ChartViewMode = "date" | "dayOfWeek";
 
 interface DashboardWrapperProps {
   data: any[];
@@ -16,6 +19,11 @@ interface DashboardWrapperProps {
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
+  // Add shared filter state
+  const [viewMode, setViewMode] = useState<ChartViewMode>("date");
+  const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  
   // Get sorted campaign options from the filtered data
   const sortedCampaignOptions = useMemo(() => {
     const campaignSet = new Set<string>();
@@ -41,6 +49,52 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
   }, [props.data]);
 
+  // Convert to option format for select components
+  const advertiserOptions = useMemo(() => {
+    return sortedAdvertiserOptions.map(advertiser => ({
+      value: advertiser,
+      label: advertiser
+    }));
+  }, [sortedAdvertiserOptions]);
+
+  const campaignOptions = useMemo(() => {
+    return sortedCampaignOptions.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [sortedCampaignOptions]);
+  
+  // Filter campaigns based on selected advertisers
+  const filteredCampaignOptions = useMemo(() => {
+    if (!selectedAdvertisers.length) return campaignOptions;
+    
+    return campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedAdvertisers.includes(advertiser);
+    });
+  }, [campaignOptions, selectedAdvertisers]);
+  
+  const handleAdvertisersChange = (selected: string[]) => {
+    setSelectedAdvertisers(selected);
+    
+    // If we select advertisers, filter campaigns to only include those from selected advertisers
+    if (selected.length > 0) {
+      const validCampaigns = selectedCampaigns.filter(campaign => {
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
+      });
+      
+      setSelectedCampaigns(validCampaigns);
+    }
+  };
+  
+  const handleCampaignsChange = (selected: string[]) => {
+    setSelectedCampaigns(selected);
+  };
+
   return (
     <Dashboard
       data={props.data}
@@ -54,6 +108,15 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
+      // Add new shared filter props
+      viewMode={viewMode}
+      setViewMode={setViewMode}
+      selectedAdvertisers={selectedAdvertisers}
+      selectedCampaigns={selectedCampaigns}
+      advertiserOptions={advertiserOptions}
+      campaignOptions={filteredCampaignOptions}
+      onAdvertisersChange={handleAdvertisersChange}
+      onCampaignsChange={handleCampaignsChange}
     />
   );
 };

@@ -34,6 +34,14 @@ interface DashboardProps {
   onRevenueAdvertisersChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
+  viewMode: ChartViewMode;
+  setViewMode: React.Dispatch<React.SetStateAction<ChartViewMode>>;
+  selectedAdvertisers: string[];
+  selectedCampaigns: string[];
+  advertiserOptions: Option[];
+  campaignOptions: Option[];
+  onAdvertisersChange: (selected: string[]) => void;
+  onCampaignsChange: (selected: string[]) => void;
 }
 
 interface WeeklyData {
@@ -67,7 +75,15 @@ const Dashboard = ({
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
   sortedCampaignOptions = [],
-  sortedAdvertiserOptions = []
+  sortedAdvertiserOptions = [],
+  viewMode,
+  setViewMode,
+  selectedAdvertisers,
+  selectedCampaigns,
+  advertiserOptions,
+  campaignOptions,
+  onAdvertisersChange,
+  onCampaignsChange
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -183,7 +199,7 @@ const Dashboard = ({
     }
     
     if (selected.length > 0) {
-      const matchingCampaigns = campaigns.filter(campaign => {
+      const matchingCampaigns = sortedCampaignOptions.filter(campaign => {
         const match = campaign.match(/SM:\s+([^-]+)/);
         const advertiser = match ? match[1].trim() : "";
         return selected.includes(advertiser);
@@ -899,12 +915,41 @@ const Dashboard = ({
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {dateRange && (
-        <div className="text-sm text-muted-foreground text-center">
-          Showing data for: <span className="font-medium">{dateRangeText}</span> 
-          ({data.length.toLocaleString()} records)
+      {/* Add the filter row from Trends tab */}
+      <div className="border rounded-md p-4 bg-card flex flex-col md:flex-row flex-wrap gap-4 items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium">View by:</span>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ChartViewMode)}>
+            <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+              By Date
+            </ToggleGroupItem>
+            <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+              By Day of Week
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
-      )}
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium">Filter by:</span>
+          <MultiSelect
+            options={advertiserOptions}
+            selected={selectedAdvertisers}
+            onChange={onAdvertisersChange}
+            placeholder="Advertiser"
+            className="w-[180px]"
+            label="Advertiser"
+          />
+          <MultiSelect
+            options={campaignOptions}
+            selected={selectedCampaigns}
+            onChange={onCampaignsChange}
+            placeholder="Campaign"
+            className="w-[180px]"
+            popoverClassName="w-[400px]"
+            label="Campaign"
+          />
+        </div>
+      </div>
       
       {showAnomalySection && (
         <div className="flex flex-col gap-6">
@@ -973,9 +1018,9 @@ const Dashboard = ({
                 />
               )}
               
-              {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
+              {onMetricsCampaignsChange && campaignOptions.length > 0 && (
                 <MultiSelect
-                  options={filteredMetricsCampaignOptions}
+                  options={campaignOptions}
                   selected={selectedMetricsCampaigns}
                   onChange={onMetricsCampaignsChange}
                   placeholder="Campaign"
