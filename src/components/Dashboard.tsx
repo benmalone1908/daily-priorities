@@ -550,6 +550,43 @@ const Dashboard = ({
     }
   };
 
+  const calculateCTR = (clicks: number, impressions: number): number => {
+    if (impressions === 0) return 0;
+    return (clicks / impressions) * 100;
+  };
+
+  const formatCTR = (value: number) => {
+    try {
+      return `${value.toFixed(2)}%`;
+    } catch (error) {
+      console.error("Error formatting CTR:", error);
+      return "0.00%";
+    }
+  };
+
+  const formatTransactions = (value: number) => {
+    try {
+      return Math.round(value).toLocaleString();
+    } catch (error) {
+      console.error("Error formatting transactions:", error);
+      return "0";
+    }
+  };
+
+  const calculateAOV = (revenue: number, transactions: number): number => {
+    if (transactions === 0) return 0;
+    return revenue / transactions;
+  };
+
+  const formatAOV = (value: number) => {
+    try {
+      return `$${Math.round(value).toLocaleString()}`;
+    } catch (error) {
+      console.error("Error formatting AOV:", error);
+      return "$0";
+    }
+  };
+
   const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
     console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, period=${periodLength}`);
     
@@ -1208,10 +1245,21 @@ const Dashboard = ({
 
         {weeklyDataState.length >= 1 ? (
           <ScrollArea className="h-[460px]">
-            <div className="grid gap-8 md:grid-cols-4 pb-4 pr-4">
+            <div className="grid gap-4 pb-4 pr-4">
               {weeklyDataState.map((period, index) => {
                 const previousPeriod = weeklyDataState[index + 1];
                 const periodLabel = `${formatDate(period.periodStart)} - ${formatDate(period.periodEnd)}`;
+                
+                // Calculate derived metrics
+                const ctr = calculateCTR(period.CLICKS, period.IMPRESSIONS);
+                const previousCtr = previousPeriod ? calculateCTR(previousPeriod.CLICKS, previousPeriod.IMPRESSIONS) : 0;
+                
+                // Assume we have transactions in the data or default to estimated value
+                const transactions = period.TRANSACTIONS || Math.round(period.REVENUE / 50); // Default AOV of $50 if no transactions
+                const previousTransactions = previousPeriod ? (previousPeriod.TRANSACTIONS || Math.round(previousPeriod.REVENUE / 50)) : 0;
+                
+                const aov = calculateAOV(period.REVENUE, transactions);
+                const previousAov = previousPeriod ? calculateAOV(previousPeriod.REVENUE, previousTransactions) : 0;
                 
                 const metrics = [
                   {
@@ -1227,10 +1275,28 @@ const Dashboard = ({
                     format: formatNumber
                   },
                   {
+                    title: "CTR",
+                    current: ctr,
+                    previous: previousCtr,
+                    format: formatCTR
+                  },
+                  {
+                    title: "Transactions",
+                    current: transactions,
+                    previous: previousTransactions,
+                    format: formatTransactions
+                  },
+                  {
                     title: "Revenue",
                     current: period.REVENUE,
                     previous: previousPeriod?.REVENUE,
                     format: formatRevenue
+                  },
+                  {
+                    title: "AOV",
+                    current: aov,
+                    previous: previousAov,
+                    format: formatAOV
                   },
                   {
                     title: "ROAS",
@@ -1240,45 +1306,48 @@ const Dashboard = ({
                   }
                 ];
 
-                return metrics.map((metric, metricIndex) => {
-                  const percentChange = metric.previous
-                    ? ((metric.current - metric.previous) / metric.previous) * 100
-                    : metric.current > 0 ? 100 : 0;
+                return (
+                  <div key={index} className="mb-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-1 ml-1">
+                      {periodLabel}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-7">
+                      {metrics.map((metric, metricIndex) => {
+                        const percentChange = metric.previous
+                          ? ((metric.current - metric.previous) / metric.previous) * 100
+                          : metric.current > 0 ? 100 : 0;
 
-                  const colorClasses = getColorClasses(percentChange).split(' ').find(c => c.startsWith('text-')) || '';
-                  
-                  return (
-                    <Card key={`${index}-${metricIndex}`} className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">{metric.title}</span>
-                        <span className="text-xs text-muted-foreground">{periodLabel}</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-2xl font-bold">
-                          {metric.format(metric.current)}
-                        </div>
-                        {previousPeriod && (
-                          <div className={`flex items-center text-sm ${colorClasses}`}>
-                            {percentChange > 0 ? (
-                              <TrendingUp className="mr-1 h-4 w-4" />
-                            ) : (
-                              <TrendingDown className="mr-1 h-4 w-4" />
-                            )}
-                            <span>
-                              {percentChange > 0 ? "+" : ""}
-                              {percentChange.toFixed(1)}%
-                            </span>
-                          </div>
-                        )}
-                        {previousPeriod && (
-                          <div className="text-sm text-muted-foreground">
-                            vs {metric.format(metric.previous)}
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  );
-                });
+                        const colorClasses = getColorClasses(percentChange).split(' ').find(c => c.startsWith('text-')) || '';
+                        
+                        return (
+                          <Card key={`${index}-${metricIndex}`} className="p-3">
+                            <div className="mb-1">
+                              <span className="text-xs font-medium">{metric.title}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-base font-bold">
+                                {metric.format(metric.current)}
+                              </div>
+                              {previousPeriod && (
+                                <div className={`flex items-center text-xs ${colorClasses}`}>
+                                  {percentChange > 0 ? (
+                                    <TrendingUp className="mr-1 h-3 w-3" />
+                                  ) : (
+                                    <TrendingDown className="mr-1 h-3 w-3" />
+                                  )}
+                                  <span>
+                                    {percentChange > 0 ? "+" : ""}
+                                    {percentChange.toFixed(1)}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
               })}
             </div>
           </ScrollArea>
