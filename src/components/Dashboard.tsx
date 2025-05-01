@@ -150,6 +150,27 @@ const Dashboard = ({
     });
   }, [campaignOptions, selectedRevenueAdvertisers]);
 
+  const filteredWeeklyCampaignOptions = useMemo(() => {
+    if (!selectedWeeklyAdvertisers.length) {
+      return [
+        { value: "all", label: "All Campaigns" },
+        ...campaignOptions
+      ];
+    }
+    
+    const filteredCampaigns = campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedWeeklyAdvertisers.includes(advertiser);
+    });
+    
+    return [
+      { value: "all", label: "All Campaigns" },
+      ...filteredCampaigns
+    ];
+  }, [campaignOptions, selectedWeeklyAdvertisers]);
+
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
     
@@ -309,7 +330,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues = Object.values(weeklyData);\
+            const weeklyValues = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -407,7 +428,7 @@ const Dashboard = ({
       
       console.log(`Aggregating ${filteredData.length} rows of data`);
       
-      const allDates = filteredData.map(row => row.DATE).filter(Boolean);\
+      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
       if (allDates.length > 0) {
         const sortedDates = [...allDates].sort();
         console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
@@ -586,7 +607,7 @@ const Dashboard = ({
           console.error(`Error parsing date: ${row.DATE}`, e);
           return null;
         }
-      }).filter(Boolean);\
+      }).filter(Boolean);
       
       console.log(`Rows with valid dates: ${rowsWithDates.length}`);
       
@@ -820,4 +841,35 @@ const Dashboard = ({
       <div className="flex flex-col md:flex-row gap-2 items-center justify-between bg-muted/40 p-3 rounded-md shadow-sm">
         <div className="flex flex-col xs:flex-row gap-2 items-center mb-2 md:mb-0">
           <span className="text-sm font-medium whitespace-nowrap">View by:</span>
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as ChartViewMode)}>
+            <ToggleGroupItem value="date" size="sm">By Date</ToggleGroupItem>
+            <ToggleGroupItem value="dayOfWeek" size="sm">By Day of Week</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+        <div className="flex flex-col xs:flex-row gap-2">
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium whitespace-nowrap">Filter by:</span>
+            <MultiSelect
+              options={advertiserOptions}
+              selected={selectedAdvertisers}
+              onChange={onAdvertisersChange}
+              placeholder="Advertisers"
+              className="min-w-[150px] w-auto"
+            />
+            <MultiSelect
+              options={campaignOptions}
+              selected={selectedCampaigns}
+              onChange={onCampaignsChange}
+              placeholder="Campaigns"
+              className="min-w-[150px] w-auto"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Rest of the dashboard content would go here */}
+    </div>
+  );
+};
+
+export default Dashboard;
