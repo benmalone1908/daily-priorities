@@ -128,14 +128,16 @@ const Dashboard = ({
     return Array.from(uniqueAdvertisers).sort();
   }, [data, sortedAdvertiserOptions]);
 
-  const campaignOptions: Option[] = useMemo(() => {
+  // Renamed from campaignOptions to localCampaignOptions to avoid conflicts
+  const localCampaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
       label: campaign
     }));
   }, [campaigns]);
 
-  const advertiserOptions: Option[] = useMemo(() => {
+  // Renamed from advertiserOptions to localAdvertiserOptions to avoid conflicts
+  const localAdvertiserOptions: Option[] = useMemo(() => {
     return advertisers.map(advertiser => ({
       value: advertiser,
       label: advertiser
