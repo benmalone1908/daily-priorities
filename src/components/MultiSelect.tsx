@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Square, CheckSquare } from "lucide-react";
+import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -20,7 +20,6 @@ interface MultiSelectProps {
   placeholder?: string;
   className?: string;
   popoverClassName?: string;
-  label?: string;
 }
 
 export function MultiSelect({
@@ -30,7 +29,6 @@ export function MultiSelect({
   placeholder = "Select options",
   className,
   popoverClassName,
-  label,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -51,61 +49,58 @@ export function MultiSelect({
   };
 
   return (
-    <div className="flex flex-col">
-      {label && <span className="text-xs font-medium mb-1 text-muted-foreground">{label}</span>}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            role="combobox"
-            aria-expanded={open}
-            className={cn(
-              "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-              className
-            )}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            className
+          )}
+        >
+          {selected.length === 0 ? placeholder : `${selected.length} selected`}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className={cn("p-0 bg-background shadow-lg", popoverClassName)} align="start">
+        <div className="max-h-[300px] overflow-auto p-1">
+          <div
+            className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
+            onClick={handleSelectAll}
           >
-            {selected.length === 0 ? placeholder : `${selected.length} selected`}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className={cn("p-0 bg-background shadow-lg", popoverClassName)} align="start">
-          <div className="max-h-[300px] overflow-auto p-1">
+            <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+              {selected.length === options.length ? (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              ) : (
+                <Square className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <span className="truncate">Select All</span>
+          </div>
+          {options.map((option) => (
             <div
-              className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
-              onClick={handleSelectAll}
+              key={option.value}
+              className={cn(
+                "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                selected.includes(option.value) ? "bg-accent/50" : ""
+              )}
+              onClick={() => handleSelect(option.value)}
             >
               <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                {selected.length === options.length ? (
+                {selected.includes(option.value) ? (
                   <CheckSquare className="h-4 w-4 text-primary" />
                 ) : (
                   <Square className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
-              <span className="truncate">Select All</span>
+              <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
+                {option.label}
+              </span>
             </div>
-            {options.map((option) => (
-              <div
-                key={option.value}
-                className={cn(
-                  "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
-                  selected.includes(option.value) ? "bg-accent/50" : ""
-                )}
-                onClick={() => handleSelect(option.value)}
-              >
-                <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                  {selected.includes(option.value) ? (
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Square className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-                <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
-                  {option.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
