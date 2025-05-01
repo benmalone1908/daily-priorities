@@ -159,7 +159,7 @@ export default function DateRangePicker({
         </Button>
       </div>
       
-      {/* Date Range Summary - moved as a separate element with improved styling */}
+      {/* Date Range Summary - only shown when explicitly requested */}
       {displayDateRangeSummary && dateRangeSummaryText && (
         <p className="text-xs text-muted-foreground mt-1">
           {dateRangeSummaryText}

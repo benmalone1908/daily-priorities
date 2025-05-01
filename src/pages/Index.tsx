@@ -207,7 +207,7 @@ const DashboardContent = ({
             <DateRangePicker 
               dateRange={dateRange}
               onDateRangeChange={onDateRangeChange}
-              displayDateRangeSummary={!!dateRange?.from}
+              displayDateRangeSummary={true}
               dateRangeSummaryText={getDateRangeDisplayText()}
             />
           </div>
