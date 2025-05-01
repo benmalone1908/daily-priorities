@@ -128,20 +128,6 @@ const Dashboard = ({
     return Array.from(uniqueAdvertisers).sort();
   }, [data, sortedAdvertiserOptions]);
 
-  const campaignOptions: Option[] = useMemo(() => {
-    return campaigns.map(campaign => ({
-      value: campaign,
-      label: campaign
-    }));
-  }, [campaigns]);
-
-  const advertiserOptions: Option[] = useMemo(() => {
-    return advertisers.map(advertiser => ({
-      value: advertiser,
-      label: advertiser
-    }));
-  }, [advertisers]);
-
   const filteredMetricsCampaignOptions = useMemo(() => {
     if (!selectedMetricsAdvertisers.length) return campaignOptions;
     
@@ -163,27 +149,6 @@ const Dashboard = ({
       return selectedRevenueAdvertisers.includes(advertiser);
     });
   }, [campaignOptions, selectedRevenueAdvertisers]);
-
-  const filteredWeeklyCampaignOptions = useMemo(() => {
-    if (!selectedWeeklyAdvertisers.length) {
-      return [
-        { value: "all", label: "All Campaigns" },
-        ...campaignOptions
-      ];
-    }
-    
-    const filteredCampaigns = campaignOptions.filter(option => {
-      const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedWeeklyAdvertisers.includes(advertiser);
-    });
-    
-    return [
-      { value: "all", label: "All Campaigns" },
-      ...filteredCampaigns
-    ];
-  }, [campaignOptions, selectedWeeklyAdvertisers]);
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
@@ -344,7 +309,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues = Object.values(weeklyData);
+            const weeklyValues = Object.values(weeklyData);\
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -442,7 +407,7 @@ const Dashboard = ({
       
       console.log(`Aggregating ${filteredData.length} rows of data`);
       
-      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
+      const allDates = filteredData.map(row => row.DATE).filter(Boolean);\
       if (allDates.length > 0) {
         const sortedDates = [...allDates].sort();
         console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
@@ -621,7 +586,7 @@ const Dashboard = ({
           console.error(`Error parsing date: ${row.DATE}`, e);
           return null;
         }
-      }).filter(Boolean);
+      }).filter(Boolean);\
       
       console.log(`Rows with valid dates: ${rowsWithDates.length}`);
       
@@ -834,4 +799,25 @@ const Dashboard = ({
   const getMetricComparison = (metric: string, currentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
     try {
       const currentValue = currentPeriod[metric as keyof WeeklyData] as number;
-      const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData]
+      const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData] as number) : 0;
+      
+      if (!previousValue) return { change: 0, isIncrease: false };
+      
+      const change = ((currentValue - previousValue) / previousValue) * 100;
+      return {
+        change: Math.abs(Math.round(change)),
+        isIncrease: change > 0
+      };
+    } catch (error) {
+      console.error("Error in getMetricComparison:", error);
+      return { change: 0, isIncrease: false };
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Filter row */}
+      <div className="flex flex-col md:flex-row gap-2 items-center justify-between bg-muted/40 p-3 rounded-md shadow-sm">
+        <div className="flex flex-col xs:flex-row gap-2 items-center mb-2 md:mb-0">
+          <span className="text-sm font-medium whitespace-nowrap">View by:</span>
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(
