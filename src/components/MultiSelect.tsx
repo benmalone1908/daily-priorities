@@ -20,7 +20,6 @@ interface MultiSelectProps {
   placeholder?: string;
   className?: string;
   popoverClassName?: string;
-  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -30,7 +29,6 @@ export function MultiSelect({
   placeholder = "Select options",
   className,
   popoverClassName,
-  disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -60,7 +58,6 @@ export function MultiSelect({
             "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
-          disabled={disabled}
         >
           {selected.length === 0 ? placeholder : `${selected.length} selected`}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
