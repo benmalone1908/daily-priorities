@@ -44,6 +44,7 @@ interface WeeklyData {
   REVENUE: number;
   ROAS: number;
   count: number;
+  TRANSACTIONS?: number;
 }
 
 interface WeeklyAggregation {
@@ -698,7 +699,8 @@ const Dashboard = ({
           CLICKS: 0,
           REVENUE: 0,
           ROAS: 0,
-          count: 0
+          count: 0,
+          TRANSACTIONS: 0
         });
       }
       
@@ -718,6 +720,7 @@ const Dashboard = ({
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
               periods[i].CLICKS += Number(row.CLICKS) || 0;
               periods[i].REVENUE += Number(row.REVENUE) || 0;
+              periods[i].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
               periods[i].count += 1;
               break;
             }
@@ -1254,7 +1257,7 @@ const Dashboard = ({
                 const ctr = calculateCTR(period.CLICKS, period.IMPRESSIONS);
                 const previousCtr = previousPeriod ? calculateCTR(previousPeriod.CLICKS, previousPeriod.IMPRESSIONS) : 0;
                 
-                // Assume we have transactions in the data or default to estimated value
+                // Use the TRANSACTIONS property or estimate based on revenue
                 const transactions = period.TRANSACTIONS || Math.round(period.REVENUE / 50); // Default AOV of $50 if no transactions
                 const previousTransactions = previousPeriod ? (previousPeriod.TRANSACTIONS || Math.round(previousPeriod.REVENUE / 50)) : 0;
                 
@@ -1305,7 +1308,7 @@ const Dashboard = ({
                     format: formatROAS
                   }
                 ];
-
+                
                 return (
                   <div key={index} className="mb-3">
                     <div className="text-xs font-medium text-muted-foreground mb-1 ml-1">
