@@ -34,6 +34,7 @@ interface DashboardProps {
   onRevenueAdvertisersChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
+  aggregatedMetricsData?: any[]; // Added this property
 }
 
 interface WeeklyData {
@@ -68,7 +69,8 @@ const Dashboard = ({
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
   sortedCampaignOptions = [],
-  sortedAdvertiserOptions = []
+  sortedAdvertiserOptions = [],
+  aggregatedMetricsData
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
