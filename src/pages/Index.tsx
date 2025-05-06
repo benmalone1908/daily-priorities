@@ -13,11 +13,33 @@ import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { Card } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
+import SparkChartModal from "@/components/SparkChartModal";
+
+type MetricType = 
+  | "impressions" 
+  | "clicks" 
+  | "ctr" 
+  | "transactions" 
+  | "revenue" 
+  | "roas";
+
+interface ModalData {
+  isOpen: boolean;
+  title: string;
+  metricType: MetricType;
+  data: any[];
+}
 
 // Improved Aggregated Spark Charts component that matches the campaign row style
 const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   const { showAggregatedSparkCharts } = useCampaignFilter();
+  const [modalData, setModalData] = useState<ModalData>({
+    isOpen: false,
+    title: "",
+    metricType: "impressions",
+    data: []
+  });
   
   if (!showAggregatedSparkCharts || !data || data.length === 0) {
     return null;
@@ -121,9 +143,60 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   const formatCTR = (value: number): string => `${value.toFixed(2)}%`;
   const formatROAS = (value: number): string => value.toFixed(2);
   
+  const handleChartClick = (metricType: MetricType, title: string) => {
+    setModalData({
+      isOpen: true,
+      title: `All Campaigns - ${title}`,
+      metricType,
+      data: timeSeriesData
+    });
+  };
+
+  const getMetricDetails = (metricType: MetricType) => {
+    switch(metricType) {
+      case "impressions":
+        return {
+          title: "Impressions",
+          color: "#4ade80",
+          formatter: (value: number) => formatNumber(value)
+        };
+      case "clicks":
+        return {
+          title: "Clicks",
+          color: "#f59e0b",
+          formatter: (value: number) => formatNumber(value)
+        };
+      case "ctr":
+        return {
+          title: "CTR",
+          color: "#0ea5e9",
+          formatter: (value: number) => formatCTR(value)
+        };
+      case "transactions":
+        return {
+          title: "Transactions",
+          color: "#8b5cf6",
+          formatter: (value: number) => formatNumber(value)
+        };
+      case "revenue":
+        return {
+          title: "Revenue",
+          color: "#ef4444",
+          formatter: (value: number) => formatRevenue(value)
+        };
+      case "roas":
+        return {
+          title: "ROAS",
+          color: "#d946ef",
+          formatter: (value: number) => formatROAS(value)
+        };
+    }
+  };
+  
   // Render a metric card with chart
-  const renderMetricCard = (title: string, value: number, trend: number, formatter: (val: number) => string, data: any[], dataKey: string, color: string) => {
+  const renderMetricCard = (title: string, value: number, trend: number, formatter: (val: number) => string, data: any[], dataKey: string, color: string, metricType: MetricType) => {
     const colorClass = getColorClasses(trend).split(' ').find(c => c.startsWith('text-')) || '';
+    const gradientId = `gradient-${title.toLowerCase().replace(/\s+/g, '-')}`;
     
     return (
       <Card className="p-4">
@@ -148,11 +221,14 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           </div>
         </div>
         
-        <div className="h-16 mt-1">
+        <div className="h-16 mt-1 cursor-pointer relative group" onClick={() => handleChartClick(metricType, title)}>
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Maximize className="h-5 w-5 text-muted-foreground" />
+          </div>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
               <defs>
-                <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
                   <stop offset="95%" stopColor={color} stopOpacity={0.1}/>
                 </linearGradient>
@@ -162,7 +238,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
                 dataKey={dataKey} 
                 stroke={color} 
                 fillOpacity={1}
-                fill={`url(#gradient-${title})`} 
+                fill={`url(#${gradientId})`} 
                 dot={false}
                 isAnimationActive={false}
               />
@@ -186,7 +262,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           formatNumber, 
           timeSeriesData, 
           "IMPRESSIONS", 
-          "#4ade80"
+          "#4ade80",
+          "impressions"
         )}
         
         {renderMetricCard(
@@ -196,7 +273,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           formatNumber, 
           timeSeriesData, 
           "CLICKS", 
-          "#f59e0b"
+          "#f59e0b",
+          "clicks"
         )}
         
         {renderMetricCard(
@@ -206,7 +284,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           formatCTR, 
           timeSeriesData.map(d => ({...d, CTR: d.IMPRESSIONS > 0 ? (d.CLICKS / d.IMPRESSIONS) * 100 : 0})), 
           "CTR", 
-          "#0ea5e9"
+          "#0ea5e9",
+          "ctr"
         )}
         
         {renderMetricCard(
@@ -216,7 +295,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           formatNumber, 
           timeSeriesData, 
           "TRANSACTIONS", 
-          "#8b5cf6"
+          "#8b5cf6",
+          "transactions"
         )}
         
         {renderMetricCard(
@@ -226,7 +306,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           formatRevenue, 
           timeSeriesData, 
           "REVENUE", 
-          "#ef4444"
+          "#ef4444",
+          "revenue"
         )}
         
         {renderMetricCard(
@@ -239,9 +320,26 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
             return {...d, ROAS: spend > 0 ? d.REVENUE / spend : 0};
           }), 
           "ROAS", 
-          "#d946ef"
+          "#d946ef",
+          "roas"
         )}
       </div>
+      
+      {/* Modal for expanded chart view */}
+      {modalData.isOpen && (
+        <SparkChartModal
+          open={modalData.isOpen}
+          onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}
+          title={modalData.title}
+          data={modalData.data}
+          dataKey={modalData.metricType === "ctr" ? "CTR" : 
+                  modalData.metricType === "roas" ? "ROAS" : 
+                  modalData.metricType.toUpperCase()}
+          color={getMetricDetails(modalData.metricType).color}
+          gradientId={`aggregated-${modalData.metricType}`}
+          valueFormatter={(value) => getMetricDetails(modalData.metricType).formatter(value)}
+        />
+      )}
     </div>
   );
 };

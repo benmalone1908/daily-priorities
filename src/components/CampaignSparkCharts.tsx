@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon } from "lucide-react";
+import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon, Maximize } from "lucide-react";
 import { formatNumber, setToEndOfDay, setToStartOfDay, parseDateString } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import SparkChartModal from "./SparkChartModal";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -29,10 +30,31 @@ interface CampaignSparkChartsProps {
 
 type ViewMode = "campaign" | "advertiser";
 
+type MetricType = 
+  | "impressions" 
+  | "clicks" 
+  | "ctr" 
+  | "transactions" 
+  | "revenue" 
+  | "roas";
+
+interface ModalData {
+  isOpen: boolean;
+  itemName: string;
+  metricType: MetricType;
+  data: any[];
+}
+
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
+  const [modalData, setModalData] = useState<ModalData>({
+    isOpen: false,
+    itemName: "",
+    metricType: "impressions",
+    data: []
+  });
   
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
@@ -367,6 +389,56 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     return `gradient-${name.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')}`;
   };
 
+  const handleChartClick = (itemName: string, metricType: MetricType, timeSeriesData: any[]) => {
+    setModalData({
+      isOpen: true,
+      itemName,
+      metricType,
+      data: timeSeriesData
+    });
+  };
+  
+  const getMetricDetails = (metricType: MetricType) => {
+    switch(metricType) {
+      case "impressions":
+        return {
+          title: "Impressions",
+          color: "#0EA5E9",
+          formatter: (value: number) => formatNumber(value, { abbreviate: false })
+        };
+      case "clicks":
+        return {
+          title: "Clicks",
+          color: "#8B5CF6",
+          formatter: (value: number) => formatNumber(value, { abbreviate: false })
+        };
+      case "ctr":
+        return {
+          title: "CTR",
+          color: "#6366F1",
+          formatter: (value: number) => formatNumber(value, { decimals: 2, suffix: '%' })
+        };
+      case "transactions":
+        return {
+          title: "Transactions",
+          color: "#F97316",
+          formatter: (value: number) => formatNumber(value, { abbreviate: false })
+        };
+      case "revenue":
+        return {
+          title: "Revenue",
+          color: "#10B981",
+          formatter: (value: number) => `$${formatNumber(value, { abbreviate: false })}`
+        };
+      case "roas":
+        return {
+          title: "ROAS",
+          color: "#F59E0B",
+          formatter: (value: number) => formatNumber(value, { decimals: 2, suffix: 'x' })
+        };
+    }
+  };
+
   if (!data || data.length === 0) {
     return <div className="text-center py-8">No data available</div>;
   }
@@ -559,13 +631,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 h-24">
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "impressions", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Impressions']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={impressionsId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.8}/>
@@ -585,13 +657,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "clicks", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Clicks']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={clicksId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
@@ -611,13 +683,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "ctr", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: '%' }), 'CTR']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={ctrId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#6366F1" stopOpacity={0.8}/>
@@ -637,13 +709,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "transactions", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => [formatNumber(value, { abbreviate: false }), 'Transactions']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={transactionsId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
@@ -663,13 +735,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "revenue", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => ['$' + formatNumber(value, { abbreviate: false }), 'Revenue']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={revenueId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
@@ -689,13 +761,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "roas", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={item.timeSeriesData}>
-                        <Tooltip 
-                          formatter={(value: number) => [formatNumber(value, { decimals: 2, suffix: 'x' }), 'ROAS']}
-                          labelFormatter={(label) => `${label}`}
-                        />
                         <defs>
                           <linearGradient id={roasId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
@@ -720,6 +792,21 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           </Card>
         );
       })}
+
+      {/* Modal for expanded chart view */}
+      {modalData.isOpen && (
+        <SparkChartModal
+          open={modalData.isOpen}
+          onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}
+          title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType).title}`}
+          data={modalData.data}
+          dataKey={modalData.metricType}
+          color={getMetricDetails(modalData.metricType).color}
+          gradientId={`${modalData.itemName}-${modalData.metricType}`.replace(/[^a-zA-Z0-9]/g, '-')}
+          valueFormatter={getMetricDetails(modalData.metricType).formatter}
+          labelFormatter={(label) => `${label}`}
+        />
+      )}
     </div>
   );
 };
