@@ -2,6 +2,8 @@
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { Card } from '@/components/ui/card';
+import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
 
 interface DashboardWrapperProps {
   data: any[];
@@ -41,6 +43,39 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
   }, [props.data]);
 
+  // Prepare aggregated data for the top spark charts
+  const aggregatedMetricsData = useMemo(() => {
+    if (!props.data || props.data.length === 0) return [];
+    
+    const dateGroups: Record<string, any> = {};
+    
+    props.data.forEach(row => {
+      if (!row || !row.DATE || row.DATE === 'Totals') return;
+      
+      const dateStr = String(row.DATE).trim();
+      if (!dateGroups[dateStr]) {
+        dateGroups[dateStr] = {
+          date: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0
+        };
+      }
+      
+      dateGroups[dateStr].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+      dateGroups[dateStr].CLICKS += Number(row.CLICKS) || 0;
+      dateGroups[dateStr].REVENUE += Number(row.REVENUE) || 0;
+    });
+    
+    return Object.values(dateGroups).sort((a: any, b: any) => {
+      try {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      } catch (err) {
+        return 0;
+      }
+    });
+  }, [props.data]);
+
   return (
     <Dashboard
       data={props.data}
@@ -54,6 +89,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
+      aggregatedMetricsData={aggregatedMetricsData}
     />
   );
 };

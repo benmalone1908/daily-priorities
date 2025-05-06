@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -11,6 +10,91 @@ import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
+import { Card } from "@/components/ui/card";
+import { ResponsiveContainer, LineChart, Line, Tooltip } from "recharts";
+
+// Aggregated Spark Charts component
+const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground text-center py-4">
+        No data available for aggregated view
+      </div>
+    );
+  }
+
+  const metrics = [
+    { key: "IMPRESSIONS", name: "Impressions", color: "#4ade80" },
+    { key: "CLICKS", name: "Clicks", color: "#f59e0b" },
+    { key: "REVENUE", name: "Revenue", color: "#ef4444" }
+  ];
+
+  const formatNumber = (value: number) => value.toLocaleString();
+  const formatRevenue = (value: number) => `$${Math.round(value).toLocaleString()}`;
+  
+  return (
+    <div className="mb-6 animate-fade-in">
+      <h3 className="text-lg font-semibold mb-4">Aggregated Performance</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {metrics.map((metric) => {
+          const currentValue = data.length > 0 
+            ? data[data.length - 1][metric.key] 
+            : 0;
+            
+          const previousValue = data.length > 1 
+            ? data[data.length - 2][metric.key] 
+            : 0;
+            
+          const percentChange = previousValue !== 0 
+            ? ((currentValue - previousValue) / previousValue) * 100 
+            : 0;
+            
+          return (
+            <Card key={metric.key} className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium">{metric.name}</h4>
+                <div className="text-sm font-bold">
+                  {metric.key === "REVENUE" 
+                    ? formatRevenue(currentValue) 
+                    : formatNumber(currentValue)}
+                </div>
+              </div>
+              <div className="h-16">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data}>
+                    <Line
+                      type="monotone"
+                      dataKey={metric.key}
+                      stroke={metric.color}
+                      strokeWidth={2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [
+                        metric.key === "REVENUE" 
+                          ? formatRevenue(value) 
+                          : formatNumber(value),
+                        metric.name
+                      ]}
+                      contentStyle={{ fontSize: '0.75rem' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-1 text-xs">
+                <span className={percentChange >= 0 ? "text-green-500" : "text-red-500"}>
+                  {percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%
+                </span>
+                <span className="text-muted-foreground ml-1">vs previous</span>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const DashboardContent = ({ 
   data, 
@@ -229,6 +313,11 @@ const DashboardContent = ({
           />
         </TabsContent>
         <TabsContent value="sparks">
+          {filteredDataByLiveStatus.length > 0 && (
+            <AggregatedSparkCharts 
+              data={filteredDataByLiveStatus.filter(row => row.DATE !== 'Totals')}
+            />
+          )}
           <CampaignSparkCharts data={showLiveOnly ? filteredDataByLiveStatus : filteredData} dateRange={dateRange} />
         </TabsContent>
       </Tabs>
