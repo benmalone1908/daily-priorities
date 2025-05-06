@@ -11,86 +11,236 @@ import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDat
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { Card } from "@/components/ui/card";
-import { ResponsiveContainer, LineChart, Line, Tooltip } from "recharts";
+import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
+import { getColorClasses } from "@/utils/anomalyColors";
+import { TrendingDown, TrendingUp } from "lucide-react";
 
-// Aggregated Spark Charts component
+// Improved Aggregated Spark Charts component that matches the campaign row style
 const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
-  if (!data || data.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground text-center py-4">
-        No data available for aggregated view
-      </div>
-    );
+  const { showAggregatedSparkCharts } = useCampaignFilter();
+  
+  if (!showAggregatedSparkCharts || !data || data.length === 0) {
+    return null;
   }
 
-  const metrics = [
-    { key: "IMPRESSIONS", name: "Impressions", color: "#4ade80" },
-    { key: "CLICKS", name: "Clicks", color: "#f59e0b" },
-    { key: "REVENUE", name: "Revenue", color: "#ef4444" }
-  ];
+  // Group data by date for time series
+  const timeSeriesData = useMemo(() => {
+    const dateGroups: Record<string, any> = {};
+    
+    data.forEach(row => {
+      if (!row || !row.DATE || row.DATE === 'Totals') return;
+      
+      const dateStr = String(row.DATE).trim();
+      if (!dateGroups[dateStr]) {
+        dateGroups[dateStr] = {
+          date: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          TRANSACTIONS: 0
+        };
+      }
+      
+      dateGroups[dateStr].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+      dateGroups[dateStr].CLICKS += Number(row.CLICKS) || 0;
+      dateGroups[dateStr].REVENUE += Number(row.REVENUE) || 0;
+      dateGroups[dateStr].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+    });
+    
+    return Object.values(dateGroups).sort((a: any, b: any) => {
+      try {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      } catch (err) {
+        return 0;
+      }
+    });
+  }, [data]);
+  
+  // Calculate totals
+  const totals = useMemo(() => {
+    let impressions = 0;
+    let clicks = 0;
+    let revenue = 0;
+    let transactions = 0;
+    
+    timeSeriesData.forEach(day => {
+      impressions += Number(day.IMPRESSIONS) || 0;
+      clicks += Number(day.CLICKS) || 0;
+      revenue += Number(day.REVENUE) || 0;
+      transactions += Number(day.TRANSACTIONS) || 0;
+    });
+    
+    const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+    const spend = (impressions * 15) / 1000; // Estimated spend based on $15 CPM
+    const roas = spend > 0 ? revenue / spend : 0;
+    
+    return { impressions, clicks, ctr, revenue, transactions, roas };
+  }, [timeSeriesData]);
+  
+  // Calculate trends (comparing last two data points)
+  const trends = useMemo(() => {
+    if (timeSeriesData.length < 2) return {
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+      revenue: 0,
+      transactions: 0,
+      roas: 0
+    };
+    
+    const last = timeSeriesData[timeSeriesData.length - 1];
+    const secondLast = timeSeriesData[timeSeriesData.length - 2];
+    
+    const lastCTR = last.IMPRESSIONS > 0 ? (last.CLICKS / last.IMPRESSIONS) * 100 : 0;
+    const secondLastCTR = secondLast.IMPRESSIONS > 0 ? (secondLast.CLICKS / secondLast.IMPRESSIONS) * 100 : 0;
+    
+    const lastSpend = (last.IMPRESSIONS * 15) / 1000;
+    const secondLastSpend = (secondLast.IMPRESSIONS * 15) / 1000;
+    
+    const lastROAS = lastSpend > 0 ? last.REVENUE / lastSpend : 0;
+    const secondLastROAS = secondLastSpend > 0 ? secondLast.REVENUE / secondLastSpend : 0;
+    
+    return {
+      impressions: calculatePercentChange(last.IMPRESSIONS, secondLast.IMPRESSIONS),
+      clicks: calculatePercentChange(last.CLICKS, secondLast.CLICKS),
+      ctr: calculatePercentChange(lastCTR, secondLastCTR),
+      revenue: calculatePercentChange(last.REVENUE, secondLast.REVENUE),
+      transactions: calculatePercentChange(last.TRANSACTIONS, secondLast.TRANSACTIONS),
+      roas: calculatePercentChange(lastROAS, secondLastROAS)
+    };
+  }, [timeSeriesData]);
+  
+  function calculatePercentChange(current: number, previous: number): number {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  }
 
-  const formatNumber = (value: number) => value.toLocaleString();
-  const formatRevenue = (value: number) => `$${Math.round(value).toLocaleString()}`;
+  // Format functions
+  const formatNumber = (value: number): string => value.toLocaleString();
+  const formatRevenue = (value: number): string => `$${Math.round(value).toLocaleString()}`;
+  const formatCTR = (value: number): string => `${value.toFixed(2)}%`;
+  const formatROAS = (value: number): string => value.toFixed(2);
+  
+  // Render a metric card with chart
+  const renderMetricCard = (title: string, value: number, trend: number, formatter: (val: number) => string, data: any[], dataKey: string, color: string) => {
+    const colorClass = getColorClasses(trend).split(' ').find(c => c.startsWith('text-')) || '';
+    
+    return (
+      <Card className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h4 className="text-sm font-medium">{title}</h4>
+            <div className="text-base font-bold mt-1">
+              {formatter(value)}
+            </div>
+          </div>
+          
+          <div className={`flex items-center text-xs ${colorClass} mt-1`}>
+            {trend > 0 ? (
+              <TrendingUp className="mr-1 h-3 w-3" />
+            ) : (
+              <TrendingDown className="mr-1 h-3 w-3" />
+            )}
+            <span>
+              {trend > 0 ? "+" : ""}
+              {trend.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+        
+        <div className="h-16 mt-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={color} stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <Area 
+                type="monotone" 
+                dataKey={dataKey} 
+                stroke={color} 
+                fillOpacity={1}
+                fill={`url(#gradient-${title})`} 
+                dot={false}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+    );
+  };
   
   return (
-    <div className="mb-6 animate-fade-in">
-      <h3 className="text-lg font-semibold mb-4">Aggregated Performance</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {metrics.map((metric) => {
-          const currentValue = data.length > 0 
-            ? data[data.length - 1][metric.key] 
-            : 0;
-            
-          const previousValue = data.length > 1 
-            ? data[data.length - 2][metric.key] 
-            : 0;
-            
-          const percentChange = previousValue !== 0 
-            ? ((currentValue - previousValue) / previousValue) * 100 
-            : 0;
-            
-          return (
-            <Card key={metric.key} className="p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-sm font-medium">{metric.name}</h4>
-                <div className="text-sm font-bold">
-                  {metric.key === "REVENUE" 
-                    ? formatRevenue(currentValue) 
-                    : formatNumber(currentValue)}
-                </div>
-              </div>
-              <div className="h-16">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
-                    <Line
-                      type="monotone"
-                      dataKey={metric.key}
-                      stroke={metric.color}
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [
-                        metric.key === "REVENUE" 
-                          ? formatRevenue(value) 
-                          : formatNumber(value),
-                        metric.name
-                      ]}
-                      contentStyle={{ fontSize: '0.75rem' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-1 text-xs">
-                <span className={percentChange >= 0 ? "text-green-500" : "text-red-500"}>
-                  {percentChange >= 0 ? "+" : ""}{percentChange.toFixed(1)}%
-                </span>
-                <span className="text-muted-foreground ml-1">vs previous</span>
-              </div>
-            </Card>
-          );
-        })}
+    <div className="mb-8 animate-fade-in">
+      <div className="flex items-center mb-4">
+        <h3 className="text-lg font-semibold">All Campaigns</h3>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {renderMetricCard(
+          "Impressions", 
+          totals.impressions, 
+          trends.impressions, 
+          formatNumber, 
+          timeSeriesData, 
+          "IMPRESSIONS", 
+          "#4ade80"
+        )}
+        
+        {renderMetricCard(
+          "Clicks", 
+          totals.clicks, 
+          trends.clicks, 
+          formatNumber, 
+          timeSeriesData, 
+          "CLICKS", 
+          "#f59e0b"
+        )}
+        
+        {renderMetricCard(
+          "CTR", 
+          totals.ctr, 
+          trends.ctr, 
+          formatCTR, 
+          timeSeriesData.map(d => ({...d, CTR: d.IMPRESSIONS > 0 ? (d.CLICKS / d.IMPRESSIONS) * 100 : 0})), 
+          "CTR", 
+          "#0ea5e9"
+        )}
+        
+        {renderMetricCard(
+          "Transactions", 
+          totals.transactions, 
+          trends.transactions, 
+          formatNumber, 
+          timeSeriesData, 
+          "TRANSACTIONS", 
+          "#8b5cf6"
+        )}
+        
+        {renderMetricCard(
+          "Revenue", 
+          totals.revenue, 
+          trends.revenue, 
+          formatRevenue, 
+          timeSeriesData, 
+          "REVENUE", 
+          "#ef4444"
+        )}
+        
+        {renderMetricCard(
+          "ROAS", 
+          totals.roas, 
+          trends.roas, 
+          formatROAS, 
+          timeSeriesData.map(d => {
+            const spend = (d.IMPRESSIONS * 15) / 1000;
+            return {...d, ROAS: spend > 0 ? d.REVENUE / spend : 0};
+          }), 
+          "ROAS", 
+          "#d946ef"
+        )}
       </div>
     </div>
   );
@@ -313,11 +463,9 @@ const DashboardContent = ({
           />
         </TabsContent>
         <TabsContent value="sparks">
-          {filteredDataByLiveStatus.length > 0 && (
-            <AggregatedSparkCharts 
-              data={filteredDataByLiveStatus.filter(row => row.DATE !== 'Totals')}
-            />
-          )}
+          <AggregatedSparkCharts 
+            data={filteredDataByLiveStatus.filter(row => row.DATE !== 'Totals')}
+          />
           <CampaignSparkCharts data={showLiveOnly ? filteredDataByLiveStatus : filteredData} dateRange={dateRange} />
         </TabsContent>
       </Tabs>

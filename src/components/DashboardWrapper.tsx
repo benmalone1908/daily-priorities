@@ -58,13 +58,15 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
           date: dateStr,
           IMPRESSIONS: 0,
           CLICKS: 0,
-          REVENUE: 0
+          REVENUE: 0,
+          TRANSACTIONS: 0
         };
       }
       
       dateGroups[dateStr].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
       dateGroups[dateStr].CLICKS += Number(row.CLICKS) || 0;
       dateGroups[dateStr].REVENUE += Number(row.REVENUE) || 0;
+      dateGroups[dateStr].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
     });
     
     return Object.values(dateGroups).sort((a: any, b: any) => {
