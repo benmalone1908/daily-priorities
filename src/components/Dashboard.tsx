@@ -558,10 +558,10 @@ const Dashboard = ({
 
   const formatCTR = (value: number) => {
     try {
-      return `${value.toFixed(2)}%`;
+      return `${value.toFixed(3)}%`;
     } catch (error) {
       console.error("Error formatting CTR:", error);
-      return "0.00%";
+      return "0.000%";
     }
   };
 
@@ -581,10 +581,10 @@ const Dashboard = ({
 
   const formatAOV = (value: number) => {
     try {
-      return `$${Math.round(value).toLocaleString()}`;
+      return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
     } catch (error) {
       console.error("Error formatting AOV:", error);
-      return "$0";
+      return "$0.00";
     }
   };
 
