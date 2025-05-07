@@ -35,7 +35,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const match = campaignName.match(/SM:\s+([^-]+)/);
+      // Updated regex to correctly capture advertiser names before hyphens
+      const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
       const advertiser = match ? match[1].trim() : "";
       if (advertiser) advertiserSet.add(advertiser);
     });

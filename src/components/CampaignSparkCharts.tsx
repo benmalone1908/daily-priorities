@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
@@ -61,7 +62,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     
     data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const match = campaignName.match(/SM:\s+([^-]+)/);
+      // Updated regex to correctly capture advertiser names before hyphens
+      const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
       const advertiser = match ? match[1].trim() : "";
       if (advertiser) advertisers.add(advertiser);
     });
@@ -178,7 +180,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers]);
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
-    const match = campaignName.match(/SM:\s+([^-]+)/);
+    // Updated regex to correctly capture advertiser names before hyphens
+    const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
     return match ? match[1].trim() : "";
   };
 
