@@ -1,12 +1,13 @@
 
 import * as React from "react";
-import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks } from "lucide-react";
+import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 
 export interface Option {
   value: string;
@@ -33,6 +34,7 @@ export function MultiSelect({
   containerClassName,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const handleSelect = (value: string) => {
     if (selected.includes(value)) {
@@ -49,6 +51,13 @@ export function MultiSelect({
       onChange(options.map(option => option.value));
     }
   };
+  
+  const filteredOptions = React.useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    return options.filter(option => 
+      option.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [options, searchQuery]);
 
   return (
     <div className={containerClassName}>
@@ -67,6 +76,17 @@ export function MultiSelect({
           </button>
         </PopoverTrigger>
         <PopoverContent className={cn("p-0 bg-background shadow-lg", popoverClassName)} align="start">
+          <div className="p-2 border-b">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-full border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            </div>
+          </div>
           <div className="max-h-[300px] overflow-auto p-1">
             <div
               className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
@@ -81,7 +101,7 @@ export function MultiSelect({
               </div>
               <span className="truncate">Select All</span>
             </div>
-            {options.map((option) => (
+            {filteredOptions.map((option) => (
               <div
                 key={option.value}
                 className={cn(
@@ -102,6 +122,11 @@ export function MultiSelect({
                 </span>
               </div>
             ))}
+            {filteredOptions.length === 0 && (
+              <div className="py-2 px-2 text-sm text-center text-muted-foreground">
+                No options found
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>

@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -18,6 +17,8 @@ interface DashboardWrapperProps {
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
+  const { extractAdvertiserName } = useCampaignFilter();
+  
   // Get sorted campaign options from the filtered data
   const sortedCampaignOptions = useMemo(() => {
     const campaignSet = new Set<string>();
@@ -33,16 +34,32 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   const sortedAdvertiserOptions = useMemo(() => {
     const advertiserSet = new Set<string>();
     
+    // Add debug logging
+    console.log('-------- Extracting advertisers in DashboardWrapper --------');
+    
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      // Updated regex to correctly capture advertiser names before hyphens
-      const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
-      const advertiser = match ? match[1].trim() : "";
+      // Check for Sol Flower specifically
+      if (campaignName.includes('Sol Flower')) {
+        console.log(`Processing Sol Flower campaign: "${campaignName}"`);
+      }
+      
+      // Use shared function to extract advertiser names
+      const advertiser = extractAdvertiserName(campaignName);
+      
+      // Debug logging for Sol Flower campaigns
+      if (campaignName.includes('Sol Flower')) {
+        console.log(`Extracted advertiser: "${advertiser}" from campaign: "${campaignName}"`);
+      }
+      
       if (advertiser) advertiserSet.add(advertiser);
     });
     
+    console.log('Total unique advertisers found:', advertiserSet.size);
+    console.log('Advertiser list:', Array.from(advertiserSet).sort());
+    
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
-  }, [props.data]);
+  }, [props.data, extractAdvertiserName]);
 
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
