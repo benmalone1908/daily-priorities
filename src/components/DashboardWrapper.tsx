@@ -34,29 +34,34 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   const sortedAdvertiserOptions = useMemo(() => {
     const advertiserSet = new Set<string>();
     
-    // Add debug logging
     console.log('-------- Extracting advertisers in DashboardWrapper --------');
     
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      // Check for Sol Flower specifically
-      if (campaignName.includes('Sol Flower')) {
-        console.log(`Processing Sol Flower campaign: "${campaignName}"`);
-      }
       
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
       
-      // Debug logging for Sol Flower campaigns
+      // Additional explicit logging for Sol Flower
       if (campaignName.includes('Sol Flower')) {
-        console.log(`Extracted advertiser: "${advertiser}" from campaign: "${campaignName}"`);
+        console.log(`Sol Flower campaign found: "${campaignName}" -> Extracted: "${advertiser}"`);
       }
       
-      if (advertiser) advertiserSet.add(advertiser);
+      if (advertiser) {
+        advertiserSet.add(advertiser);
+        // Log when adding Sol Flower to the set
+        if (advertiser === "Sol Flower") {
+          console.log(`Added "Sol Flower" to advertiser set, current size: ${advertiserSet.size}`);
+        }
+      }
     });
     
     console.log('Total unique advertisers found:', advertiserSet.size);
     console.log('Advertiser list:', Array.from(advertiserSet).sort());
+    
+    // Check if Sol Flower exists in the final set
+    const hasSolFlower = advertiserSet.has("Sol Flower");
+    console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
     
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
   }, [props.data, extractAdvertiserName]);

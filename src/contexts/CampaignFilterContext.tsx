@@ -22,10 +22,21 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAdvertiserName = (campaignName: string): string => {
     if (!campaignName) return "";
     
-    // Try the regex approach first
-    const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
+    console.log(`Trying to extract advertiser from: "${campaignName}"`);
+    
+    // Special case for Sol Flower
+    if (campaignName.includes('Sol Flower')) {
+      console.log(`Found Sol Flower campaign: "${campaignName}"`);
+      return "Sol Flower";
+    }
+    
+    // Try the lookahead regex approach
+    const regex = /SM:\s+(.*?)(?=-)/;
+    const match = campaignName.match(regex);
     if (match && match[1]) {
-      return match[1].trim();
+      const extracted = match[1].trim();
+      console.log(`Regex extraction result: "${extracted}" from "${campaignName}"`);
+      return extracted;
     }
     
     // Fallback to splitting by hyphen if the regex fails
@@ -36,16 +47,31 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       
       if (firstPart.startsWith('SM:')) {
         // Extract everything after "SM:"
-        return firstPart.substring(3).trim();
+        const extracted = firstPart.substring(3).trim();
+        console.log(`Fallback extraction result: "${extracted}" from "${campaignName}"`);
+        return extracted;
       }
     }
     
+    console.log(`Failed to extract advertiser from: "${campaignName}"`);
     return "";
   };
 
-  // Log out any Sol Flower campaigns for debugging
+  // Log some test cases for debugging
   useEffect(() => {
-    console.log("CampaignFilterContext ready for advertiser extraction");
+    console.log("Testing advertiser extraction with special cases:");
+    const testCases = [
+      "SM: Sol Flower-Tucson Foothills-241030",
+      "SM: Sol Flower-Tempe University-241030",
+      "SM: ABC Company-Campaign Name-123456",
+      "SM: XYZ Inc - With Space - 987654",
+      "SM: Something Else"
+    ];
+    
+    testCases.forEach(test => {
+      const result = extractAdvertiserName(test);
+      console.log(`Test: "${test}" -> "${result}"`);
+    });
   }, []);
 
   return (
