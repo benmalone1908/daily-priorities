@@ -40,6 +40,26 @@ const SparkChartModal = ({
   valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
   labelFormatter = (label) => label,
 }: SparkChartModalProps) => {
+  // For percentage metrics (like CTR and ROAS), we need to properly format the domain
+  const isPercentageMetric = dataKey === "ctr" || title.includes("CTR");
+  const isRoasMetric = dataKey === "roas" || title.includes("ROAS");
+  
+  // Determine min and max values for better Y-axis scaling
+  const values = data.map(item => parseFloat(item[dataKey]) || 0);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  
+  // Add a small buffer to the min/max for better visualization
+  const yAxisDomain = [
+    Math.max(0, minValue * 0.9),  // Ensure we don't go below zero
+    maxValue * 1.1                 // Add 10% buffer at the top
+  ];
+
+  // Handle edge cases where all values are zero
+  if (maxValue === 0 && minValue === 0) {
+    yAxisDomain[1] = isPercentageMetric ? 1 : 10;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
@@ -63,6 +83,8 @@ const SparkChartModal = ({
               <YAxis 
                 tick={{ fontSize: 12 }}
                 tickFormatter={valueFormatter}
+                domain={yAxisDomain}
+                allowDecimals={true}
               />
               <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
               <Tooltip 
