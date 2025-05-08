@@ -40,12 +40,15 @@ const SparkChartModal = ({
   valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
   labelFormatter = (label) => label,
 }: SparkChartModalProps) => {
+  // Case-insensitive key matching for metrics
+  const lowerDataKey = dataKey.toLowerCase();
+  
   // For percentage metrics (like CTR and ROAS), detect by both key and title
-  const isPercentageMetric = dataKey === "ctr" || 
+  const isPercentageMetric = lowerDataKey === "ctr" || 
                             title.toLowerCase().includes("ctr") || 
                             title.toLowerCase().includes("click-through");
   
-  const isRoasMetric = dataKey === "roas" || 
+  const isRoasMetric = lowerDataKey === "roas" || 
                       title.toLowerCase().includes("roas") || 
                       title.toLowerCase().includes("return on");
   
@@ -53,6 +56,9 @@ const SparkChartModal = ({
   console.log(`SparkChartModal rendering for: "${title}"`);
   console.log(`dataKey: "${dataKey}" | isPercentage: ${isPercentageMetric} | isRoas: ${isRoasMetric}`);
   console.log("Data length:", data?.length || 0);
+  if (data?.length > 0) {
+    console.log("Sample data point:", JSON.stringify(data[0], null, 2));
+  }
   
   // Safety check for data
   if (!data || data.length === 0) {
@@ -71,18 +77,31 @@ const SparkChartModal = ({
     );
   }
   
-  // Process values with detailed logging
+  // Process values with detailed logging and case-insensitive key matching
   const values = data.map((item, index) => {
-    // Handle both object access and direct value
+    // Try multiple key variations (lowercase, uppercase, original)
     let rawValue;
     if (typeof item === 'object' && item !== null) {
+      // Try original case first
       rawValue = item[dataKey];
+      
+      // If not found, try lowercase
+      if (rawValue === undefined) {
+        const lowerCaseKey = dataKey.toLowerCase();
+        rawValue = item[lowerCaseKey];
+      }
+      
+      // If still not found, try uppercase
+      if (rawValue === undefined) {
+        const upperCaseKey = dataKey.toUpperCase();
+        rawValue = item[upperCaseKey];
+      }
     } else {
       rawValue = item;
     }
     
     const value = parseFloat(rawValue);
-    console.log(`Data point ${index}: raw="${rawValue}", parsed=${value}, date=${item.date || 'unknown'}`);
+    console.log(`Data point ${index}: raw="${rawValue}", parsed=${value}, keys=${Object.keys(item).join(',')}}`);
     return isNaN(value) ? 0 : value;
   });
   
@@ -147,6 +166,26 @@ const SparkChartModal = ({
     }
   };
 
+  // Create a case-insensitive accessor function for the Area component
+  const dataKeyAccessor = (item: any) => {
+    if (!item) return 0;
+    
+    // Try original case
+    let value = item[dataKey];
+    
+    // Try lowercase if original not found
+    if (value === undefined) {
+      value = item[dataKey.toLowerCase()];
+    }
+    
+    // Try uppercase if still not found
+    if (value === undefined) {
+      value = item[dataKey.toUpperCase()];
+    }
+    
+    return parseFloat(value) || 0;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
@@ -158,7 +197,6 @@ const SparkChartModal = ({
             <AreaChart 
               data={data} 
               margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
-              onMouseMove={(e) => console.log("Chart mouse event:", e)}
             >
               <defs>
                 <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
@@ -192,7 +230,7 @@ const SparkChartModal = ({
               />
               <Area
                 type="monotone"
-                dataKey={dataKey}
+                dataKey={dataKeyAccessor}
                 stroke={color}
                 strokeWidth={2}
                 fill={`url(#modal-${gradientId})`}
