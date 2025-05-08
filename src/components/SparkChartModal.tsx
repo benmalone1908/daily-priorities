@@ -40,67 +40,112 @@ const SparkChartModal = ({
   valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
   labelFormatter = (label) => label,
 }: SparkChartModalProps) => {
-  // For percentage metrics (like CTR and ROAS), we need to properly format the domain
-  const isPercentageMetric = dataKey === "ctr" || title.toLowerCase().includes("ctr");
-  const isRoasMetric = dataKey === "roas" || title.toLowerCase().includes("roas");
+  // For percentage metrics (like CTR and ROAS), detect by both key and title
+  const isPercentageMetric = dataKey === "ctr" || 
+                            title.toLowerCase().includes("ctr") || 
+                            title.toLowerCase().includes("click-through");
   
-  // Log for debugging
-  console.log(`Chart modal opened for: ${title}, dataKey: ${dataKey}, isPercentage: ${isPercentageMetric}, isRoas: ${isRoasMetric}`);
-  console.log("Modal data:", data);
+  const isRoasMetric = dataKey === "roas" || 
+                      title.toLowerCase().includes("roas") || 
+                      title.toLowerCase().includes("return on");
   
-  // Make sure we parse values correctly - some might be strings
-  const values = data.map(item => {
-    const value = parseFloat(item[dataKey]);
-    console.log(`Value for ${item.date || 'unknown date'}: ${value}`);
+  // Detailed logging for debugging
+  console.log(`SparkChartModal rendering for: "${title}"`);
+  console.log(`dataKey: "${dataKey}" | isPercentage: ${isPercentageMetric} | isRoas: ${isRoasMetric}`);
+  console.log("Data length:", data?.length || 0);
+  
+  // Safety check for data
+  if (!data || data.length === 0) {
+    console.log("No data available for chart!");
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="h-[400px] flex items-center justify-center">
+            No data available to display
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Process values with detailed logging
+  const values = data.map((item, index) => {
+    // Handle both object access and direct value
+    let rawValue;
+    if (typeof item === 'object' && item !== null) {
+      rawValue = item[dataKey];
+    } else {
+      rawValue = item;
+    }
+    
+    const value = parseFloat(rawValue);
+    console.log(`Data point ${index}: raw="${rawValue}", parsed=${value}, date=${item.date || 'unknown'}`);
     return isNaN(value) ? 0 : value;
   });
   
-  console.log("Processed values:", values);
+  console.log("All processed values:", values);
   
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
+  // Calculate domain with safety checks
+  let minValue = 0;
+  let maxValue = 0;
+  
+  if (values.length > 0) {
+    minValue = Math.min(...values);
+    maxValue = Math.max(...values);
+  }
   
   console.log(`Min value: ${minValue}, Max value: ${maxValue}`);
   
-  // For percentage metrics, ensure the scale makes sense
-  let yAxisDomain: [number, number];
+  // Determine Y-axis domain with special handling for percentages
+  let yAxisDomain: [number, number] = [0, 0];
   
-  if (isPercentageMetric || isRoasMetric) {
-    // For percentages, typically we want to show 0-100% range or at least include 0
-    // unless all values are concentrated in a narrow range
-    const range = maxValue - minValue;
+  if (isPercentageMetric) {
+    console.log("Using percentage scaling for Y-axis");
     
-    if (range < 0.05 && maxValue > 0) {
-      // Very narrow range (less than 5 percentage points), create a more focused view
-      yAxisDomain = [
-        Math.max(0, minValue - range), // Go slightly below min but not below 0
-        maxValue + range * 2 // Give some headroom
-      ];
+    // For CTR (typically very small numbers like 0.01 = 1%)
+    if (maxValue <= 0.0001) {
+      // No meaningful data, show a small range
+      yAxisDomain = [0, 0.001]; // 0% to 0.1%
+    } else if (maxValue < 0.1) {
+      // Small percentages, scale appropriately
+      yAxisDomain = [0, Math.max(maxValue * 2, 0.01)];
     } else {
-      // Normal case - start at 0 with some headroom at top
-      yAxisDomain = [0, Math.max(maxValue * 1.2, minValue + 0.1)];
+      // Normal percentage range
+      yAxisDomain = [0, Math.max(maxValue * 1.2, 0.5)];
+    }
+  } else if (isRoasMetric) {
+    console.log("Using ROAS scaling for Y-axis");
+    
+    // For ROAS, we want to start at 0 but give enough headroom
+    if (maxValue <= 0.0001) {
+      yAxisDomain = [0, 2]; // Default range if no data
+    } else {
+      yAxisDomain = [0, Math.max(maxValue * 1.5, 2)];
     }
   } else {
-    // For non-percentage metrics, provide a good visual range
+    console.log("Using standard metric scaling for Y-axis");
+    // For standard metrics like impressions, clicks
     yAxisDomain = [
-      Math.max(0, minValue * 0.9), // Ensure we don't go below zero
-      maxValue * 1.1              // Add 10% buffer at the top
+      Math.max(0, minValue * 0.9), // Don't go below zero
+      Math.max(10, maxValue * 1.1)  // Ensure minimum visibility and add 10% at top
     ];
   }
   
-  // Handle edge cases where all values are zero or very close to zero
-  if (maxValue < 0.001) {
-    yAxisDomain = isPercentageMetric ? [0, 0.01] : [0, 10];
-  }
+  console.log(`Final Y-axis domain: [${yAxisDomain[0]}, ${yAxisDomain[1]}]`);
   
-  console.log(`Using Y-axis domain: [${yAxisDomain[0]}, ${yAxisDomain[1]}]`);
-
-  // For percentage metrics, create a special formatter
-  const effectiveFormatter = isPercentageMetric 
-    ? (value: number) => `${(value * 100).toFixed(2)}%` 
-    : isRoasMetric 
-      ? (value: number) => `${value.toFixed(2)}x`
-      : valueFormatter;
+  // Create appropriate formatters for different metric types
+  const effectiveFormatter = (value: number): string => {
+    if (isPercentageMetric) {
+      return `${(value * 100).toFixed(2)}%`;
+    } else if (isRoasMetric) {
+      return `${value.toFixed(2)}x`;
+    } else {
+      return valueFormatter(value);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,7 +155,11 @@ const SparkChartModal = ({
         </DialogHeader>
         <div className="h-[400px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+            <AreaChart 
+              data={data} 
+              margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
+              onMouseMove={(e) => console.log("Chart mouse event:", e)}
+            >
               <defs>
                 <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.8} />
@@ -139,6 +188,7 @@ const SparkChartModal = ({
                   padding: "8px 12px",
                   boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
                 }}
+                isAnimationActive={false}
               />
               <Area
                 type="monotone"
