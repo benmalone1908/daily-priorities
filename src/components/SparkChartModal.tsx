@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -77,35 +76,83 @@ const SparkChartModal = ({
     );
   }
   
-  // Process values with detailed logging and case-insensitive key matching
-  const values = data.map((item, index) => {
-    // Try multiple key variations (lowercase, uppercase, original)
-    let rawValue;
-    if (typeof item === 'object' && item !== null) {
-      // Try original case first
-      rawValue = item[dataKey];
+  // Create processed data array with calculated CTR and ROAS if needed
+  const processedData = data.map(item => {
+    if (!item) return null;
+    
+    const newItem = { ...item };
+    
+    // For CTR, calculate or use existing value
+    if (isPercentageMetric) {
+      // Try to find CTR in different case variations
+      let ctrValue = item.CTR ?? item.ctr ?? item.Ctr;
       
-      // If not found, try lowercase
-      if (rawValue === undefined) {
-        const lowerCaseKey = dataKey.toLowerCase();
-        rawValue = item[lowerCaseKey];
+      // If CTR not found but we have impressions and clicks, calculate it
+      if (ctrValue === undefined) {
+        const impressions = Number(item.IMPRESSIONS || item.impressions || 0);
+        const clicks = Number(item.CLICKS || item.clicks || 0);
+        if (impressions > 0) {
+          ctrValue = (clicks / impressions) * 100; // As percentage
+        } else {
+          ctrValue = 0;
+        }
       }
       
-      // If still not found, try uppercase
-      if (rawValue === undefined) {
-        const upperCaseKey = dataKey.toUpperCase();
-        rawValue = item[upperCaseKey];
-      }
-    } else {
-      rawValue = item;
+      // Ensure it's a valid number
+      ctrValue = Number(ctrValue);
+      if (isNaN(ctrValue)) ctrValue = 0;
+      
+      // Add both uppercase and lowercase versions
+      newItem.CTR = ctrValue;
+      newItem.ctr = ctrValue;
     }
     
+    // For ROAS, calculate or use existing value
+    if (isRoasMetric) {
+      // Try to find ROAS in different case variations
+      let roasValue = item.ROAS ?? item.roas ?? item.Roas;
+      
+      // If ROAS not found but we have revenue and spend info, calculate it
+      if (roasValue === undefined) {
+        const revenue = Number(item.REVENUE || item.revenue || 0);
+        // Use provided spend or estimate from impressions using $15 CPM
+        const spend = Number(item.SPEND || item.spend || 
+          ((Number(item.IMPRESSIONS || item.impressions || 0) * 15) / 1000));
+        
+        if (spend > 0) {
+          roasValue = revenue / spend;
+        } else {
+          roasValue = 0;
+        }
+      }
+      
+      // Ensure it's a valid number
+      roasValue = Number(roasValue);
+      if (isNaN(roasValue)) roasValue = 0;
+      
+      // Add both uppercase and lowercase versions
+      newItem.ROAS = roasValue;
+      newItem.roas = roasValue;
+    }
+    
+    return newItem;
+  }).filter(Boolean);
+  
+  console.log("Processed data for chart:", processedData.slice(0, 2));
+  
+  // Process values with detailed logging
+  const values = processedData.map((item, index) => {
+    // Create a consistent dataKey that matches our processed data
+    const effectiveKey = isPercentageMetric ? (isPercentageMetric ? "CTR" : dataKey.toUpperCase()) :
+                        isRoasMetric ? "ROAS" : dataKey.toUpperCase();
+    
+    const rawValue = item[effectiveKey];
     const value = parseFloat(rawValue);
-    console.log(`Data point ${index}: raw="${rawValue}", parsed=${value}, keys=${Object.keys(item).join(',')}}`);
+    console.log(`Data point ${index}: key="${effectiveKey}", raw=${rawValue}, parsed=${value}`);
     return isNaN(value) ? 0 : value;
   });
   
-  console.log("All processed values:", values);
+  console.log("All processed values:", values.slice(0, 5), "...");
   
   // Calculate domain with safety checks
   let minValue = 0;
@@ -170,6 +217,14 @@ const SparkChartModal = ({
   const dataKeyAccessor = (item: any) => {
     if (!item) return 0;
     
+    // For percentage metrics, use the consistent keys we created
+    if (isPercentageMetric) {
+      return parseFloat(item.CTR) || 0;
+    } else if (isRoasMetric) {
+      return parseFloat(item.ROAS) || 0;
+    }
+    
+    // Otherwise try all case variations
     // Try original case
     let value = item[dataKey];
     
@@ -195,7 +250,7 @@ const SparkChartModal = ({
         <div className="h-[400px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart 
-              data={data} 
+              data={processedData} 
               margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
             >
               <defs>
