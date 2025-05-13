@@ -21,8 +21,6 @@ import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
-import SpendSettings from "./SpendSettings";
-import { useSpendSettings } from "@/contexts/SpendSettingsContext";
 
 interface DashboardProps {
   data: any[];
@@ -83,9 +81,6 @@ const Dashboard = ({
   const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
   const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
-  
-  // Add the useSpendSettings hook to get access to the spend settings
-  const { spendMode, customCPM } = useSpendSettings();
   
   const renderCountRef = useRef(0);
   
@@ -548,17 +543,10 @@ const Dashboard = ({
     }
   };
 
-  const calculateROAS = (revenue: number, impressions: number, spend?: number): number => {
+  const calculateROAS = (revenue: number, impressions: number): number => {
     try {
-      if (spendMode === 'default' && spend !== undefined && spend > 0) {
-        // Use the SPEND value from the CSV if available
-        return revenue / spend;
-      } else {
-        // Calculate spend based on CPM (default or custom)
-        const cpm = spendMode === 'custom' ? customCPM : 15;
-        const calculatedSpend = (impressions * cpm) / 1000;
-        return calculatedSpend > 0 ? revenue / calculatedSpend : 0;
-      }
+      const spend = (impressions * 15) / 1000;
+      return spend > 0 ? revenue / spend : 0;
     } catch (error) {
       console.error("Error calculating ROAS:", error);
       return 0;
@@ -747,37 +735,7 @@ const Dashboard = ({
       const nonEmptyPeriods = periods.filter(period => period.count > 0);
       
       nonEmptyPeriods.forEach(period => {
-        // Check if we have SPEND data in the rows
-        const hasSpendData = period.count > 0 && spendMode === 'default';
-        let totalSpend = 0;
-        
-        if (hasSpendData) {
-          // Try to calculate total spend from the SPEND column
-          rowsWithDates.forEach((row: any) => {
-            try {
-              const rowDate = row.parsedDate;
-              const rowTime = rowDate.getTime();
-              const periodStart = new Date(period.periodStart);
-              const periodEnd = new Date(period.periodEnd);
-              periodEnd.setHours(23, 59, 59, 999);
-              
-              if (rowTime >= periodStart.getTime() && rowTime <= periodEnd.getTime()) {
-                totalSpend += Number(row.SPEND || 0);
-              }
-            } catch (err) {
-              console.error("Error summing spend data:", err);
-            }
-          });
-        }
-        
-        // Calculate ROAS based on current spend mode
-        if (totalSpend > 0 && spendMode === 'default') {
-          // If we have valid spend data and are using default mode
-          period.ROAS = period.REVENUE / totalSpend;
-        } else {
-          // Otherwise calculate based on CPM
-          period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
-        }
+        period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
       
       console.log(`Final periods with data: ${nonEmptyPeriods.length}`);
@@ -850,7 +808,7 @@ const Dashboard = ({
     const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
     console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
     setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod, spendMode, customCPM]);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => {
     console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
@@ -1237,7 +1195,6 @@ const Dashboard = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <SpendSettings />
               <div className="flex items-center gap-2 mr-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Period:</span>
