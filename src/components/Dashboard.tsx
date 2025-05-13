@@ -770,6 +770,7 @@ const Dashboard = ({
           });
         }
         
+        // Calculate ROAS based on current spend mode
         if (totalSpend > 0 && spendMode === 'default') {
           // If we have valid spend data and are using default mode
           period.ROAS = period.REVENUE / totalSpend;
@@ -849,7 +850,7 @@ const Dashboard = ({
     const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
     console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
     setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod, spendMode, customCPM]);
 
   const processedMetricsData = useMemo(() => {
     console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
