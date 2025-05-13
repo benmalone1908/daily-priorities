@@ -52,6 +52,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
   const { spendMode, customCPM } = useSpendSettings();
   
+  const [modalData, setModalData] = useState<ModalData>({
+    isOpen: false,
+    itemName: "",
+    metricType: "impressions",
+    data: []
+  });
+  
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
