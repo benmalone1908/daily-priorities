@@ -1,5 +1,5 @@
-
 import { useMemo, useState, useEffect } from "react";
+import { useSpendSettings } from "@/contexts/SpendSettingsContext";
 import { 
   ResponsiveContainer,
   Tooltip,
@@ -50,12 +50,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
-  const [modalData, setModalData] = useState<ModalData>({
-    isOpen: false,
-    itemName: "",
-    metricType: "impressions",
-    data: []
-  });
+  const { spendMode, customCPM } = useSpendSettings();
   
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
@@ -224,6 +219,11 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
     console.log(`Generating chart data from ${filteredData.length} rows`);
     
+    const calculateSpend = (impressions: number) => {
+      const cpmRate = spendMode === 'custom' ? customCPM : 15;
+      return (impressions / 1000) * cpmRate;
+    };
+    
     if (viewMode === "campaign") {
       const campaigns = Array.from(new Set(filteredData
         .filter(row => row.DATE !== 'Totals')
@@ -268,7 +268,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             const clicks = Number(row.CLICKS) || 0;
             const transactions = Number(row.TRANSACTIONS) || 0;
             const revenue = Number(row.REVENUE) || 0;
-            const spend = (impressions / 1000) * 15;
+            const spend = calculateSpend(impressions);
             const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
             const roas = spend > 0 ? revenue / spend : 0;
             
@@ -365,7 +365,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             const clicks = dateRows.reduce((sum, row) => sum + (Number(row.CLICKS) || 0), 0);
             const transactions = dateRows.reduce((sum, row) => sum + (Number(row.TRANSACTIONS) || 0), 0);
             const revenue = dateRows.reduce((sum, row) => sum + (Number(row.REVENUE) || 0), 0);
-            const spend = (impressions / 1000) * 15;
+            const spend = calculateSpend(impressions);
             const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
             const roas = spend > 0 ? revenue / spend : 0;
             
@@ -410,7 +410,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         };
       }).filter(Boolean);
     }
-  }, [filteredData, viewMode]);
+  }, [filteredData, viewMode, spendMode, customCPM]);
 
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
