@@ -20,9 +20,17 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
   const processDataInChunks = (results: Papa.ParseResult<unknown>) => {
     try {
+      // Add null check for results and results.data
+      if (!results || !results.data) {
+        toast.error("Invalid CSV format or empty data");
+        setIsProcessing(false);
+        return;
+      }
+      
       // Ensure we have data
-      if (!results.data || !Array.isArray(results.data) || results.data.length < 2) {
+      if (!Array.isArray(results.data) || results.data.length < 2) {
         toast.error("Invalid CSV format or empty file");
+        setIsProcessing(false);
         return;
       }
       
@@ -32,6 +40,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
       const headers = results.data[0] as string[];
       if (!Array.isArray(headers) || headers.length === 0) {
         toast.error("Invalid or missing headers in CSV");
+        setIsProcessing(false);
         return;
       }
       
@@ -55,6 +64,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
       if (missingHeaders.length > 0) {
         toast.error(`Missing required headers: ${missingHeaders.join(", ")}`);
+        setIsProcessing(false);
         return;
       }
 
@@ -230,10 +240,8 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
           },
           header: false,
           skipEmptyLines: true,
-          // Remove the transformHeader function as it's causing the error
-          // transformHeader: (header) => header.trim(),
-          // Streaming for large files
-          worker: true, // Use a web worker if possible
+          // Remove worker option to process in main thread to debug
+          // worker: true, // Use a web worker if possible
           chunk: (results, parser) => {
             // This is only called if streaming
             console.log(`Parsing chunk with ${results.data.length} rows`);
