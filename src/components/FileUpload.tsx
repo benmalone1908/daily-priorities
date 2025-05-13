@@ -230,7 +230,8 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
           },
           header: false,
           skipEmptyLines: true,
-          transformHeader: (header) => header.trim(),
+          // Remove the transformHeader function as it's causing the error
+          // transformHeader: (header) => header.trim(),
           // Streaming for large files
           worker: true, // Use a web worker if possible
           chunk: (results, parser) => {
