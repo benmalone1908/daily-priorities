@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -9,6 +10,7 @@ import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { SpendSettingsProvider } from "@/contexts/SpendSettingsContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { Card } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
@@ -689,30 +691,32 @@ const Index = () => {
 
   return (
     <CampaignFilterProvider>
-      <div className="container py-8 space-y-8">
-        {data.length === 0 ? (
-          <>
-            <div className="space-y-2 text-center animate-fade-in">
-              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                Display Campaign Monitor
-              </h1>
-              <p className="text-muted-foreground">
-                Upload your campaign data to identify potential anomalies and trends
-              </p>
-            </div>
+      <SpendSettingsProvider>
+        <div className="container py-8 space-y-8">
+          {data.length === 0 ? (
+            <>
+              <div className="space-y-2 text-center animate-fade-in">
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                  Display Campaign Monitor
+                </h1>
+                <p className="text-muted-foreground">
+                  Upload your campaign data to identify potential anomalies and trends
+                </p>
+              </div>
 
-            <div className="max-w-2xl mx-auto">
-              <FileUpload onDataLoaded={handleDataLoaded} />
-            </div>
-          </>
-        ) : (
-          <DashboardContent 
-            data={data} 
-            dateRange={dateRange} 
-            onDateRangeChange={setDateRange} 
-          />
-        )}
-      </div>
+              <div className="max-w-2xl mx-auto">
+                <FileUpload onDataLoaded={handleDataLoaded} />
+              </div>
+            </>
+          ) : (
+            <DashboardContent 
+              data={data} 
+              dateRange={dateRange} 
+              onDateRangeChange={setDateRange} 
+            />
+          )}
+        </div>
+      </SpendSettingsProvider>
     </CampaignFilterProvider>
   );
 };
