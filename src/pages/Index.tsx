@@ -59,7 +59,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           IMPRESSIONS: 0,
           CLICKS: 0,
           REVENUE: 0,
-          TRANSACTIONS: 0
+          TRANSACTIONS: 0,
+          SPEND: 0
         };
       }
       
@@ -67,6 +68,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
       dateGroups[dateStr].CLICKS += Number(row.CLICKS) || 0;
       dateGroups[dateStr].REVENUE += Number(row.REVENUE) || 0;
       dateGroups[dateStr].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+      dateGroups[dateStr].SPEND += Number(row.SPEND) || 0;
     });
     
     return Object.values(dateGroups).sort((a: any, b: any) => {
@@ -84,19 +86,20 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
     let clicks = 0;
     let revenue = 0;
     let transactions = 0;
+    let spend = 0;
     
     timeSeriesData.forEach(day => {
       impressions += Number(day.IMPRESSIONS) || 0;
       clicks += Number(day.CLICKS) || 0;
       revenue += Number(day.REVENUE) || 0;
       transactions += Number(day.TRANSACTIONS) || 0;
+      spend += Number(day.SPEND) || 0;
     });
     
     const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-    const spend = (impressions * 15) / 1000; // Estimated spend based on $15 CPM
     const roas = spend > 0 ? revenue / spend : 0;
     
-    return { impressions, clicks, ctr, revenue, transactions, roas };
+    return { impressions, clicks, ctr, revenue, transactions, spend, roas };
   }, [timeSeriesData]);
   
   // Calculate trends (comparing last two data points)
@@ -116,11 +119,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
     const lastCTR = last.IMPRESSIONS > 0 ? (last.CLICKS / last.IMPRESSIONS) * 100 : 0;
     const secondLastCTR = secondLast.IMPRESSIONS > 0 ? (secondLast.CLICKS / secondLast.IMPRESSIONS) * 100 : 0;
     
-    const lastSpend = (last.IMPRESSIONS * 15) / 1000;
-    const secondLastSpend = (secondLast.IMPRESSIONS * 15) / 1000;
-    
-    const lastROAS = lastSpend > 0 ? last.REVENUE / lastSpend : 0;
-    const secondLastROAS = secondLastSpend > 0 ? secondLast.REVENUE / secondLastSpend : 0;
+    const lastROAS = last.SPEND > 0 ? last.REVENUE / last.SPEND : 0;
+    const secondLastROAS = secondLast.SPEND > 0 ? secondLast.REVENUE / secondLast.SPEND : 0;
     
     return {
       impressions: calculatePercentChange(last.IMPRESSIONS, secondLast.IMPRESSIONS),
@@ -316,8 +316,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
           trends.roas, 
           formatROAS, 
           timeSeriesData.map(d => {
-            const spend = (d.IMPRESSIONS * 15) / 1000;
-            return {...d, ROAS: spend > 0 ? d.REVENUE / spend : 0};
+            return {...d, ROAS: d.SPEND > 0 ? d.REVENUE / d.SPEND : 0};
           }), 
           "ROAS", 
           "#d946ef",
@@ -624,7 +623,7 @@ const Index = () => {
       
       console.log(`Loaded ${uploadedData.length} rows of data`);
       
-      const requiredFields = ["DATE", "CAMPAIGN ORDER NAME", "IMPRESSIONS", "CLICKS", "REVENUE"];
+      const requiredFields = ["DATE", "CAMPAIGN ORDER NAME", "IMPRESSIONS", "CLICKS", "REVENUE", "SPEND"];
       
       if (uploadedData[0]) {
         const missingFields = requiredFields.filter(field => 

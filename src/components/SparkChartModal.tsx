@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Dialog,
@@ -115,9 +116,8 @@ const SparkChartModal = ({
       // If ROAS not found but we have revenue and spend info, calculate it
       if (roasValue === undefined) {
         const revenue = Number(item.REVENUE || item.revenue || 0);
-        // Use provided spend or estimate from impressions using $15 CPM
-        const spend = Number(item.SPEND || item.spend || 
-          ((Number(item.IMPRESSIONS || item.impressions || 0) * 15) / 1000));
+        // Use provided spend directly instead of estimating
+        const spend = Number(item.SPEND || item.spend || 0);
         
         if (spend > 0) {
           roasValue = revenue / spend;
