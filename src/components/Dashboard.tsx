@@ -84,6 +84,9 @@ const Dashboard = ({
   const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
   
+  // Add the useSpendSettings hook to get access to the spend settings
+  const { spendMode, customCPM } = useSpendSettings();
+  
   const renderCountRef = useRef(0);
   
   useEffect(() => {
