@@ -20,26 +20,53 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
   const processDataInChunks = (results: Papa.ParseResult<unknown>) => {
     try {
-      // Add null check for results and results.data
-      if (!results || !results.data) {
-        toast.error("Invalid CSV format or empty data");
+      console.log("CSV parse results received:", results);
+      
+      // Add more verbose null check for results and results.data
+      if (!results) {
+        console.error("Parse results object is null or undefined");
+        toast.error("Failed to parse CSV data: results object is empty");
         setIsProcessing(false);
         return;
       }
       
-      // Ensure we have data
-      if (!Array.isArray(results.data) || results.data.length < 2) {
-        toast.error("Invalid CSV format or empty file");
+      if (!results.data) {
+        console.error("Parse results has no data property");
+        toast.error("Failed to parse CSV data: no data found");
         setIsProcessing(false);
         return;
       }
       
-      console.log("CSV parse results:", results);
+      // Ensure we have data and check its structure
+      if (!Array.isArray(results.data)) {
+        console.error("Parse results data is not an array:", results.data);
+        toast.error("Invalid CSV format: data is not in expected format");
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (results.data.length < 2) {
+        console.error("Parse results data has insufficient rows:", results.data.length);
+        toast.error("CSV file must contain header row and at least one data row");
+        setIsProcessing(false);
+        return;
+      }
+      
+      console.log("CSV first row:", results.data[0]);
+      console.log("CSV second row:", results.data[1]);
       
       // Ensure headers are provided and properly formatted
       const headers = results.data[0] as string[];
-      if (!Array.isArray(headers) || headers.length === 0) {
-        toast.error("Invalid or missing headers in CSV");
+      if (!Array.isArray(headers)) {
+        console.error("Headers row is not an array:", headers);
+        toast.error("Invalid CSV format: headers not found");
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (headers.length === 0) {
+        console.error("Headers array is empty");
+        toast.error("Invalid CSV format: empty headers row");
         setIsProcessing(false);
         return;
       }
@@ -56,13 +83,22 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
       ];
 
       // Convert headers to uppercase for case-insensitive comparison
-      const upperHeaders = headers.map(header => String(header).toUpperCase());
+      const upperHeaders = headers.map(header => {
+        if (typeof header !== 'string') {
+          console.warn(`Found non-string header: ${typeof header}, value:`, header);
+          return String(header || "").toUpperCase();
+        }
+        return String(header).toUpperCase();
+      });
+      
+      console.log("Normalized headers:", upperHeaders);
       
       const missingHeaders = requiredHeaders.filter(
         (header) => !upperHeaders.includes(header)
       );
 
       if (missingHeaders.length > 0) {
+        console.error("Missing required headers:", missingHeaders);
         toast.error(`Missing required headers: ${missingHeaders.join(", ")}`);
         setIsProcessing(false);
         return;
@@ -70,13 +106,15 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
       // Map header indices for quicker access
       const headerIndexMap = headers.reduce((map, header, index) => {
-        map[header.toUpperCase()] = index;
+        map[String(header).toUpperCase()] = index;
         return map;
       }, {} as Record<string, number>);
 
       // Get data rows (excluding header row)
       const dataRows = results.data.slice(1);
       const totalRows = dataRows.length;
+      
+      console.log(`Processing ${totalRows} data rows`);
       
       // Prepare array for processed data
       const processedData: Record<string, any>[] = [];
@@ -89,6 +127,12 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
         for (let i = startIndex; i < endIndex; i++) {
           const row = dataRows[i];
           const rowIndex = i;
+          
+          // Skip empty or invalid rows
+          if (!row) {
+            console.warn(`Row ${rowIndex + 1} is empty or null`);
+            continue;
+          }
           
           if (!Array.isArray(row)) {
             console.warn(`Row ${rowIndex + 1} is not an array:`, row);
@@ -110,12 +154,12 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
           
           // Process each header
           for (let j = 0; j < headers.length; j++) {
-            const header = headers[j];
+            const header = String(headers[j] || "");
             const value = row[j];
             
             if (header.toUpperCase() === "DATE") {
               try {
-                const dateStr = String(value).trim();
+                const dateStr = String(value || "").trim();
                 
                 // Keep original date format
                 processed[header] = dateStr;
@@ -230,6 +274,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
     if (file) {
       try {
         toast.info("Processing CSV file...");
+        console.log("Starting to parse CSV file:", file.name, "size:", file.size);
         
         Papa.parse(file, {
           complete: processDataInChunks,
@@ -238,14 +283,12 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
             toast.error(`CSV parsing error: ${error.message}`);
             setIsProcessing(false);
           },
-          header: false,
+          header: false, // We'll handle headers manually for more control
           skipEmptyLines: true,
-          // Remove worker option to process in main thread to debug
-          // worker: true, // Use a web worker if possible
-          chunk: (results, parser) => {
-            // This is only called if streaming
-            console.log(`Parsing chunk with ${results.data.length} rows`);
-          },
+          delimiter: "", // Auto-detect delimiter
+          comments: false,
+          encoding: "UTF-8",
+          delimitersToGuess: [',', '\t', '|', ';'],
         });
       } catch (err) {
         console.error("Error parsing CSV:", err);
