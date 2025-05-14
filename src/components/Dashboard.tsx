@@ -882,24 +882,24 @@ const Dashboard = ({
         
         const dayOfWeek = date.getDay();
         
-        const weekNumber = Math.floor((date.getTime() - setToStartOfDay(date).getTime()) / (1000 * 60 * 60 * 24 * 7));
+        // Calculate week number - fixed calculation
+        const weekNumber = Math.floor(date.getTime() / (1000 * 60 * 60 * 24 * 7));
         
-        const weekStart = setToStartOfDay(date);
-        const weekEnd = setToEndOfDay(weekStart);
+        const weekStart = new Date(normalizedDate);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Set to start of week (Sunday)
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // Set to end of week (Saturday)
         
         const weekData: WeeklyData = {
           periodStart: weekStart.toISOString(),
           periodEnd: weekEnd.toISOString(),
-          IMPRESSIONS: 0,
-          CLICKS: 0,
-          REVENUE: 0,
+          IMPRESSIONS: Number(row.IMPRESSIONS) || 0,
+          CLICKS: Number(row.CLICKS) || 0,
+          REVENUE: Number(row.REVENUE) || 0,
           ROAS: 0,
           count: 1
         };
-        
-        weekData.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        weekData.CLICKS += Number(row.CLICKS) || 0;
-        weekData.REVENUE += Number(row.REVENUE) || 0;
         
         weekData.ROAS = calculateROAS(weekData.REVENUE, weekData.IMPRESSIONS);
         
