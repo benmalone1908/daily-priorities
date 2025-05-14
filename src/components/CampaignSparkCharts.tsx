@@ -692,8 +692,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         </div>
       </div>
       
-      {
-        chartData.map((item) => {
+      {chartData.map((item) => {
         const impressionsId = `impressions-${getSafeId(item.name)}`;
         const clicksId = `clicks-${getSafeId(item.name)}`;
         const transactionsId = `transactions-${getSafeId(item.name)}`;
