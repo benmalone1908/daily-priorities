@@ -1,6 +1,26 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
+// Agency prefix to full name mapping
+const AGENCY_MAPPING: { [key: string]: string } = {
+  "6D": "6 Degrees Media",
+  "BLO": "Be Local One",
+  "FLD": "Fieldtest",
+  "HD": "Highday",
+  "HG": "Happy Greens",
+  "HRB": "Herb.co",
+  "MJ": "MediaJel",
+  "NLMC": "NLMC",
+  "NP": "Noble People",
+  "PRP": "Propaganda Creative",
+  "SM": "SM Services",
+  "TF": "Tact Firm",
+  "TRN": "Terrayn",
+  "2RS": "Two Rivers",
+  "W&T": "Water & Trees",
+  "WWX": "Wunderworx"
+};
+
 type CampaignFilterContextType = {
   showLiveOnly: boolean;
   setShowLiveOnly: (value: boolean) => void;
@@ -10,6 +30,9 @@ type CampaignFilterContextType = {
   setShowDebugInfo: (value: boolean) => void;
   extractAdvertiserName: (campaignName: string) => string;
   isTestCampaign: (campaignName: string) => boolean;
+  extractAgencyPrefix: (campaignName: string) => string;
+  getAgencyFromPrefix: (prefix: string) => string;
+  getAllAgencies: () => string[];
 };
 
 const CampaignFilterContext = createContext<CampaignFilterContextType | undefined>(undefined);
@@ -29,6 +52,41 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
            lowerCaseName.includes('draft');
   };
 
+  // Helper function to extract agency prefix from campaign name
+  const extractAgencyPrefix = (campaignName: string): string => {
+    if (!campaignName) return "";
+    
+    console.log(`Extracting agency prefix from: "${campaignName}"`);
+    
+    // Try with format like "2001367: HRB: District Cannabis-241217"
+    // Or standard format like "HRB: District Cannabis-241217"
+    const prefixRegex = new RegExp(`(?:\\d+:\\s*)?([\\w&]+):`);
+    const match = campaignName.match(prefixRegex);
+    
+    if (match && match[1]) {
+      const prefix = match[1].trim();
+      console.log(`Extracted agency prefix: "${prefix}" from "${campaignName}"`);
+      return prefix;
+    }
+    
+    console.log(`Failed to extract agency prefix from: "${campaignName}"`);
+    return "";
+  };
+
+  // Helper function to get full agency name from prefix
+  const getAgencyFromPrefix = (prefix: string): string => {
+    if (!prefix) return "";
+    
+    const agency = AGENCY_MAPPING[prefix] || "";
+    console.log(`Mapped agency prefix "${prefix}" to "${agency}"`);
+    return agency;
+  };
+
+  // Helper function to get all available agencies
+  const getAllAgencies = (): string[] => {
+    return Object.values(AGENCY_MAPPING).sort();
+  };
+
   // Helper function to extract advertiser name from campaign name
   const extractAdvertiserName = (campaignName: string): string => {
     if (!campaignName) return "";
@@ -42,18 +100,18 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     }
     
     // Try with the expanded agency prefixes regex
-    const agencyPrefixes = "SM|2RS|6D|BLO|FLD|HD|HG|HRB|MJ|NLMC|NP|PRP|TF|TRN|W&T|WWX";
-    const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
+    const agencyPrefixes = Object.keys(AGENCY_MAPPING).join('|');
+    const regex = new RegExp(`(?:\\d+:\\s*)?(?:${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
     
     const match = campaignName.match(regex);
-    if (match && match[2]) {
-      const extracted = match[2].trim();
+    if (match && match[1]) {
+      const extracted = match[1].trim();
       console.log(`Regex extraction result: "${extracted}" from "${campaignName}"`);
       return extracted;
     }
     
     // Fallback to splitting by hyphen if the regex fails
-    const prefixMatch = campaignName.match(new RegExp(`^(${agencyPrefixes}):`));
+    const prefixMatch = campaignName.match(new RegExp(`^(?:\\d+:\\s*)?(?:${agencyPrefixes}):`));
     if (prefixMatch && campaignName.includes('-')) {
       const parts = campaignName.split('-');
       // First part should contain "PREFIX: Advertiser"
@@ -99,10 +157,27 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       "This doesn't match any pattern"
     ];
     
+    console.log("\nTesting agency prefix extraction:");
     testCases.forEach(test => {
-      const result = extractAdvertiserName(test);
-      const isTest = isTestCampaign(test);
-      console.log(`Test: "${test}" -> "${result}", Is Test Campaign: ${isTest}`);
+      const prefix = extractAgencyPrefix(test);
+      const agency = getAgencyFromPrefix(prefix);
+      const advertiser = extractAdvertiserName(test);
+      console.log(`Test: "${test}" -> Prefix: "${prefix}", Agency: "${agency}", Advertiser: "${advertiser}"`);
+    });
+    
+    // Test some sample prefixes with number format
+    console.log("\nTesting agency extraction with number prefixes:");
+    const numberPrefixCases = [
+      "2001367: HRB: District Cannabis-241217",
+      "1234567: SM: Some Client-Campaign-123456",
+      "7654321: 2RS: Another Client-Details-456789"
+    ];
+    
+    numberPrefixCases.forEach(test => {
+      const prefix = extractAgencyPrefix(test);
+      const agency = getAgencyFromPrefix(prefix);
+      const advertiser = extractAdvertiserName(test);
+      console.log(`Test: "${test}" -> Prefix: "${prefix}", Agency: "${agency}", Advertiser: "${advertiser}"`);
     });
     
     // Test some test/demo/draft cases
@@ -129,7 +204,10 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       showDebugInfo,
       setShowDebugInfo,
       extractAdvertiserName,
-      isTestCampaign
+      isTestCampaign,
+      extractAgencyPrefix,
+      getAgencyFromPrefix,
+      getAllAgencies
     }}>
       {children}
     </CampaignFilterContext.Provider>

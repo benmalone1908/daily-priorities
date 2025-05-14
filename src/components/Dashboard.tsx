@@ -21,6 +21,7 @@ import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface DashboardProps {
   data: any[];
@@ -29,11 +30,17 @@ interface DashboardProps {
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
+  selectedMetricsAgencies?: string[];
+  selectedRevenueAgencies?: string[];
+  selectedWeeklyAgencies?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
+  onMetricsAgenciesChange?: (selected: string[]) => void;
+  onRevenueAgenciesChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
+  sortedAgencyOptions?: string[];
   aggregatedMetricsData?: any[]; // Added this property
 }
 
@@ -65,15 +72,21 @@ const Dashboard = ({
   selectedMetricsCampaigns = [],
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
+  selectedMetricsAgencies = [],
+  selectedRevenueAgencies = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
+  onMetricsAgenciesChange,
+  onRevenueAgenciesChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
+  sortedAgencyOptions = [],
   aggregatedMetricsData
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
+  const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
@@ -81,6 +94,8 @@ const Dashboard = ({
   const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
   const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
+  
+  const { extractAgencyPrefix, getAgencyFromPrefix } = useCampaignFilter();
   
   const renderCountRef = useRef(0);
   
@@ -115,6 +130,13 @@ const Dashboard = ({
     return Array.from(uniqueAdvertisers).sort();
   }, [data, sortedAdvertiserOptions]);
 
+  const agencyOptions: Option[] = useMemo(() => {
+    return (sortedAgencyOptions || []).map(agency => ({
+      value: agency,
+      label: agency
+    }));
+  }, [sortedAgencyOptions]);
+
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
@@ -130,29 +152,63 @@ const Dashboard = ({
   }, [advertisers]);
 
   const filteredMetricsCampaignOptions = useMemo(() => {
-    if (!selectedMetricsAdvertisers.length) return campaignOptions;
+    if (!selectedMetricsAdvertisers.length && !selectedMetricsAgencies.length) return campaignOptions;
     
     return campaignOptions.filter(option => {
       const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedMetricsAdvertisers.includes(advertiser);
+      
+      // Filter by advertiser if selected
+      if (selectedMetricsAdvertisers.length > 0) {
+        const match = campaignName.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        if (!selectedMetricsAdvertisers.includes(advertiser)) {
+          return false;
+        }
+      }
+      
+      // Filter by agency if selected
+      if (selectedMetricsAgencies.length > 0) {
+        const prefix = extractAgencyPrefix(campaignName);
+        const agency = getAgencyFromPrefix(prefix);
+        if (!selectedMetricsAgencies.includes(agency)) {
+          return false;
+        }
+      }
+      
+      return true;
     });
-  }, [campaignOptions, selectedMetricsAdvertisers]);
+  }, [campaignOptions, selectedMetricsAdvertisers, selectedMetricsAgencies, extractAgencyPrefix, getAgencyFromPrefix]);
 
   const filteredRevenueCampaignOptions = useMemo(() => {
-    if (!selectedRevenueAdvertisers.length) return campaignOptions;
+    if (!selectedRevenueAdvertisers.length && !selectedRevenueAgencies.length) return campaignOptions;
     
     return campaignOptions.filter(option => {
       const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedRevenueAdvertisers.includes(advertiser);
+      
+      // Filter by advertiser if selected
+      if (selectedRevenueAdvertisers.length > 0) {
+        const match = campaignName.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        if (!selectedRevenueAdvertisers.includes(advertiser)) {
+          return false;
+        }
+      }
+      
+      // Filter by agency if selected
+      if (selectedRevenueAgencies.length > 0) {
+        const prefix = extractAgencyPrefix(campaignName);
+        const agency = getAgencyFromPrefix(prefix);
+        if (!selectedRevenueAgencies.includes(agency)) {
+          return false;
+        }
+      }
+      
+      return true;
     });
-  }, [campaignOptions, selectedRevenueAdvertisers]);
+  }, [campaignOptions, selectedRevenueAdvertisers, selectedRevenueAgencies, extractAgencyPrefix, getAgencyFromPrefix]);
 
   const filteredWeeklyCampaignOptions = useMemo(() => {
-    if (!selectedWeeklyAdvertisers.length) {
+    if (!selectedWeeklyAdvertisers.length && !selectedWeeklyAgencies.length) {
       return [
         { value: "all", label: "All Campaigns" },
         ...campaignOptions
@@ -161,16 +217,39 @@ const Dashboard = ({
     
     const filteredCampaigns = campaignOptions.filter(option => {
       const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedWeeklyAdvertisers.includes(advertiser);
+      
+      // Filter by advertiser if selected
+      if (selectedWeeklyAdvertisers.length > 0) {
+        const match = campaignName.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        if (!selectedWeeklyAdvertisers.includes(advertiser)) {
+          return false;
+        }
+      }
+      
+      // Filter by agency if selected
+      if (selectedWeeklyAgencies.length > 0) {
+        const prefix = extractAgencyPrefix(campaignName);
+        const agency = getAgencyFromPrefix(prefix);
+        if (!selectedWeeklyAgencies.includes(agency)) {
+          return false;
+        }
+      }
+      
+      return true;
     });
     
     return [
       { value: "all", label: "All Campaigns" },
       ...filteredCampaigns
     ];
-  }, [campaignOptions, selectedWeeklyAdvertisers]);
+  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies, extractAgencyPrefix, getAgencyFromPrefix]);
+
+  const handleMetricsAgenciesChange = (selected: string[]) => {
+    if (onMetricsAgenciesChange) {
+      onMetricsAgenciesChange(selected);
+    }
+  };
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
@@ -202,9 +281,28 @@ const Dashboard = ({
     }
   };
 
+  const handleRevenueAgenciesChange = (selected: string[]) => {
+    if (onRevenueAgenciesChange) {
+      onRevenueAgenciesChange(selected);
+    }
+  };
+
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     if (onRevenueAdvertisersChange) {
       onRevenueAdvertisersChange(selected);
+    }
+  };
+
+  const handleWeeklyAgenciesChange = (selected: string[]) => {
+    setSelectedWeeklyAgencies(selected);
+    
+    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
+      const prefix = extractAgencyPrefix(selectedWeeklyCampaign);
+      const agency = getAgencyFromPrefix(prefix);
+      
+      if (!selected.includes(agency)) {
+        setSelectedWeeklyCampaign("all");
+      }
     }
   };
 
@@ -590,8 +688,8 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
-    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, period=${periodLength}`);
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
     
     if (!data || data.length === 0) {
       console.log("No data available for weekly comparison");
@@ -606,6 +704,18 @@ const Dashboard = ({
       if (allDates.length > 0) {
         const sortedDates = [...allDates].sort();
         console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
+      }
+      
+      if (selectedAgencies.length > 0) {
+        filteredData = filteredData.filter((row: any) => {
+          if (!row["CAMPAIGN ORDER NAME"]) return false;
+          
+          const campaignName = row["CAMPAIGN ORDER NAME"];
+          const prefix = extractAgencyPrefix(campaignName);
+          const agency = getAgencyFromPrefix(prefix);
+          return selectedAgencies.includes(agency);
+        });
+        console.log(`After agency filter: ${filteredData.length} rows`);
       }
       
       if (selectedAdvertisers.length > 0) {
@@ -805,10 +915,15 @@ const Dashboard = ({
 
   useEffect(() => {
     console.log("Calculating weekly data...");
-    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+    const calculatedData = getWeeklyData(
+      selectedWeeklyCampaign, 
+      selectedWeeklyAdvertisers, 
+      selectedWeeklyAgencies,
+      comparisonPeriod
+    );
     console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
     setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => {
     console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
@@ -1005,6 +1120,16 @@ const Dashboard = ({
             </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
+              {agencyOptions.length > 0 && onMetricsAgenciesChange && (
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedMetricsAgencies}
+                  onChange={handleMetricsAgenciesChange}
+                  placeholder="Agency"
+                  className="w-[200px]"
+                />
+              )}
+              
               {advertiserOptions.length > 0 && (
                 <MultiSelect
                   options={advertiserOptions}
@@ -1102,6 +1227,16 @@ const Dashboard = ({
             </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
+              {onRevenueAgenciesChange && agencyOptions.length > 0 && (
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedRevenueAgencies}
+                  onChange={handleRevenueAgenciesChange}
+                  placeholder="Agency"
+                  className="w-[200px]"
+                />
+              )}
+              
               {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
                 <MultiSelect
                   options={advertiserOptions}
@@ -1220,6 +1355,14 @@ const Dashboard = ({
               </div>
               <span className="text-sm font-medium mr-1">Filter by:</span>
               <div className="flex items-center gap-2">
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedWeeklyAgencies}
+                  onChange={handleWeeklyAgenciesChange}
+                  placeholder="Agency"
+                  className="w-[200px]"
+                />
+                
                 <MultiSelect
                   options={advertiserOptions}
                   selected={selectedWeeklyAdvertisers}

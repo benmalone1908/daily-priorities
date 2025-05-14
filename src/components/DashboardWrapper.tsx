@@ -12,13 +12,46 @@ interface DashboardWrapperProps {
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
+  selectedRevenueAgencies?: string[];
+  selectedMetricsAgencies?: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
+  onRevenueAgenciesChange?: (selected: string[]) => void;
+  onMetricsAgenciesChange?: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
-  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { extractAdvertiserName, isTestCampaign, extractAgencyPrefix, getAgencyFromPrefix } = useCampaignFilter();
+  
+  // Get sorted agency options from the filtered data
+  const sortedAgencyOptions = useMemo(() => {
+    const agencySet = new Set<string>();
+    
+    console.log('-------- Extracting agencies in DashboardWrapper --------');
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const prefix = extractAgencyPrefix(campaignName);
+      const agency = getAgencyFromPrefix(prefix);
+      
+      if (agency) {
+        agencySet.add(agency);
+        console.log(`Added agency: "${agency}" from campaign "${campaignName}"`);
+      }
+    });
+    
+    console.log('Total unique agencies found:', agencySet.size);
+    console.log('Agency list:', Array.from(agencySet).sort());
+    
+    return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
+  }, [props.data, extractAgencyPrefix, getAgencyFromPrefix, isTestCampaign]);
   
   // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
   const sortedCampaignOptions = useMemo(() => {
@@ -119,11 +152,16 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsCampaigns={props.selectedMetricsCampaigns}
       selectedRevenueCampaigns={props.selectedRevenueCampaigns}
       selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
+      selectedMetricsAgencies={props.selectedMetricsAgencies || []}
+      selectedRevenueAgencies={props.selectedRevenueAgencies || []}
       onMetricsCampaignsChange={props.onMetricsCampaignsChange}
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
+      onMetricsAgenciesChange={props.onMetricsAgenciesChange}
+      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
+      sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
     />
   );
