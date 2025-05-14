@@ -669,7 +669,7 @@ const Dashboard = ({
     return detectAnomalies(data);
   }, [data, anomalyPeriod]);
 
-  const getAggregatedData = (filteredData: any[]) => {
+  const getAggregatedData = (filteredData: any[]): any[] => {
     try {
       if (!filteredData || !filteredData.length) return [];
       
@@ -714,7 +714,11 @@ const Dashboard = ({
         dateGroups[normalizedDate].REVENUE += Number(row.REVENUE) || 0;
       });
 
-      const result: any[] = Object.values(dateGroups).sort((a: any, b: any) => {
+      // Explicitly cast the Object.values result to an array type
+      const result = Object.values(dateGroups) as any[];
+      
+      // Sort the results
+      result.sort((a: any, b: any) => {
         try {
           return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
         } catch (err) {
@@ -740,7 +744,7 @@ const Dashboard = ({
     }
   };
 
-  const getAggregatedDataByDayOfWeek = (filteredData: any[]) => {
+  const getAggregatedDataByDayOfWeek = (filteredData: any[]): any[] => {
     try {
       if (!filteredData || !filteredData.length) return [];
       
@@ -782,6 +786,7 @@ const Dashboard = ({
       
       console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
+      // Explicitly cast the Object.values result to an array type
       return Object.values(dayOfWeekGroups) as any[];
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
