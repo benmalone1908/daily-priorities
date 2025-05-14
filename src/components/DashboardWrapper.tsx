@@ -126,8 +126,67 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       }
     });
     
+    // Add debugging
+    console.log('Agency to Advertisers mapping:');
+    Object.entries(mapping).forEach(([agency, advertisers]) => {
+      console.log(`Agency: ${agency} -> Advertisers: ${Array.from(advertisers).join(', ')}`);
+    });
+    
     return mapping;
   }, [props.data, extractAgencyInfo, extractAdvertiserName, isTestCampaign]);
+  
+  // Create a mapping of agencies to campaigns
+  const agencyToCampaignsMap = useMemo(() => {
+    const mapping: Record<string, Set<string>> = {};
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const { agency } = extractAgencyInfo(campaignName);
+      
+      if (agency && campaignName) {
+        if (!mapping[agency]) {
+          mapping[agency] = new Set<string>();
+        }
+        mapping[agency].add(campaignName);
+      }
+    });
+    
+    console.log('Agency to Campaigns mapping:');
+    Object.entries(mapping).forEach(([agency, campaigns]) => {
+      console.log(`Agency: ${agency} -> # Campaigns: ${campaigns.size}`);
+    });
+    
+    return mapping;
+  }, [props.data, extractAgencyInfo, isTestCampaign]);
+  
+  // Create a mapping of advertisers to campaigns
+  const advertiserToCampaignsMap = useMemo(() => {
+    const mapping: Record<string, Set<string>> = {};
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const advertiser = extractAdvertiserName(campaignName);
+      
+      if (advertiser && campaignName) {
+        if (!mapping[advertiser]) {
+          mapping[advertiser] = new Set<string>();
+        }
+        mapping[advertiser].add(campaignName);
+      }
+    });
+    
+    return mapping;
+  }, [props.data, extractAdvertiserName, isTestCampaign]);
 
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
@@ -186,6 +245,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
       agencyToAdvertisersMap={agencyToAdvertisersMap}
+      agencyToCampaignsMap={agencyToCampaignsMap}
+      advertiserToCampaignsMap={advertiserToCampaignsMap}
     />
   );
 };

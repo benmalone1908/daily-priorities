@@ -1,5 +1,13 @@
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Add global error handler for better debugging
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+});
+
+// Enable React strict mode for better debugging
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);

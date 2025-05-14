@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -521,10 +520,17 @@ const DashboardContent = ({
 
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
+    
+    // Reset campaigns when advertisers change
+    setSelectedRevenueCampaigns([]);
   };
 
   const handleRevenueAgenciesChange = (selected: string[]) => {
     setSelectedRevenueAgencies(selected);
+    
+    // Reset advertisers and campaigns when agencies change
+    setSelectedRevenueAdvertisers([]);
+    setSelectedRevenueCampaigns([]);
   };
 
   const getDateRangeDisplayText = () => {
