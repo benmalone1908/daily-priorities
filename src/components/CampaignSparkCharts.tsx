@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
@@ -950,14 +949,15 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       
       {modalData.isOpen && (
         <SparkChartModal
-          isOpen={modalData.isOpen}
-          onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
+          open={modalData.isOpen}
+          onOpenChange={(open) => setModalData(prev => ({ ...prev, isOpen: open }))}
           title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType)?.title}`}
           data={modalData.data}
           dataKey={modalData.metricType}
           color={getMetricDetails(modalData.metricType)?.color || "#000"}
-          dateFormat="MMM d"
-          formatter={getMetricDetails(modalData.metricType)?.formatter}
+          gradientId={`modal-${modalData.metricType}`}
+          valueFormatter={getMetricDetails(modalData.metricType)?.formatter}
+          labelFormatter={(label) => label}
         />
       )}
     </div>
