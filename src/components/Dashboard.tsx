@@ -370,6 +370,34 @@ const Dashboard = ({
       }));
   }, [selectedWeeklyAgencies, advertisers, agencyToAdvertisersMap]);
 
+  const filteredWeeklyCampaignOptions = useMemo(() => {
+    let validCampaigns = campaigns;
+    
+    if (selectedWeeklyAgencies.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedWeeklyAgencies.includes(agency) && agency !== "";
+      });
+    }
+    
+    if (selectedWeeklyAdvertisers.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedWeeklyAdvertisers.includes(advertiser) && advertiser !== "";
+      });
+    }
+    
+    console.log(`Filtered weekly campaign options: ${validCampaigns.length} campaigns`);
+    
+    // Map strings to Option objects before returning
+    return validCampaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [campaigns, selectedWeeklyAgencies, selectedWeeklyAdvertisers, extractAgencyInfo, extractAdvertiserName]);
+
   const campaignOptions: Option[] = useMemo(() => {
     // If formattedCampaignOptions is provided, use it
     if (formattedCampaignOptions && formattedCampaignOptions.length > 0) {
@@ -1175,7 +1203,7 @@ const Dashboard = ({
                 />
                 
                 <MultiSelect
-                  options={filteredRevenueCampaignOptions}
+                  options={filteredWeeklyCampaignOptions}
                   selected={selectedWeeklyCampaigns}
                   onChange={onWeeklyCampaignsChange}
                   placeholder="Campaign"
