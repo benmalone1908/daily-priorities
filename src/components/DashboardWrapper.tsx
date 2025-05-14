@@ -240,13 +240,13 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
-  // Now we convert the string arrays to Option arrays when passing to Dashboard
-  // This is the key fix for the "no options found" issue
+  // Now we properly prepare both formats needed by the different components:
+  // 1. The raw string arrays needed by the Dashboard methods
   const campaignOptionsForDashboard = sortedCampaignOptions.map(option => option.value);
   const advertiserOptionsForDashboard = sortedAdvertiserOptions.map(option => option.value);
   const agencyOptionsForDashboard = sortedAgencyOptions.map(option => option.value);
 
-  // Pass all the sorted options to the Dashboard component with the correct types
+  // Pass all the sorted options to the Dashboard component
   return (
     <Dashboard
       data={props.data}
