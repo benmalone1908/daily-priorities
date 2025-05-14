@@ -913,7 +913,360 @@ const Dashboard = ({
   };
 
   return (
-    <div>Dashboard Content</div>
+    <div className="grid grid-cols-1 gap-8 animate-fade-in">
+      {/* Metrics Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Performance Metrics</h2>
+          
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={agencyOptions}
+                value={selectedMetricsAgencies}
+                onChange={handleMetricsAgenciesChange}
+                placeholder="Filter by Agency"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={filteredAdvertiserOptions}
+                value={selectedMetricsAdvertisers}
+                onChange={handleMetricsAdvertisersChange}
+                placeholder="Filter by Advertiser"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={filteredMetricsCampaignOptions}
+                value={selectedMetricsCampaigns}
+                onChange={onMetricsCampaignsChange || (() => {})}
+                placeholder="Filter by Campaign"
+              />
+            </div>
+            
+            <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value: string) => setMetricsViewMode(value as ChartViewMode)}>
+              <ToggleGroupItem value="date" aria-label="By Date">
+                <Calendar className="h-4 w-4 mr-1" />
+                Date
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week">
+                <Filter className="h-4 w-4 mr-1" />
+                Day
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
+        
+        {metricsData && metricsData.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <Card className="p-4">
+              <h3 className="text-sm font-medium mb-4">Impressions</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={metricsViewMode === "date" ? 
+                      getAggregatedData(metricsData) : 
+                      getAggregatedDataByDayOfWeek(metricsData)
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                      tick={{fontSize: 12}}
+                      tickFormatter={(value) => metricsViewMode === "date" ? 
+                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
+                        value
+                      }
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: number) => [value.toLocaleString(), "Impressions"]}
+                      labelFormatter={(label) => metricsViewMode === "date" ? 
+                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
+                        label
+                      }
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="IMPRESSIONS" 
+                      stroke="#4ade80" 
+                      activeDot={{ r: 6 }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+            
+            <Card className="p-4">
+              <h3 className="text-sm font-medium mb-4">Clicks</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={metricsViewMode === "date" ? 
+                      getAggregatedData(metricsData) : 
+                      getAggregatedDataByDayOfWeek(metricsData)
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                      tick={{fontSize: 12}}
+                      tickFormatter={(value) => metricsViewMode === "date" ? 
+                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
+                        value
+                      }
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: number) => [value.toLocaleString(), "Clicks"]}
+                      labelFormatter={(label) => metricsViewMode === "date" ? 
+                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
+                        label
+                      }
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="CLICKS" 
+                      stroke="#f59e0b" 
+                      activeDot={{ r: 6 }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+            
+            <Card className="p-4">
+              <h3 className="text-sm font-medium mb-4">CTR</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={
+                      (metricsViewMode === "date" ? 
+                        getAggregatedData(metricsData) : 
+                        getAggregatedDataByDayOfWeek(metricsData)
+                      ).map(item => ({
+                        ...item,
+                        CTR: calculateCTR(item.CLICKS, item.IMPRESSIONS)
+                      }))
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                      tick={{fontSize: 12}}
+                      tickFormatter={(value) => metricsViewMode === "date" ? 
+                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
+                        value
+                      }
+                    />
+                    <YAxis tickFormatter={(value) => `${value.toFixed(2)}%`} />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value.toFixed(3)}%`, "CTR"]}
+                      labelFormatter={(label) => metricsViewMode === "date" ? 
+                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
+                        label
+                      }
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="CTR" 
+                      stroke="#0ea5e9" 
+                      activeDot={{ r: 6 }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <Card className="p-4">
+            <p className="text-center text-muted-foreground">No metrics data available for the selected filters.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* Revenue Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Revenue Performance</h2>
+          
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={agencyOptions}
+                value={selectedRevenueAgencies}
+                onChange={handleRevenueAgenciesChange}
+                placeholder="Filter by Agency"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={filteredAdvertiserOptions}
+                value={selectedRevenueAdvertisers}
+                onChange={handleRevenueAdvertisersChange}
+                placeholder="Filter by Advertiser"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <MultiSelect
+                options={filteredRevenueCampaignOptions}
+                value={selectedRevenueCampaigns}
+                onChange={onRevenueCampaignsChange || (() => {})}
+                placeholder="Filter by Campaign"
+              />
+            </div>
+            
+            <ToggleGroup type="single" value={revenueViewMode} onValueChange={(value: string) => setRevenueViewMode(value as ChartViewMode)}>
+              <ToggleGroupItem value="date" aria-label="By Date">
+                <Calendar className="h-4 w-4 mr-1" />
+                Date
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week">
+                <Filter className="h-4 w-4 mr-1" />
+                Day
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
+        
+        {revenueData && revenueData.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="p-4">
+              <h3 className="text-sm font-medium mb-4">Revenue</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={revenueViewMode === "date" ? 
+                      getAggregatedData(revenueData) : 
+                      getAggregatedDataByDayOfWeek(revenueData)
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                      tick={{fontSize: 12}}
+                      tickFormatter={(value) => revenueViewMode === "date" ? 
+                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
+                        value
+                      }
+                    />
+                    <YAxis tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`} />
+                    <Tooltip 
+                      formatter={(value: number) => [`$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`, "Revenue"]}
+                      labelFormatter={(label) => revenueViewMode === "date" ? 
+                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
+                        label
+                      }
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="REVENUE" 
+                      stroke="#ef4444" 
+                      activeDot={{ r: 6 }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+            
+            <Card className="p-4">
+              <h3 className="text-sm font-medium mb-4">ROAS (Return on Ad Spend)</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={
+                      (revenueViewMode === "date" ? 
+                        getAggregatedData(revenueData) : 
+                        getAggregatedDataByDayOfWeek(revenueData)
+                      ).map(item => ({
+                        ...item,
+                        ROAS: calculateROAS(item.REVENUE, item.IMPRESSIONS)
+                      }))
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                      tick={{fontSize: 12}}
+                      tickFormatter={(value) => revenueViewMode === "date" ? 
+                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
+                        value
+                      }
+                    />
+                    <YAxis tickFormatter={(value) => value.toFixed(2)} />
+                    <Tooltip 
+                      formatter={(value: number) => [value.toFixed(2), "ROAS"]}
+                      labelFormatter={(label) => revenueViewMode === "date" ? 
+                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
+                        label
+                      }
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="ROAS" 
+                      stroke="#d946ef" 
+                      activeDot={{ r: 6 }}
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <Card className="p-4">
+            <p className="text-center text-muted-foreground">No revenue data available for the selected filters.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* Anomalies Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">
+            <div className="flex items-center">
+              <AlertTriangle className="mr-2 h-5 w-5 text-amber-500" />
+              Anomaly Detection 
+            </div>
+          </h2>
+          
+          <div className="flex items-center space-x-4">
+            <Select value={anomalyPeriod} onValueChange={(value) => setAnomalyPeriod(value as AnomalyPeriod)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Anomaly Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily Anomalies</SelectItem>
+                <SelectItem value="weekly">Weekly Anomalies</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Toggle 
+              pressed={showAnomalySection} 
+              onPressedChange={setShowAnomalySection}
+              aria-label="Toggle anomalies"
+            >
+              {showAnomalySection ? "Hide Details" : "Show Details"}
+            </Toggle>
+          </div>
+        </div>
+        
+        {showAnomalySection && (
+          <ScrollArea className="h-[400px]">
+            <AnomalyDetails anomalies={anomalies} />
+          </ScrollArea>
+        )}
+      </div>
+    </div>
   );
 };
 
