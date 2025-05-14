@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -8,7 +9,7 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
-import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { Card } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
@@ -355,9 +356,10 @@ const DashboardContent = ({
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
+  const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  const { showLiveOnly, extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
   const getMostRecentDate = () => {
     if (!data || data.length === 0) return null;
@@ -474,11 +476,32 @@ const DashboardContent = ({
     });
   };
 
-  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
+  const getFilteredDataByAgencies = (agencies: string[]) => {
+    if (!agencies.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const { agency } = extractAgencyInfo(campaignName);
+      return agencies.includes(agency);
+    });
+  };
+
+  const getFilteredDataByCampaignsAndAdvertisersAndAgencies = (
+    campaigns: string[], 
+    advertisers: string[], 
+    agencies: string[]
+  ) => {
     let filtered = filteredDataByLiveStatus;
     
+    if (agencies.length > 0) {
+      filtered = getFilteredDataByAgencies(agencies);
+    }
+    
     if (advertisers.length > 0) {
-      filtered = getFilteredDataByAdvertisers(advertisers);
+      filtered = filtered.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const advertiser = extractAdvertiserName(campaignName);
+        return advertisers.includes(advertiser);
+      });
     }
     
     if (campaigns.length > 0) {
@@ -498,6 +521,10 @@ const DashboardContent = ({
 
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
+  };
+
+  const handleRevenueAgenciesChange = (selected: string[]) => {
+    setSelectedRevenueAgencies(selected);
   };
 
   const getDateRangeDisplayText = () => {
@@ -556,13 +583,19 @@ const DashboardContent = ({
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
             metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-            revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
+            revenueData={getFilteredDataByCampaignsAndAdvertisersAndAgencies(
+              selectedRevenueCampaigns, 
+              selectedRevenueAdvertisers,
+              selectedRevenueAgencies
+            )}
             selectedMetricsCampaigns={selectedMetricsCampaigns}
             selectedRevenueCampaigns={selectedRevenueCampaigns}
             selectedRevenueAdvertisers={selectedRevenueAdvertisers}
+            selectedRevenueAgencies={selectedRevenueAgencies}
             onMetricsCampaignsChange={handleMetricsCampaignsChange}
             onRevenueCampaignsChange={handleRevenueCampaignsChange}
             onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+            onRevenueAgenciesChange={handleRevenueAgenciesChange}
           />
         </TabsContent>
         <TabsContent value="sparks">

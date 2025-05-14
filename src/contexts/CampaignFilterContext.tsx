@@ -1,6 +1,26 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
+// Define the agency mapping
+export const AGENCY_MAPPING: Record<string, string> = {
+  '2RS': '2RS',
+  '6D': '6 Degrees Media',
+  'BLO': 'Be Local One',
+  'FLD': 'Fieldtest',
+  'HD': 'Highday',
+  'HG': 'Happy Greens',
+  'HRB': 'Herb.co',
+  'MJ': 'MediaJel',
+  'NLMC': 'NLMC',
+  'NP': 'Noble People',
+  'PRP': 'Propaganda Creative',
+  'SM': 'SM Services',
+  'TF': 'Tact Firm',
+  'TRN': 'Terrayn',
+  'W&T': 'Water & Trees',
+  'WWX': 'Wunderworx'
+};
+
 type CampaignFilterContextType = {
   showLiveOnly: boolean;
   setShowLiveOnly: (value: boolean) => void;
@@ -9,6 +29,7 @@ type CampaignFilterContextType = {
   showDebugInfo: boolean;
   setShowDebugInfo: (value: boolean) => void;
   extractAdvertiserName: (campaignName: string) => string;
+  extractAgencyInfo: (campaignName: string) => { agency: string, abbreviation: string };
   isTestCampaign: (campaignName: string) => boolean;
 };
 
@@ -27,6 +48,24 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     return lowerCaseName.includes('test') || 
            lowerCaseName.includes('demo') || 
            lowerCaseName.includes('draft');
+  };
+
+  // Helper function to extract agency information from campaign name
+  const extractAgencyInfo = (campaignName: string): { agency: string, abbreviation: string } => {
+    if (!campaignName) return { agency: "", abbreviation: "" };
+    
+    // Extract the agency abbreviation which appears before the first colon
+    const agencyMatch = campaignName.match(/^([^:]+):/);
+    if (agencyMatch && agencyMatch[1]) {
+      const abbreviation = agencyMatch[1].trim();
+      
+      // Look up the full agency name from the mapping
+      const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+      
+      return { agency, abbreviation };
+    }
+    
+    return { agency: "", abbreviation: "" };
   };
 
   // Helper function to extract advertiser name from campaign name
@@ -101,8 +140,9 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     
     testCases.forEach(test => {
       const result = extractAdvertiserName(test);
+      const agencyInfo = extractAgencyInfo(test);
       const isTest = isTestCampaign(test);
-      console.log(`Test: "${test}" -> "${result}", Is Test Campaign: ${isTest}`);
+      console.log(`Test: "${test}" -> Advertiser: "${result}", Agency: "${agencyInfo.agency}", Abbreviation: "${agencyInfo.abbreviation}", Is Test Campaign: ${isTest}`);
     });
     
     // Test some test/demo/draft cases
@@ -129,6 +169,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       showDebugInfo,
       setShowDebugInfo,
       extractAdvertiserName,
+      extractAgencyInfo,
       isTestCampaign
     }}>
       {children}

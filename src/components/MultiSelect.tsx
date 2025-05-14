@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 export interface Option {
   value: string;
   label: string;
+  group?: string;
 }
 
 interface MultiSelectProps {
@@ -22,6 +23,7 @@ interface MultiSelectProps {
   className?: string;
   popoverClassName?: string;
   containerClassName?: string;
+  showGroups?: boolean;
 }
 
 export function MultiSelect({
@@ -32,6 +34,7 @@ export function MultiSelect({
   className,
   popoverClassName,
   containerClassName,
+  showGroups = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -58,6 +61,20 @@ export function MultiSelect({
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [options, searchQuery]);
+
+  // Group options if showGroups is enabled
+  const groupedOptions = React.useMemo(() => {
+    if (!showGroups) return { ungrouped: filteredOptions };
+    
+    return filteredOptions.reduce((groups: Record<string, Option[]>, option) => {
+      const groupName = option.group || 'Other';
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(option);
+      return groups;
+    }, {});
+  }, [filteredOptions, showGroups]);
 
   return (
     <div className={containerClassName}>
@@ -101,27 +118,64 @@ export function MultiSelect({
               </div>
               <span className="truncate">Select All</span>
             </div>
-            {filteredOptions.map((option) => (
-              <div
-                key={option.value}
-                className={cn(
-                  "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
-                  selected.includes(option.value) ? "bg-accent/50" : ""
-                )}
-                onClick={() => handleSelect(option.value)}
-              >
-                <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                  {selected.includes(option.value) ? (
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Square className="h-4 w-4 text-muted-foreground" />
+            
+            {showGroups ? (
+              Object.entries(groupedOptions).map(([groupName, groupOptions]) => (
+                <React.Fragment key={groupName}>
+                  {groupOptions.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/30 mt-1 first:mt-0">
+                        {groupName}
+                      </div>
+                      {groupOptions.map((option) => (
+                        <div
+                          key={option.value}
+                          className={cn(
+                            "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                            selected.includes(option.value) ? "bg-accent/50" : ""
+                          )}
+                          onClick={() => handleSelect(option.value)}
+                        >
+                          <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+                            {selected.includes(option.value) ? (
+                              <CheckSquare className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Square className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
+                            {option.label}
+                          </span>
+                        </div>
+                      ))}
+                    </>
                   )}
+                </React.Fragment>
+              ))
+            ) : (
+              filteredOptions.map((option) => (
+                <div
+                  key={option.value}
+                  className={cn(
+                    "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                    selected.includes(option.value) ? "bg-accent/50" : ""
+                  )}
+                  onClick={() => handleSelect(option.value)}
+                >
+                  <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+                    {selected.includes(option.value) ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
+                    {option.label}
+                  </span>
                 </div>
-                <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
-                  {option.label}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
+            
             {filteredOptions.length === 0 && (
               <div className="py-2 px-2 text-sm text-center text-muted-foreground">
                 No options found

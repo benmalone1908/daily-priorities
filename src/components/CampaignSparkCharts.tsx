@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon, Maximize } from "lucide-react";
+import { Eye, MousePointer, ShoppingCart, DollarSign, ChevronRight, Percent, TrendingUp, FilterIcon, Maximize, Building } from "lucide-react";
 import { formatNumber, setToEndOfDay, setToStartOfDay, parseDateString } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { MultiSelect } from "./MultiSelect";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SparkChartModal from "./SparkChartModal";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -47,6 +47,7 @@ interface ModalData {
 }
 
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
+  const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
@@ -58,17 +59,55 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   });
   
   // Get filter functions from context
-  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { extractAdvertiserName, extractAgencyInfo, isTestCampaign } = useCampaignFilter();
   
+  const agencyOptions = useMemo(() => {
+    const agencies = new Set<string>();
+    
+    // Extract agencies from campaign names
+    data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test/demo/draft campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const { agency } = extractAgencyInfo(campaignName);
+      if (agency) {
+        agencies.add(agency);
+      }
+    });
+    
+    console.log('Agencies found:', Array.from(agencies).sort());
+    
+    return Array.from(agencies)
+      .sort((a, b) => a.localeCompare(b))
+      .map(agency => ({
+        value: agency,
+        label: agency
+      }));
+  }, [data, extractAgencyInfo, isTestCampaign]);
+
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
+    // Filter by selected agencies if any
+    let filteredData = data;
+    if (selectedAgencies.length > 0) {
+      filteredData = data.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
     // Add debug logging
     console.log('-------- Extracting advertisers in CampaignSparkCharts --------');
-    console.log('Total data rows:', data.length);
+    console.log('Total data rows:', filteredData.length);
     
     // Skip test campaigns and extract advertisers from valid campaigns
-    data.forEach(row => {
+    filteredData.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       
       // Skip test/demo/draft campaigns
@@ -89,9 +128,10 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       .sort((a, b) => a.localeCompare(b))
       .map(advertiser => ({
         value: advertiser,
-        label: advertiser
+        label: advertiser,
+        group: 'Advertisers'
       }));
-  }, [data, extractAdvertiserName, isTestCampaign]);
+  }, [data, selectedAgencies, extractAdvertiserName, extractAgencyInfo, isTestCampaign]);
 
   const campaignOptions = useMemo(() => {
     let filteredData = data;
@@ -102,6 +142,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
+    // Filter by selected agencies if any
+    if (selectedAgencies.length > 0) {
+      filteredData = filteredData.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    // Filter by selected advertisers if any
     if (selectedAdvertisers.length > 0) {
       filteredData = filteredData.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -115,11 +165,41 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       .sort((a, b) => a.localeCompare(b))
       .map(campaign => ({
         value: campaign,
-        label: campaign
+        label: campaign,
+        group: 'Campaigns'
       }));
-  }, [data, selectedAdvertisers, extractAdvertiserName, isTestCampaign]);
+  }, [data, selectedAgencies, selectedAdvertisers, extractAdvertiserName, extractAgencyInfo, isTestCampaign]);
 
+  // Reset filters when dependencies change
   useEffect(() => {
+    // Reset campaign selection when agencies change
+    if (selectedAgencies.length > 0) {
+      setSelectedCampaigns(prev => {
+        return prev.filter(campaign => {
+          const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
+          if (campaignRows.length === 0) return false;
+          
+          const campaignName = campaignRows[0]["CAMPAIGN ORDER NAME"] || "";
+          const { agency } = extractAgencyInfo(campaignName);
+          return selectedAgencies.includes(agency);
+        });
+      });
+      
+      // Reset advertiser selection when agencies change
+      setSelectedAdvertisers(prev => {
+        return prev.filter(advertiser => {
+          // Check if there are any campaigns for this advertiser in the selected agencies
+          return data.some(row => {
+            const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+            const rowAdvertiser = extractAdvertiserName(campaignName);
+            const { agency } = extractAgencyInfo(campaignName);
+            return rowAdvertiser === advertiser && selectedAgencies.includes(agency);
+          });
+        });
+      });
+    }
+    
+    // Reset campaign selection when advertisers change
     if (selectedAdvertisers.length > 0) {
       setSelectedCampaigns(prev => {
         return prev.filter(campaign => {
@@ -132,7 +212,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         });
       });
     }
-  }, [selectedAdvertisers, data, extractAdvertiserName, isTestCampaign]);
+  }, [selectedAgencies, selectedAdvertisers, data, extractAdvertiserName, extractAgencyInfo]);
 
   const filteredDataByDate = useMemo(() => {
     if (!data || data.length === 0) {
@@ -189,6 +269,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
+    // Filter by selected agencies if any
+    if (selectedAgencies.length > 0) {
+      result = result.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    // Filter by selected advertisers if any
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -197,13 +287,14 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
+    // Filter by selected campaigns if any
     if (selectedCampaigns.length > 0) {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     console.log('CampaignSparkCharts final filtered data length:', result.length);
     return result;
-  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, isTestCampaign, extractAdvertiserName]);
+  }, [filteredDataByDate, selectedAgencies, selectedAdvertisers, selectedCampaigns, isTestCampaign, extractAdvertiserName, extractAgencyInfo]);
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
     // Updated regex to correctly capture advertiser names before hyphens
@@ -314,7 +405,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         if (row.DATE === 'Totals') return;
         
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const advertiser = getAdvertiserFromCampaign(campaignName);
+        const advertiser = extractAdvertiserName(campaignName);
         if (!advertiser) return;
         
         if (!advertisersMap.has(advertiser)) {
@@ -405,7 +496,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         };
       }).filter(Boolean);
     }
-  }, [filteredData, viewMode]);
+  }, [filteredData, viewMode, extractAdvertiserName]);
 
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
@@ -497,11 +588,19 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             
             <div className="flex items-center gap-2">
               <MultiSelect
+                options={agencyOptions}
+                selected={selectedAgencies}
+                onChange={setSelectedAgencies}
+                placeholder="Agency"
+                className="w-[180px]"
+              />
+              
+              <MultiSelect
                 options={advertiserOptions}
                 selected={selectedAdvertisers}
                 onChange={setSelectedAdvertisers}
                 placeholder="Advertiser"
-                className="w-[200px]"
+                className="w-[180px]"
               />
               
               <MultiSelect
@@ -509,7 +608,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                 selected={selectedCampaigns}
                 onChange={setSelectedCampaigns}
                 placeholder="Campaign"
-                className="w-[200px]"
+                className="w-[180px]"
                 popoverClassName="w-[400px]"
               />
             </div>
@@ -548,11 +647,19 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           
           <div className="flex items-center gap-2">
             <MultiSelect
+              options={agencyOptions}
+              selected={selectedAgencies}
+              onChange={setSelectedAgencies}
+              placeholder="Agency"
+              className="w-[180px]"
+            />
+            
+            <MultiSelect
               options={advertiserOptions}
               selected={selectedAdvertisers}
               onChange={setSelectedAdvertisers}
               placeholder="Advertiser"
-              className="w-[200px]"
+              className="w-[180px]"
             />
             
             <MultiSelect
@@ -560,7 +667,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
               selected={selectedCampaigns}
               onChange={setSelectedCampaigns}
               placeholder="Campaign"
-              className="w-[200px]"
+              className="w-[180px]"
               popoverClassName="w-[400px]"
             />
           </div>
