@@ -21,7 +21,6 @@ import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface DashboardProps {
   data: any[];
@@ -30,17 +29,11 @@ interface DashboardProps {
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
-  selectedMetricsAgencies?: string[];
-  selectedRevenueAgencies?: string[];
-  selectedWeeklyAgencies?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
-  onMetricsAgenciesChange?: (selected: string[]) => void;
-  onRevenueAgenciesChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
-  sortedAgencyOptions?: string[];
   aggregatedMetricsData?: any[]; // Added this property
 }
 
@@ -57,7 +50,6 @@ interface WeeklyData {
 
 interface WeeklyAggregation {
   weekStart: string;
-  weekNumber: number;
   [metric: string]: any;
   rows: any[];
 }
@@ -73,21 +65,15 @@ const Dashboard = ({
   selectedMetricsCampaigns = [],
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
-  selectedMetricsAgencies = [],
-  selectedRevenueAgencies = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
-  onMetricsAgenciesChange,
-  onRevenueAgenciesChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
-  sortedAgencyOptions = [],
   aggregatedMetricsData
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
-  const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
@@ -95,8 +81,6 @@ const Dashboard = ({
   const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
   const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
-  
-  const { extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName } = useCampaignFilter();
   
   const renderCountRef = useRef(0);
   
@@ -131,53 +115,6 @@ const Dashboard = ({
     return Array.from(uniqueAdvertisers).sort();
   }, [data, sortedAdvertiserOptions]);
 
-  const agencyOptions: Option[] = useMemo(() => {
-    return (sortedAgencyOptions || []).map(agency => ({
-      value: agency,
-      label: agency
-    }));
-  }, [sortedAgencyOptions]);
-
-  // Filter advertiser options based on selected agencies
-  const filteredAdvertiserOptions: Option[] = useMemo(() => {
-    const allAdvertisers = advertisers.map(advertiser => ({
-      value: advertiser,
-      label: advertiser
-    }));
-
-    if (!selectedMetricsAgencies.length && !selectedRevenueAgencies.length) {
-      return allAdvertisers;
-    }
-
-    // Combine all selected agencies for both metrics and revenue
-    const allSelectedAgencies = new Set([...selectedMetricsAgencies, ...selectedRevenueAgencies]);
-    
-    // Filter advertisers that belong to selected agencies
-    const filteredAdvertisers = new Set<string>();
-    
-    console.log(`Filtering advertisers for agencies: ${Array.from(allSelectedAgencies).join(', ')}`);
-    
-    data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      if (!campaignName) return;
-      
-      const prefix = extractAgencyPrefix(campaignName);
-      const agency = getAgencyFromPrefix(prefix);
-      
-      if (agency && allSelectedAgencies.has(agency)) {
-        const advertiser = extractAdvertiserName(campaignName);
-        if (advertiser) {
-          filteredAdvertisers.add(advertiser);
-        }
-      }
-    });
-    
-    console.log(`Found ${filteredAdvertisers.size} advertisers for selected agencies`);
-    
-    return Array.from(filteredAdvertisers).sort()
-      .map(advertiser => ({ value: advertiser, label: advertiser }));
-  }, [advertisers, data, selectedMetricsAgencies, selectedRevenueAgencies, extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName]);
-
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
@@ -186,159 +123,63 @@ const Dashboard = ({
   }, [campaigns]);
 
   const advertiserOptions: Option[] = useMemo(() => {
-    return filteredAdvertiserOptions;
-  }, [filteredAdvertiserOptions]);
+    return advertisers.map(advertiser => ({
+      value: advertiser,
+      label: advertiser
+    }));
+  }, [advertisers]);
 
   const filteredMetricsCampaignOptions = useMemo(() => {
-    if (!selectedMetricsAdvertisers.length && !selectedMetricsAgencies.length) return campaignOptions;
+    if (!selectedMetricsAdvertisers.length) return campaignOptions;
     
     return campaignOptions.filter(option => {
       const campaignName = option.value;
-      
-      // Filter by advertiser if selected
-      if (selectedMetricsAdvertisers.length > 0) {
-        const advertiser = extractAdvertiserName(campaignName);
-        if (!advertiser || !selectedMetricsAdvertisers.includes(advertiser)) {
-          return false;
-        }
-      }
-      
-      // Filter by agency if selected
-      if (selectedMetricsAgencies.length > 0) {
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        if (!agency || !selectedMetricsAgencies.includes(agency)) {
-          return false;
-        }
-      }
-      
-      return true;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedMetricsAdvertisers.includes(advertiser);
     });
-  }, [campaignOptions, selectedMetricsAdvertisers, selectedMetricsAgencies, extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName]);
+  }, [campaignOptions, selectedMetricsAdvertisers]);
 
   const filteredRevenueCampaignOptions = useMemo(() => {
-    if (!selectedRevenueAdvertisers.length && !selectedRevenueAgencies.length) return campaignOptions;
+    if (!selectedRevenueAdvertisers.length) return campaignOptions;
     
     return campaignOptions.filter(option => {
       const campaignName = option.value;
-      
-      // Filter by advertiser if selected
-      if (selectedRevenueAdvertisers.length > 0) {
-        const advertiser = extractAdvertiserName(campaignName);
-        if (!advertiser || !selectedRevenueAdvertisers.includes(advertiser)) {
-          return false;
-        }
-      }
-      
-      // Filter by agency if selected
-      if (selectedRevenueAgencies.length > 0) {
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        if (!agency || !selectedRevenueAgencies.includes(agency)) {
-          return false;
-        }
-      }
-      
-      return true;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedRevenueAdvertisers.includes(advertiser);
     });
-  }, [campaignOptions, selectedRevenueAdvertisers, selectedRevenueAgencies, extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName]);
+  }, [campaignOptions, selectedRevenueAdvertisers]);
 
   const filteredWeeklyCampaignOptions = useMemo(() => {
-    let filteredOptions = campaignOptions;
-    
-    // Filter by agency if selected
-    if (selectedWeeklyAgencies.length > 0) {
-      filteredOptions = filteredOptions.filter(option => {
-        const campaignName = option.value;
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        return agency && selectedWeeklyAgencies.includes(agency);
-      });
+    if (!selectedWeeklyAdvertisers.length) {
+      return [
+        { value: "all", label: "All Campaigns" },
+        ...campaignOptions
+      ];
     }
     
-    // Further filter by advertiser if selected
-    if (selectedWeeklyAdvertisers.length > 0) {
-      filteredOptions = filteredOptions.filter(option => {
-        const campaignName = option.value;
-        const advertiser = extractAdvertiserName(campaignName);
-        return advertiser && selectedWeeklyAdvertisers.includes(advertiser);
-      });
-    }
+    const filteredCampaigns = campaignOptions.filter(option => {
+      const campaignName = option.value;
+      const match = campaignName.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
+      return selectedWeeklyAdvertisers.includes(advertiser);
+    });
     
     return [
       { value: "all", label: "All Campaigns" },
-      ...filteredOptions
+      ...filteredCampaigns
     ];
-  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies, extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName]);
-
-  // Filter weekly advertiser options based on selected agencies
-  const filteredWeeklyAdvertiserOptions = useMemo(() => {
-    if (!selectedWeeklyAgencies.length) {
-      return advertiserOptions;
-    }
-    
-    const filteredAdvertisers = new Set<string>();
-    
-    data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      if (!campaignName) return;
-      
-      const prefix = extractAgencyPrefix(campaignName);
-      const agency = getAgencyFromPrefix(prefix);
-      
-      if (agency && selectedWeeklyAgencies.includes(agency)) {
-        const advertiser = extractAdvertiserName(campaignName);
-        if (advertiser) {
-          filteredAdvertisers.add(advertiser);
-        }
-      }
-    });
-    
-    return Array.from(filteredAdvertisers).sort()
-      .map(advertiser => ({ value: advertiser, label: advertiser }));
-  }, [data, advertiserOptions, selectedWeeklyAgencies, extractAgencyPrefix, getAgencyFromPrefix, extractAdvertiserName]);
-
-  const handleMetricsAgenciesChange = (selected: string[]) => {
-    if (onMetricsAgenciesChange) {
-      onMetricsAgenciesChange(selected);
-    }
-    
-    // If the selected advertisers don't belong to the newly selected agencies, reset them
-    if (selected.length > 0 && selectedMetricsAdvertisers.length > 0) {
-      const validAdvertisers = new Set<string>();
-      
-      data.forEach(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        if (!campaignName) return;
-        
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        
-        if (agency && selected.includes(agency)) {
-          const advertiser = extractAdvertiserName(campaignName);
-          if (advertiser) {
-            validAdvertisers.add(advertiser);
-          }
-        }
-      });
-      
-      const newAdvertisers = selectedMetricsAdvertisers.filter(adv => 
-        validAdvertisers.has(adv)
-      );
-      
-      if (newAdvertisers.length !== selectedMetricsAdvertisers.length) {
-        setSelectedMetricsAdvertisers(newAdvertisers);
-      }
-    }
-  };
+  }, [campaignOptions, selectedWeeklyAdvertisers]);
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
     
     if (selected.length > 0 && onMetricsCampaignsChange) {
       const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
-        const advertiser = extractAdvertiserName(campaign);
-        return advertiser && selected.includes(advertiser);
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
       });
       
       onMetricsCampaignsChange(validCampaigns);
@@ -346,8 +187,9 @@ const Dashboard = ({
     
     if (selected.length > 0) {
       const matchingCampaigns = campaigns.filter(campaign => {
-        const advertiser = extractAdvertiserName(campaign);
-        return advertiser && selected.includes(advertiser);
+        const match = campaign.match(/SM:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        return selected.includes(advertiser);
       });
       
       if (selectedMetricsCampaigns.length === 0 || !selectedMetricsCampaigns.some(campaign => matchingCampaigns.includes(campaign))) {
@@ -360,108 +202,20 @@ const Dashboard = ({
     }
   };
 
-  const handleRevenueAgenciesChange = (selected: string[]) => {
-    if (onRevenueAgenciesChange) {
-      onRevenueAgenciesChange(selected);
-    }
-    
-    // If the selected advertisers don't belong to the newly selected agencies, reset them
-    if (selected.length > 0 && selectedRevenueAdvertisers.length > 0) {
-      const validAdvertisers = new Set<string>();
-      
-      data.forEach(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        if (!campaignName) return;
-        
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        
-        if (agency && selected.includes(agency)) {
-          const advertiser = extractAdvertiserName(campaignName);
-          if (advertiser) {
-            validAdvertisers.add(advertiser);
-          }
-        }
-      });
-      
-      const newAdvertisers = selectedRevenueAdvertisers.filter(adv => 
-        validAdvertisers.has(adv)
-      );
-      
-      if (newAdvertisers.length !== selectedRevenueAdvertisers.length && onRevenueAdvertisersChange) {
-        onRevenueAdvertisersChange(newAdvertisers);
-      }
-    }
-  };
-
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     if (onRevenueAdvertisersChange) {
       onRevenueAdvertisersChange(selected);
-    }
-    
-    // Update campaigns if advertisers change
-    if (selected.length > 0 && onRevenueCampaignsChange) {
-      const validCampaigns = selectedRevenueCampaigns.filter(campaign => {
-        const advertiser = extractAdvertiserName(campaign);
-        return advertiser && selected.includes(advertiser);
-      });
-      
-      if (validCampaigns.length !== selectedRevenueCampaigns.length) {
-        onRevenueCampaignsChange(validCampaigns);
-      }
-    }
-  };
-
-  const handleWeeklyAgenciesChange = (selected: string[]) => {
-    setSelectedWeeklyAgencies(selected);
-    
-    // Reset advertisers if they don't belong to selected agencies
-    if (selected.length > 0 && selectedWeeklyAdvertisers.length > 0) {
-      const validAdvertisers = new Set<string>();
-      
-      data.forEach(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        if (!campaignName) return;
-        
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        
-        if (agency && selected.includes(agency)) {
-          const advertiser = extractAdvertiserName(campaignName);
-          if (advertiser) {
-            validAdvertisers.add(advertiser);
-          }
-        }
-      });
-      
-      const newAdvertisers = selectedWeeklyAdvertisers.filter(adv => 
-        validAdvertisers.has(adv)
-      );
-      
-      if (newAdvertisers.length !== selectedWeeklyAdvertisers.length) {
-        setSelectedWeeklyAdvertisers(newAdvertisers);
-      }
-    }
-    
-    // Reset campaign selection if it doesn't belong to selected agencies
-    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-      const prefix = extractAgencyPrefix(selectedWeeklyCampaign);
-      const agency = getAgencyFromPrefix(prefix);
-      
-      if (!agency || !selected.includes(agency)) {
-        setSelectedWeeklyCampaign("all");
-      }
     }
   };
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     setSelectedWeeklyAdvertisers(selected);
     
-    // Reset campaign selection if it doesn't belong to selected advertisers
     if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-      const advertiser = extractAdvertiserName(selectedWeeklyCampaign);
+      const match = selectedWeeklyCampaign.match(/SM:\s+([^-]+)/);
+      const advertiser = match ? match[1].trim() : "";
       
-      if (!advertiser || !selected.includes(advertiser)) {
+      if (!selected.includes(advertiser)) {
         setSelectedWeeklyCampaign("all");
       }
     }
@@ -577,7 +331,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues: WeeklyAggregation[] = Object.values(weeklyData);
+            const weeklyValues = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -669,21 +423,7 @@ const Dashboard = ({
     return detectAnomalies(data);
   }, [data, anomalyPeriod]);
 
-  // Transform anomaly object to array for AnomalyDetails component
-  const getAnomalyArray = (anomalyData: Record<string, { anomalies: any[] }> | undefined, metric?: string): any[] => {
-    if (!anomalyData) return [];
-    
-    if (metric && anomalyData[metric]) {
-      return anomalyData[metric].anomalies || [];
-    }
-    
-    // Combine all anomalies from all metrics
-    return Object.values(anomalyData).reduce((acc: any[], curr: { anomalies: any[] }) => {
-      return [...acc, ...(curr.anomalies || [])];
-    }, []);
-  };
-
-  const getAggregatedData = (filteredData: any[]): any[] => {
+  const getAggregatedData = (filteredData: any[]) => {
     try {
       if (!filteredData || !filteredData.length) return [];
       
@@ -728,11 +468,7 @@ const Dashboard = ({
         dateGroups[normalizedDate].REVENUE += Number(row.REVENUE) || 0;
       });
 
-      // Explicitly cast the Object.values result to an array type
-      const result = Object.values(dateGroups) as any[];
-      
-      // Sort the results
-      result.sort((a: any, b: any) => {
+      const result = Object.values(dateGroups).sort((a: any, b: any) => {
         try {
           return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
         } catch (err) {
@@ -758,7 +494,7 @@ const Dashboard = ({
     }
   };
 
-  const getAggregatedDataByDayOfWeek = (filteredData: any[]): any[] => {
+  const getAggregatedDataByDayOfWeek = (filteredData: any[]) => {
     try {
       if (!filteredData || !filteredData.length) return [];
       
@@ -800,8 +536,7 @@ const Dashboard = ({
       
       console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
-      // Explicitly cast the Object.values result to an array type
-      return Object.values(dayOfWeekGroups) as any[];
+      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
       return [];
@@ -855,8 +590,8 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
-    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, period=${periodLength}`);
     
     if (!data || data.length === 0) {
       console.log("No data available for weekly comparison");
@@ -873,427 +608,760 @@ const Dashboard = ({
         console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
       }
       
-      if (selectedAgencies.length > 0) {
+      if (selectedAdvertisers.length > 0) {
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
-          const prefix = extractAgencyPrefix(campaignName);
-          const agency = getAgencyFromPrefix(prefix);
+          const match = campaignName.match(/SM:\s+([^-]+)/);
+          const advertiser = match ? match[1].trim() : "";
+          return selectedAdvertisers.includes(advertiser);
+        });
+        console.log(`After advertiser filter: ${filteredData.length} rows`);
+      }
+      
+      if (selectedCampaign !== "all") {
+        filteredData = filteredData.filter((row: any) => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+        console.log(`After campaign filter: ${filteredData.length} rows`);
+      }
+      
+      if (filteredData.length === 0) {
+        console.log("No data after filtering");
+        return [];
+      }
+
+      const rowsWithDates = filteredData.map((row: any) => {
+        try {
+          if (!row.DATE) return null;
           
-          return agency && selectedAgencies.includes(agency);
+          const normalizedDate = normalizeDate(row.DATE);
+          if (!normalizedDate) return null;
+          
+          return {
+            ...row,
+            parsedDate: new Date(normalizedDate)
+          };
+        } catch (e) {
+          console.error(`Error parsing date: ${row.DATE}`, e);
+          return null;
+        }
+      }).filter(Boolean);
+      
+      console.log(`Rows with valid dates: ${rowsWithDates.length}`);
+      
+      if (rowsWithDates.length === 0) {
+        console.log("No rows with valid dates");
+        return [];
+      }
+
+      const dates = rowsWithDates.map((row: any) => row.parsedDate);
+      const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      
+      console.log(`Date range: ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
+      
+      const daysPeriod = parseInt(periodLength, 10);
+      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const completePeriods = Math.floor(totalDays / daysPeriod);
+      
+      console.log(`Total days: ${totalDays}, Days per period: ${daysPeriod}, Complete periods: ${completePeriods}`);
+      
+      if (completePeriods < 1) {
+        console.log("Not enough data for even one complete period");
+        return [];
+      }
+
+      const periods: WeeklyData[] = [];
+      
+      for (let i = 0; i < completePeriods; i++) {
+        const periodEnd = new Date(mostRecentDate);
+        periodEnd.setHours(23, 59, 59, 999);
+        if (i > 0) {
+          periodEnd.setDate(periodEnd.getDate() - (i * daysPeriod));
+        }
+        
+        const periodStart = new Date(periodEnd);
+        periodStart.setDate(periodEnd.getDate() - (daysPeriod - 1));
+        periodStart.setHours(0, 0, 0, 0);
+        
+        if (periodStart < earliestDate) {
+          console.log(`Skipping period ${i+1} - starts before earliest data`);
+          continue;
+        }
+        
+        const periodStartStr = periodStart.toISOString().split('T')[0];
+        const periodEndStr = periodEnd.toISOString().split('T')[0];
+        
+        console.log(`Creating period ${i+1}: ${periodStartStr} to ${periodEndStr}`);
+        
+        periods.push({
+          periodStart: periodStartStr,
+          periodEnd: periodEndStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 0,
+          TRANSACTIONS: 0
         });
       }
       
-      const weeklyData: WeeklyData[] = [];
+      console.log(`Created ${periods.length} periods of ${daysPeriod} days each`);
       
-      filteredData.forEach((row: any) => {
-        if (!row || !row.DATE) return;
-        
-        const normalizedDate = normalizeDate(row.DATE);
-        if (!normalizedDate) {
-          console.warn(`Invalid date in row: ${row.DATE}`);
-          return;
+      rowsWithDates.forEach((row: any) => {
+        try {
+          const rowDate = row.parsedDate;
+          const rowTime = rowDate.getTime();
+          
+          for (let i = 0; i < periods.length; i++) {
+            const periodStart = new Date(periods[i].periodStart);
+            const periodEnd = new Date(periods[i].periodEnd);
+            periodEnd.setHours(23, 59, 59, 999);
+            
+            if (rowTime >= periodStart.getTime() && rowTime <= periodEnd.getTime()) {
+              periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+              periods[i].CLICKS += Number(row.CLICKS) || 0;
+              periods[i].REVENUE += Number(row.REVENUE) || 0;
+              periods[i].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+              periods[i].count += 1;
+              break;
+            }
+          }
+        } catch (err) {
+          console.error("Error processing row for period metrics:", err);
         }
-        
-        const date = new Date(normalizedDate);
-        if (isNaN(date.getTime())) return;
-        
-        const dayOfWeek = date.getDay();
-        
-        // Calculate week number - fixed calculation
-        const weekNumber = Math.floor(date.getTime() / (1000 * 60 * 60 * 24 * 7));
-        
-        const weekStart = new Date(normalizedDate);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Set to start of week (Sunday)
-        
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6); // Set to end of week (Saturday)
-        
-        const weekData: WeeklyData = {
-          periodStart: weekStart.toISOString(),
-          periodEnd: weekEnd.toISOString(),
-          IMPRESSIONS: Number(row.IMPRESSIONS) || 0,
-          CLICKS: Number(row.CLICKS) || 0,
-          REVENUE: Number(row.REVENUE) || 0,
-          ROAS: 0,
-          count: 1
-        };
-        
-        weekData.ROAS = calculateROAS(weekData.REVENUE, weekData.IMPRESSIONS);
-        
-        weeklyData.push(weekData);
+      });
+
+      const nonEmptyPeriods = periods.filter(period => period.count > 0);
+      
+      nonEmptyPeriods.forEach(period => {
+        period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
       
-      return weeklyData;
+      console.log(`Final periods with data: ${nonEmptyPeriods.length}`);
+      
+      if (nonEmptyPeriods.length > 0) {
+        console.log("First period data:", JSON.stringify(nonEmptyPeriods[0]));
+        if (nonEmptyPeriods.length > 1) {
+          console.log("Second period data:", JSON.stringify(nonEmptyPeriods[1]));
+        }
+      }
+
+      return nonEmptyPeriods;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
       return [];
     }
   };
 
+  const availablePeriods = useMemo(() => {
+    try {
+      if (!data || !data.length) {
+        console.log("No data for period calculation");
+        return ["7"];
+      }
+
+      const dates = data
+        .map(row => {
+          try {
+            if (!row.DATE) return null;
+            const normalizedDate = normalizeDate(row.DATE);
+            if (!normalizedDate) return null;
+            return new Date(normalizedDate);
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(Boolean) as Date[];
+      
+      if (!dates.length) {
+        console.log("No valid dates found for period calculation");
+        return ["7"];
+      }
+
+      const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      
+      const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      console.log(`Total days available for period calculation: ${totalDays}, from ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
+      
+      const periods: ComparisonPeriod[] = ["7"];
+      
+      if (totalDays >= 28) { // Need at least 2 x 14-day periods
+        periods.push("14");
+      }
+      
+      if (totalDays >= 60) { // Need at least 2 x 30-day periods
+        periods.push("30");
+      }
+      
+      console.log(`Available periods: ${periods.join(", ")}`);
+      return periods;
+    } catch (error) {
+      console.error("Error calculating available periods:", error);
+      return ["7"];
+    }
+  }, [data]);
+
+  useEffect(() => {
+    console.log("Calculating weekly data...");
+    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+    console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
+    setWeeklyDataState(calculatedData);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
+
+  const processedMetricsData = useMemo(() => {
+    console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
+    if (metricsViewMode === "date") {
+      return getAggregatedData(metricsData || data);
+    } else {
+      return getAggregatedDataByDayOfWeek(metricsData || data);
+    }
+  }, [metricsViewMode, metricsData, data]);
+  
+  const processedRevenueData = useMemo(() => {
+    console.log(`Processing revenue data with view mode: ${revenueViewMode}`);
+    if (revenueViewMode === "date") {
+      return getAggregatedData(revenueData || data);
+    } else {
+      return getAggregatedDataByDayOfWeek(revenueData || data);
+    }
+  }, [revenueViewMode, revenueData, data]);
+
+  const formatNumber = (value: number) => {
+    try {
+      return value.toLocaleString();
+    } catch (error) {
+      console.error("Error formatting number:", error);
+      return "0";
+    }
+  };
+
+  const formatRevenue = (value: number) => {
+    try {
+      return `$${Math.round(value).toLocaleString()}`;
+    } catch (error) {
+      console.error("Error formatting revenue:", error);
+      return "$0";
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Invalid Date";
+    }
+  };
+
+  const getMetricComparison = (metric: string, currentPeriod: WeeklyData, previousPeriod: WeeklyData) => {
+    try {
+      const currentValue = currentPeriod[metric as keyof WeeklyData] as number;
+      const previousValue = previousPeriod ? (previousPeriod[metric as keyof WeeklyData] as number) : 0;
+      
+      const percentChange = previousValue !== 0 
+        ? ((currentValue - previousValue) / previousValue) * 100 
+        : currentValue > 0 ? 100 : 0;
+        
+      const colorClasses = getColorClasses(percentChange);
+      const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-')) || '';
+      
+      return {
+        currentValue,
+        previousValue,
+        percentChange,
+        colorClass,
+        increased: percentChange > 0
+      };
+    } catch (error) {
+      console.error("Error calculating metric comparison:", error);
+      return {
+        currentValue: 0,
+        previousValue: 0,
+        percentChange: 0,
+        colorClass: '',
+        increased: false
+      };
+    }
+  };
+
+  const formatROAS = (value: number) => {
+    try {
+      return value.toFixed(2);
+    } catch (error) {
+      console.error("Error formatting ROAS:", error);
+      return "0.00";
+    }
+  };
+
+  const axisStyle = {
+    fontSize: '0.75rem'
+  };
+
+  const labelStyle = {
+    fontSize: '0.75rem',
+    fill: '#64748b'
+  };
+
+  const dataDateRange = () => {
+    if (!data || data.length === 0) return null;
+    
+    try {
+      const dates = data.map(row => new Date(row.DATE)).filter(d => !isNaN(d.getTime()));
+      if (dates.length === 0) return null;
+      
+      const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      
+      return {
+        from: minDate,
+        to: maxDate
+      };
+    } catch (error) {
+      console.error("Error calculating date range:", error);
+      return null;
+    }
+  };
+
+  const dateRange = dataDateRange();
+  const dateRangeText = dateRange 
+    ? `${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}`
+    : "All time";
+
+  if (!anomalies) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">No anomaly data available</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 gap-8 animate-fade-in">
-      {/* Metrics Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Performance Metrics</h2>
-          
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={agencyOptions}
-                selected={selectedMetricsAgencies}
-                onChange={handleMetricsAgenciesChange}
-                placeholder="Filter by Agency"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={filteredAdvertiserOptions}
-                selected={selectedMetricsAdvertisers}
-                onChange={handleMetricsAdvertisersChange}
-                placeholder="Filter by Advertiser"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={filteredMetricsCampaignOptions}
-                selected={selectedMetricsCampaigns}
-                onChange={onMetricsCampaignsChange || (() => {})}
-                placeholder="Filter by Campaign"
-              />
-            </div>
-            
-            <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value: string) => setMetricsViewMode(value as ChartViewMode)}>
-              <ToggleGroupItem value="date" aria-label="By Date">
-                <Calendar className="h-4 w-4 mr-1" />
-                Date
-              </ToggleGroupItem>
-              <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week">
-                <Filter className="h-4 w-4 mr-1" />
-                Day
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+    <div className="space-y-8 animate-fade-in">
+      {dateRange && (
+        <div className="text-sm text-muted-foreground text-center">
+          Showing data for: <span className="font-medium">{dateRangeText}</span> 
+          ({data.length.toLocaleString()} records)
         </div>
-        
-        {metricsData && metricsData.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-4">Impressions</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={metricsViewMode === "date" ? 
-                      getAggregatedData(metricsData) : 
-                      getAggregatedDataByDayOfWeek(metricsData)
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                      tick={{fontSize: 12}}
-                      tickFormatter={(value) => metricsViewMode === "date" ? 
-                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
-                        value
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: number) => [value.toLocaleString(), "Impressions"]}
-                      labelFormatter={(label) => metricsViewMode === "date" ? 
-                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
-                        label
-                      }
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="IMPRESSIONS" 
-                      stroke="#4ade80" 
-                      activeDot={{ r: 6 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-            
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-4">Clicks</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={metricsViewMode === "date" ? 
-                      getAggregatedData(metricsData) : 
-                      getAggregatedDataByDayOfWeek(metricsData)
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                      tick={{fontSize: 12}}
-                      tickFormatter={(value) => metricsViewMode === "date" ? 
-                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
-                        value
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: number) => [value.toLocaleString(), "Clicks"]}
-                      labelFormatter={(label) => metricsViewMode === "date" ? 
-                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
-                        label
-                      }
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="CLICKS" 
-                      stroke="#f59e0b" 
-                      activeDot={{ r: 6 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-            
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-4">CTR</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={
-                      (metricsViewMode === "date" ? 
-                        getAggregatedData(metricsData) : 
-                        getAggregatedDataByDayOfWeek(metricsData)
-                      ).map(item => ({
-                        ...item,
-                        CTR: calculateCTR(item.CLICKS, item.IMPRESSIONS)
-                      }))
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                      tick={{fontSize: 12}}
-                      tickFormatter={(value) => metricsViewMode === "date" ? 
-                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
-                        value
-                      }
-                    />
-                    <YAxis tickFormatter={(value) => `${value.toFixed(2)}%`} />
-                    <Tooltip 
-                      formatter={(value: number) => [`${value.toFixed(3)}%`, "CTR"]}
-                      labelFormatter={(label) => metricsViewMode === "date" ? 
-                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
-                        label
-                      }
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="CTR" 
-                      stroke="#0ea5e9" 
-                      activeDot={{ r: 6 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+      )}
+      
+      {showAnomalySection && (
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight">Anomaly Detection</h2>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Anomaly period:</span>
+              <ToggleGroup type="single" value={anomalyPeriod} onValueChange={(value) => value && setAnomalyPeriod(value as AnomalyPeriod)}>
+                <ToggleGroupItem value="daily" aria-label="Daily anomalies" className="text-sm">
+                  Daily
+                </ToggleGroupItem>
+                <ToggleGroupItem value="weekly" aria-label="Weekly anomalies" className="text-sm">
+                  Weekly
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
-        ) : (
-          <Card className="p-4">
-            <p className="text-center text-muted-foreground">No metrics data available for the selected filters.</p>
-          </Card>
-        )}
-      </div>
-
-      {/* Revenue Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Revenue Performance</h2>
           
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={agencyOptions}
-                selected={selectedRevenueAgencies}
-                onChange={handleRevenueAgenciesChange}
-                placeholder="Filter by Agency"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={filteredAdvertiserOptions}
-                selected={selectedRevenueAdvertisers}
-                onChange={handleRevenueAdvertisersChange}
-                placeholder="Filter by Advertiser"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <MultiSelect
-                options={filteredRevenueCampaignOptions}
-                selected={selectedRevenueCampaigns}
-                onChange={onRevenueCampaignsChange || (() => {})}
-                placeholder="Filter by Campaign"
-              />
-            </div>
-            
-            <ToggleGroup type="single" value={revenueViewMode} onValueChange={(value: string) => setRevenueViewMode(value as ChartViewMode)}>
-              <ToggleGroupItem value="date" aria-label="By Date">
-                <Calendar className="h-4 w-4 mr-1" />
-                Date
-              </ToggleGroupItem>
-              <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week">
-                <Filter className="h-4 w-4 mr-1" />
-                Day
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </div>
-        
-        {revenueData && revenueData.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-4">Revenue</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={revenueViewMode === "date" ? 
-                      getAggregatedData(revenueData) : 
-                      getAggregatedDataByDayOfWeek(revenueData)
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                      tick={{fontSize: 12}}
-                      tickFormatter={(value) => revenueViewMode === "date" ? 
-                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
-                        value
-                      }
-                    />
-                    <YAxis tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`} />
-                    <Tooltip 
-                      formatter={(value: number) => [`$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`, "Revenue"]}
-                      labelFormatter={(label) => revenueViewMode === "date" ? 
-                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
-                        label
-                      }
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="REVENUE" 
-                      stroke="#ef4444" 
-                      activeDot={{ r: 6 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-            
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-4">ROAS (Return on Ad Spend)</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={
-                      (revenueViewMode === "date" ? 
-                        getAggregatedData(revenueData) : 
-                        getAggregatedDataByDayOfWeek(revenueData)
-                      ).map(item => ({
-                        ...item,
-                        ROAS: calculateROAS(item.REVENUE, item.IMPRESSIONS)
-                      }))
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                      tick={{fontSize: 12}}
-                      tickFormatter={(value) => revenueViewMode === "date" ? 
-                        new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 
-                        value
-                      }
-                    />
-                    <YAxis tickFormatter={(value) => value.toFixed(2)} />
-                    <Tooltip 
-                      formatter={(value: number) => [value.toFixed(2), "ROAS"]}
-                      labelFormatter={(label) => revenueViewMode === "date" ? 
-                        new Date(label).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : 
-                        label
-                      }
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="ROAS" 
-                      stroke="#d946ef" 
-                      activeDot={{ r: 6 }}
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </div>
-        ) : (
-          <Card className="p-4">
-            <p className="text-center text-muted-foreground">No revenue data available for the selected filters.</p>
-          </Card>
-        )}
-      </div>
-
-      {/* Anomalies Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            <div className="flex items-center">
-              <AlertTriangle className="mr-2 h-5 w-5 text-amber-500" />
-              Anomaly Detection 
-            </div>
-          </h2>
-          
-          <div className="flex items-center space-x-4">
-            <Select value={anomalyPeriod} onValueChange={(value) => setAnomalyPeriod(value as AnomalyPeriod)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Anomaly Period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily Anomalies</SelectItem>
-                <SelectItem value="weekly">Weekly Anomalies</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Toggle 
-              pressed={showAnomalySection} 
-              onPressedChange={setShowAnomalySection}
-              aria-label="Toggle anomalies"
-            >
-              {showAnomalySection ? "Hide Details" : "Show Details"}
-            </Toggle>
-          </div>
-        </div>
-        
-        {showAnomalySection && (
-          <ScrollArea className="h-[400px]">
-            <AnomalyDetails 
-              anomalies={getAnomalyArray(anomalies)} 
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricCard
+              title="Impression Anomalies"
+              anomalies={anomalies.IMPRESSIONS?.anomalies || []}
               metric="IMPRESSIONS"
               anomalyPeriod={anomalyPeriod}
             />
+            <MetricCard
+              title="Click Anomalies"
+              anomalies={anomalies.CLICKS?.anomalies || []}
+              metric="CLICKS"
+              anomalyPeriod={anomalyPeriod}
+            />
+            <MetricCard
+              title="Revenue Anomalies"
+              anomalies={anomalies.REVENUE?.anomalies || []}
+              metric="REVENUE"
+              anomalyPeriod={anomalyPeriod}
+            />
+          </div>
+        </div>
+      )}
+
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 mr-4">
+              <span className="text-sm font-medium">View:</span>
+              <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value) => value && setMetricsViewMode(value as ChartViewMode)}>
+                <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                  By Date
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                  By Day of Week
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <span className="text-sm font-medium mr-1">Filter by:</span>
+            <div className="flex items-center gap-2">
+              {advertiserOptions.length > 0 && (
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedMetricsAdvertisers}
+                  onChange={handleMetricsAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+              )}
+              
+              {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
+                <MultiSelect
+                  options={filteredMetricsCampaignOptions}
+                  selected={selectedMetricsCampaigns}
+                  onChange={onMetricsCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                  popoverClassName="w-[400px]"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="h-[400px]">
+          {processedMetricsData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={processedMetricsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                  style={axisStyle}
+                  tickFormatter={metricsViewMode === "date" ? formatDate : undefined}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#4ade80"
+                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#f59e0b"
+                  label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [formatNumber(value), name]}
+                  contentStyle={{ fontSize: '0.75rem' }}
+                  labelFormatter={metricsViewMode === "date" ? formatDate : undefined}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  opacity={0.8}
+                  name="Impressions"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="CLICKS"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Clicks"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No data available for the selected filters</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4 mr-4">
+              <span className="text-sm font-medium">View:</span>
+              <ToggleGroup type="single" value={revenueViewMode} onValueChange={(value) => value && setRevenueViewMode(value as ChartViewMode)}>
+                <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                  By Date
+                </ToggleGroupItem>
+                <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                  By Day of Week
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <span className="text-sm font-medium mr-1">Filter by:</span>
+            <div className="flex items-center gap-2">
+              {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedRevenueAdvertisers}
+                  onChange={handleRevenueAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+              )}
+              
+              {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
+                <MultiSelect
+                  options={filteredRevenueCampaignOptions}
+                  selected={selectedRevenueCampaigns}
+                  onChange={onRevenueCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                  popoverClassName="w-[400px]"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="h-[400px]">
+          {processedRevenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={processedRevenueData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
+                  style={axisStyle}
+                  tickFormatter={revenueViewMode === "date" ? formatDate : undefined}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  orientation="left"
+                  stroke="#4ade80"
+                  label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
+                  tickFormatter={formatNumber}
+                  style={axisStyle}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#ef4444"
+                  label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
+                  tickFormatter={formatRevenue}
+                  style={axisStyle}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === "Revenue") return [formatRevenue(value), name];
+                    return [formatNumber(value), name];
+                  }}
+                  contentStyle={{ fontSize: '0.75rem' }}
+                  labelFormatter={revenueViewMode === "date" ? formatDate : undefined}
+                />
+                <Bar
+                  yAxisId="left"
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  opacity={0.8}
+                  name="Impressions"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="REVENUE"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Revenue"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No revenue data available for the selected filters</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">Weekly Comparison</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {weeklyDataState.length} periods found ({weeklyDataState.length * parseInt(comparisonPeriod)} days of data)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Period:</span>
+                <Select 
+                  value={comparisonPeriod} 
+                  onValueChange={(value) => setComparisonPeriod(value as ComparisonPeriod)}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="Period length" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePeriods.includes("7") && (
+                      <SelectItem value="7">7 days</SelectItem>
+                    )}
+                    {availablePeriods.includes("14") && (
+                      <SelectItem value="14">14 days</SelectItem>
+                    )}
+                    {availablePeriods.includes("30") && (
+                      <SelectItem value="30">30 days</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="text-sm font-medium mr-1">Filter by:</span>
+              <div className="flex items-center gap-2">
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedWeeklyAdvertisers}
+                  onChange={handleWeeklyAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+                
+                <Select 
+                  value={selectedWeeklyCampaign} 
+                  onValueChange={setSelectedWeeklyCampaign}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Campaign" />
+                  </SelectTrigger>
+                  <SelectContent className="w-[400px]">
+                    {filteredWeeklyCampaignOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {weeklyDataState.length >= 1 ? (
+          <ScrollArea className="h-[460px]">
+            <div className="grid gap-4 pb-4 pr-4">
+              {weeklyDataState.map((period, index) => {
+                const previousPeriod = weeklyDataState[index + 1];
+                const periodLabel = `${formatDate(period.periodStart)} - ${formatDate(period.periodEnd)}`;
+                
+                // Calculate derived metrics
+                const ctr = calculateCTR(period.CLICKS, period.IMPRESSIONS);
+                const previousCtr = previousPeriod ? calculateCTR(previousPeriod.CLICKS, previousPeriod.IMPRESSIONS) : 0;
+                
+                // Use the TRANSACTIONS property or estimate based on revenue
+                const transactions = period.TRANSACTIONS || Math.round(period.REVENUE / 50); // Default AOV of $50 if no transactions
+                const previousTransactions = previousPeriod ? (previousPeriod.TRANSACTIONS || Math.round(previousPeriod.REVENUE / 50)) : 0;
+                
+                const aov = calculateAOV(period.REVENUE, transactions);
+                const previousAov = previousPeriod ? calculateAOV(previousPeriod.REVENUE, previousTransactions) : 0;
+                
+                const metrics = [
+                  {
+                    title: "Impressions",
+                    current: period.IMPRESSIONS,
+                    previous: previousPeriod?.IMPRESSIONS,
+                    format: formatNumber
+                  },
+                  {
+                    title: "Clicks",
+                    current: period.CLICKS,
+                    previous: previousPeriod?.CLICKS,
+                    format: formatNumber
+                  },
+                  {
+                    title: "CTR",
+                    current: ctr,
+                    previous: previousCtr,
+                    format: formatCTR
+                  },
+                  {
+                    title: "Transactions",
+                    current: transactions,
+                    previous: previousTransactions,
+                    format: formatTransactions
+                  },
+                  {
+                    title: "Revenue",
+                    current: period.REVENUE,
+                    previous: previousPeriod?.REVENUE,
+                    format: formatRevenue
+                  },
+                  {
+                    title: "AOV",
+                    current: aov,
+                    previous: previousAov,
+                    format: formatAOV
+                  },
+                  {
+                    title: "ROAS",
+                    current: period.ROAS,
+                    previous: previousPeriod?.ROAS,
+                    format: formatROAS
+                  }
+                ];
+                
+                return (
+                  <div key={index} className="mb-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-1 ml-1">
+                      {periodLabel}
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-7">
+                      {metrics.map((metric, metricIndex) => {
+                        const percentChange = metric.previous
+                          ? ((metric.current - metric.previous) / metric.previous) * 100
+                          : metric.current > 0 ? 100 : 0;
+
+                        const colorClasses = getColorClasses(percentChange).split(' ').find(c => c.startsWith('text-')) || '';
+                        
+                        return (
+                          <Card key={`${index}-${metricIndex}`} className="p-3">
+                            <div className="mb-1">
+                              <span className="text-xs font-medium">{metric.title}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-base font-bold">
+                                {metric.format(metric.current)}
+                              </div>
+                              {previousPeriod && (
+                                <div className={`flex items-center text-xs ${colorClasses}`}>
+                                  {percentChange > 0 ? (
+                                    <TrendingUp className="mr-1 h-3 w-3" />
+                                  ) : (
+                                    <TrendingDown className="mr-1 h-3 w-3" />
+                                  )}
+                                  <span>
+                                    {percentChange > 0 ? "+" : ""}
+                                    {percentChange.toFixed(1)}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">No period data available for the selected campaign</p>
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 };

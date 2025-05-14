@@ -12,46 +12,13 @@ interface DashboardWrapperProps {
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
-  selectedRevenueAgencies?: string[];
-  selectedMetricsAgencies?: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
-  onRevenueAgenciesChange?: (selected: string[]) => void;
-  onMetricsAgenciesChange?: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
-  const { extractAdvertiserName, isTestCampaign, extractAgencyPrefix, getAgencyFromPrefix } = useCampaignFilter();
-  
-  // Get sorted agency options from the filtered data
-  const sortedAgencyOptions = useMemo(() => {
-    const agencySet = new Set<string>();
-    
-    console.log('-------- Extracting agencies in DashboardWrapper --------');
-    
-    props.data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      
-      // Skip test campaigns
-      if (isTestCampaign(campaignName)) {
-        return;
-      }
-      
-      const prefix = extractAgencyPrefix(campaignName);
-      const agency = getAgencyFromPrefix(prefix);
-      
-      if (agency) {
-        agencySet.add(agency);
-        console.log(`Added agency: "${agency}" from campaign "${campaignName}"`);
-      }
-    });
-    
-    console.log('Total unique agencies found:', agencySet.size);
-    console.log('Agency list:', Array.from(agencySet).sort());
-    
-    return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
-  }, [props.data, extractAgencyPrefix, getAgencyFromPrefix, isTestCampaign]);
+  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
   
   // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
   const sortedCampaignOptions = useMemo(() => {
@@ -71,17 +38,6 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     
     console.log('-------- Extracting advertisers in DashboardWrapper --------');
     
-    // First determine if we should filter by agencies
-    const filterByAgencies = props.selectedMetricsAgencies?.length || props.selectedRevenueAgencies?.length;
-    const agenciesForFilter = new Set([
-      ...(props.selectedMetricsAgencies || []),
-      ...(props.selectedRevenueAgencies || [])
-    ]);
-    
-    if (filterByAgencies) {
-      console.log(`Filtering advertisers by agencies: ${Array.from(agenciesForFilter).join(', ')}`);
-    }
-    
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       
@@ -90,37 +46,32 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
         return;
       }
       
-      // If filtering by agency, check if this campaign belongs to one of the selected agencies
-      if (filterByAgencies) {
-        const prefix = extractAgencyPrefix(campaignName);
-        const agency = getAgencyFromPrefix(prefix);
-        
-        if (!agency || !agenciesForFilter.has(agency)) {
-          return; // Skip this campaign as it doesn't match selected agencies
-        }
-      }
-      
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
       
+      // Additional explicit logging for Sol Flower
+      if (campaignName.includes('Sol Flower')) {
+        console.log(`Sol Flower campaign found: "${campaignName}" -> Extracted: "${advertiser}"`);
+      }
+      
       if (advertiser) {
         advertiserSet.add(advertiser);
+        // Log when adding Sol Flower to the set
+        if (advertiser === "Sol Flower") {
+          console.log(`Added "Sol Flower" to advertiser set, current size: ${advertiserSet.size}`);
+        }
       }
     });
     
     console.log('Total unique advertisers found:', advertiserSet.size);
     console.log('Advertiser list:', Array.from(advertiserSet).sort());
     
+    // Check if Sol Flower exists in the final set
+    const hasSolFlower = advertiserSet.has("Sol Flower");
+    console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
+    
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
-  }, [
-    props.data, 
-    props.selectedMetricsAgencies, 
-    props.selectedRevenueAgencies, 
-    extractAdvertiserName, 
-    extractAgencyPrefix,
-    getAgencyFromPrefix,
-    isTestCampaign
-  ]);
+  }, [props.data, extractAdvertiserName, isTestCampaign]);
 
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
@@ -168,16 +119,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsCampaigns={props.selectedMetricsCampaigns}
       selectedRevenueCampaigns={props.selectedRevenueCampaigns}
       selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
-      selectedMetricsAgencies={props.selectedMetricsAgencies || []}
-      selectedRevenueAgencies={props.selectedRevenueAgencies || []}
       onMetricsCampaignsChange={props.onMetricsCampaignsChange}
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
-      onMetricsAgenciesChange={props.onMetricsAgenciesChange}
-      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
-      sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
     />
   );
