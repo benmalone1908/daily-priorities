@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -30,15 +29,17 @@ interface DashboardProps {
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
-  selectedRevenueAgencies?: string[]; // Added this missing property
+  selectedRevenueAgencies?: string[];
+  selectedMetricsAgencies?: string[]; // Added this property to fix the TypeScript error
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
-  onRevenueAgenciesChange?: (selected: string[]) => void; // Added this missing property
+  onRevenueAgenciesChange?: (selected: string[]) => void;
+  onMetricsAgenciesChange?: (selected: string[]) => void; // Added this handler
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
-  sortedAgencyOptions?: string[]; // Added this property
-  aggregatedMetricsData?: any[]; // Added this property
+  sortedAgencyOptions?: string[];
+  aggregatedMetricsData?: any[];
 }
 
 interface WeeklyData {
