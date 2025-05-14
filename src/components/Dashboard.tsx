@@ -907,6 +907,7 @@ const Dashboard = ({
         weeklyData.push(weekData);
       });
       
+      // Fix: Return the array directly since it's already properly typed as WeeklyData[]
       return weeklyData;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
