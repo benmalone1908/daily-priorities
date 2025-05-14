@@ -22,7 +22,6 @@ interface MultiSelectProps {
   className?: string;
   popoverClassName?: string;
   containerClassName?: string;
-  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -33,15 +32,9 @@ export function MultiSelect({
   className,
   popoverClassName,
   containerClassName,
-  disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
-
-  // Debug the options passed to MultiSelect
-  React.useEffect(() => {
-    console.log('MultiSelect options:', options.length ? options.slice(0, 5) : 'No options');
-  }, [options]);
 
   const handleSelect = (value: string) => {
     if (selected.includes(value)) {
@@ -73,7 +66,6 @@ export function MultiSelect({
           <button
             role="combobox"
             aria-expanded={open}
-            disabled={disabled}
             className={cn(
               "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               className
@@ -96,49 +88,41 @@ export function MultiSelect({
             </div>
           </div>
           <div className="max-h-[300px] overflow-auto p-1">
-            {options && options.length > 0 ? (
-              <>
-                <div
-                  className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
-                  onClick={handleSelectAll}
-                >
-                  <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                    {selected.length === options.length ? (
-                      <CheckSquare className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Square className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <span className="truncate">Select All</span>
-                </div>
-                {filteredOptions.map((option) => (
-                  <div
-                    key={option.value}
-                    className={cn(
-                      "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
-                      selected.includes(option.value) ? "bg-accent/50" : ""
-                    )}
-                    onClick={() => handleSelect(option.value)}
-                  >
-                    <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                      {selected.includes(option.value) ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
-                      {option.label}
-                    </span>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <div className="py-2 px-2 text-sm text-center text-muted-foreground">
-                No options available
+            <div
+              className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
+              onClick={handleSelectAll}
+            >
+              <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+                {selected.length === options.length ? (
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                ) : (
+                  <Square className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
-            )}
-            {filteredOptions.length === 0 && options.length > 0 && (
+              <span className="truncate">Select All</span>
+            </div>
+            {filteredOptions.map((option) => (
+              <div
+                key={option.value}
+                className={cn(
+                  "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                  selected.includes(option.value) ? "bg-accent/50" : ""
+                )}
+                onClick={() => handleSelect(option.value)}
+              >
+                <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+                  {selected.includes(option.value) ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <span className="truncate whitespace-nowrap overflow-hidden text-ellipsis pr-2">
+                  {option.label}
+                </span>
+              </div>
+            ))}
+            {filteredOptions.length === 0 && (
               <div className="py-2 px-2 text-sm text-center text-muted-foreground">
                 No options found
               </div>

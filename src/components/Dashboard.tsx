@@ -29,17 +29,12 @@ interface DashboardProps {
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
-  selectedRevenueAgencies?: string[];
-  selectedMetricsAgencies?: string[]; // Added this property to fix the TypeScript error
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
-  onRevenueAgenciesChange?: (selected: string[]) => void;
-  onMetricsAgenciesChange?: (selected: string[]) => void; // Added this handler
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
-  sortedAgencyOptions?: string[];
-  aggregatedMetricsData?: any[];
+  aggregatedMetricsData?: any[]; // Added this property
 }
 
 interface WeeklyData {

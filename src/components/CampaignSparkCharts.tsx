@@ -49,7 +49,6 @@ interface ModalData {
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
-  const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
@@ -59,63 +58,17 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   });
   
   // Get filter functions from context
-  const { extractAdvertiserName, extractAgencyName, isTestCampaign } = useCampaignFilter();
-  
-  // Get agency options from data
-  const agencyOptions = useMemo(() => {
-    const agencies = new Set<string>();
-    
-    // Add debug logging
-    console.log('-------- Extracting agencies in CampaignSparkCharts --------');
-    console.log('Total data rows:', data.length);
-    
-    // Skip test campaigns and extract agencies from valid campaigns
-    data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      
-      // Skip test/demo/draft campaigns
-      if (isTestCampaign(campaignName)) {
-        return;
-      }
-      
-      const agency = extractAgencyName(campaignName);
-      if (agency) {
-        agencies.add(agency);
-      }
-    });
-    
-    console.log('Final unique agencies found:', agencies.size);
-    console.log('Agency list:', Array.from(agencies).sort());
-    
-    return Array.from(agencies)
-      .sort((a, b) => a.localeCompare(b))
-      .map(agency => ({
-        value: agency,
-        label: agency
-      }));
-  }, [data, extractAgencyName, isTestCampaign]);
+  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
   
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
-    // Filter based on selected agencies first
-    let filteredData = data;
-    
-    // If agencies are selected, filter by them
-    if (selectedAgencies.length > 0) {
-      filteredData = filteredData.filter(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const agency = extractAgencyName(campaignName);
-        return selectedAgencies.includes(agency);
-      });
-    }
-    
     // Add debug logging
     console.log('-------- Extracting advertisers in CampaignSparkCharts --------');
-    console.log('Total filtered data rows after agency filter:', filteredData.length);
+    console.log('Total data rows:', data.length);
     
     // Skip test campaigns and extract advertisers from valid campaigns
-    filteredData.forEach(row => {
+    data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       
       // Skip test/demo/draft campaigns
@@ -138,7 +91,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: advertiser,
         label: advertiser
       }));
-  }, [data, selectedAgencies, extractAdvertiserName, extractAgencyName, isTestCampaign]);
+  }, [data, extractAdvertiserName, isTestCampaign]);
 
   const campaignOptions = useMemo(() => {
     let filteredData = data;
@@ -149,16 +102,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
-    // If agencies are selected, filter by them first
-    if (selectedAgencies.length > 0) {
-      filteredData = filteredData.filter(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const agency = extractAgencyName(campaignName);
-        return selectedAgencies.includes(agency);
-      });
-    }
-    
-    // Then filter by advertisers if selected
     if (selectedAdvertisers.length > 0) {
       filteredData = filteredData.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -174,60 +117,23 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: campaign,
         label: campaign
       }));
-  }, [data, selectedAgencies, selectedAdvertisers, extractAdvertiserName, extractAgencyName, isTestCampaign]);
+  }, [data, selectedAdvertisers, extractAdvertiserName, isTestCampaign]);
 
-  // Effect to update advertiser selection when agencies change
   useEffect(() => {
-    if (selectedAgencies.length > 0) {
-      setSelectedAdvertisers(prev => {
-        return prev.filter(advertiser => {
-          // Find campaigns for this advertiser
-          const advertiserCampaigns = data.filter(row => {
-            const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-            const rowAdvertiser = extractAdvertiserName(campaignName);
-            return rowAdvertiser === advertiser;
-          });
-          
-          // Check if any of these campaigns match the selected agencies
-          return advertiserCampaigns.some(row => {
-            const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-            const agency = extractAgencyName(campaignName);
-            return selectedAgencies.includes(agency);
-          });
-        });
-      });
-    }
-  }, [selectedAgencies, data, extractAdvertiserName, extractAgencyName]);
-
-  // Effect to update campaign selection when advertisers change
-  useEffect(() => {
-    if (selectedAdvertisers.length > 0 || selectedAgencies.length > 0) {
+    if (selectedAdvertisers.length > 0) {
       setSelectedCampaigns(prev => {
         return prev.filter(campaign => {
           const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
           if (campaignRows.length === 0) return false;
           
           const campaignName = campaignRows[0]["CAMPAIGN ORDER NAME"] || "";
-          
-          // Check if campaign passes agency filter
-          if (selectedAgencies.length > 0) {
-            const agency = extractAgencyName(campaignName);
-            if (!selectedAgencies.includes(agency)) return false;
-          }
-          
-          // Check if campaign passes advertiser filter
-          if (selectedAdvertisers.length > 0) {
-            const advertiser = extractAdvertiserName(campaignName);
-            return selectedAdvertisers.includes(advertiser);
-          }
-          
-          return true;
+          const advertiser = extractAdvertiserName(campaignName);
+          return selectedAdvertisers.includes(advertiser);
         });
       });
     }
-  }, [selectedAdvertisers, selectedAgencies, data, extractAdvertiserName, extractAgencyName]);
+  }, [selectedAdvertisers, data, extractAdvertiserName, isTestCampaign]);
 
-  
   const filteredDataByDate = useMemo(() => {
     if (!data || data.length === 0) {
       console.log('No data provided to CampaignSparkCharts');
@@ -283,16 +189,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
-    // Filter by agencies if selected
-    if (selectedAgencies.length > 0) {
-      result = result.filter(row => {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const agency = extractAgencyName(campaignName);
-        return selectedAgencies.includes(agency);
-      });
-    }
-    
-    // Filter by advertisers if selected
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -301,16 +197,13 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
-    // Filter by campaigns if selected
     if (selectedCampaigns.length > 0) {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     console.log('CampaignSparkCharts final filtered data length:', result.length);
     return result;
-  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, selectedAgencies, isTestCampaign, extractAdvertiserName, extractAgencyName]);
-
-  
+  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, isTestCampaign, extractAdvertiserName]);
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
     // Updated regex to correctly capture advertiser names before hyphens
@@ -514,8 +407,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }
   }, [filteredData, viewMode]);
 
-  
-
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
     if (chartData.length === 0) {
@@ -606,14 +497,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             
             <div className="flex items-center gap-2">
               <MultiSelect
-                options={agencyOptions}
-                selected={selectedAgencies}
-                onChange={setSelectedAgencies}
-                placeholder="Agency"
-                className="w-[200px]"
-              />
-              
-              <MultiSelect
                 options={advertiserOptions}
                 selected={selectedAdvertisers}
                 onChange={setSelectedAdvertisers}
@@ -664,14 +547,6 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
           
           <div className="flex items-center gap-2">
-            <MultiSelect
-              options={agencyOptions}
-              selected={selectedAgencies}
-              onChange={setSelectedAgencies}
-              placeholder="Agency"
-              className="w-[200px]"
-            />
-            
             <MultiSelect
               options={advertiserOptions}
               selected={selectedAdvertisers}
@@ -946,18 +821,19 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           </Card>
         );
       })}
-      
+
+      {/* Modal for expanded chart view */}
       {modalData.isOpen && (
         <SparkChartModal
           open={modalData.isOpen}
-          onOpenChange={(open) => setModalData(prev => ({ ...prev, isOpen: open }))}
-          title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType)?.title}`}
+          onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}
+          title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType).title}`}
           data={modalData.data}
           dataKey={modalData.metricType}
-          color={getMetricDetails(modalData.metricType)?.color || "#000"}
-          gradientId={`modal-${modalData.metricType}`}
-          valueFormatter={getMetricDetails(modalData.metricType)?.formatter}
-          labelFormatter={(label) => label}
+          color={getMetricDetails(modalData.metricType).color}
+          gradientId={`${modalData.itemName}-${modalData.metricType}`.replace(/[^a-zA-Z0-9]/g, '-')}
+          valueFormatter={getMetricDetails(modalData.metricType).formatter}
+          labelFormatter={(label) => `${label}`}
         />
       )}
     </div>
