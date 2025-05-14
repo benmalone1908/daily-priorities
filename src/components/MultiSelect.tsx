@@ -47,18 +47,10 @@ export function MultiSelect({
     }
   };
 
-  const handleSelectAll = () => {
-    if (selected.length === validOptions.length) {
-      onChange([]);
-    } else {
-      onChange(validOptions.map(option => option.value));
-    }
-  };
-  
   // Filter out options with empty values or labels first
   const validOptions = React.useMemo(() => {
     return options.filter(option => 
-      option.value?.trim() && option.label?.trim()
+      option && option.value?.trim() && option.label?.trim()
     );
   }, [options]);
   
@@ -69,6 +61,14 @@ export function MultiSelect({
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [validOptions, searchQuery]);
+
+  const handleSelectAll = () => {
+    if (selected.length === validOptions.length) {
+      onChange([]);
+    } else {
+      onChange(validOptions.map(option => option.value));
+    }
+  };
 
   // Group options if showGroups is enabled
   const groupedOptions = React.useMemo(() => {
@@ -83,16 +83,6 @@ export function MultiSelect({
       return groups;
     }, {});
   }, [filteredOptions, showGroups]);
-
-  // Add debugging to see what's happening with options
-  React.useEffect(() => {
-    if (filteredOptions.length === 0 && validOptions.length > 0) {
-      console.log('Search query filtering out all options:', searchQuery);
-    }
-    if (validOptions.length === 0 && options.length > 0) {
-      console.log('All options are invalid. First 5 options:', options.slice(0, 5));
-    }
-  }, [filteredOptions, validOptions, options, searchQuery]);
 
   return (
     <div className={containerClassName}>
