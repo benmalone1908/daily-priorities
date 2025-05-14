@@ -277,6 +277,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
+      selectedWeeklyCampaigns={props.selectedWeeklyCampaigns} // Pass the new prop
+      onWeeklyCampaignsChange={props.onWeeklyCampaignsChange} // Pass the new handler
       sortedCampaignOptions={campaignOptionsForDashboard}
       sortedAdvertiserOptions={advertiserOptionsForDashboard}
       sortedAgencyOptions={agencyOptionsForDashboard}
