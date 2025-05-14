@@ -19,8 +19,8 @@ interface DashboardWrapperProps {
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
   onRevenueAgenciesChange: (selected: string[]) => void;
-  selectedWeeklyCampaigns?: string[]; // Add new prop for weekly campaigns multi-select
-  onWeeklyCampaignsChange?: (selected: string[]) => void; // Add new handler
+  selectedWeeklyCampaigns: string[]; // Updated to array for multiple selections
+  onWeeklyCampaignsChange: (selected: string[]) => void; // Updated handler for array of selections
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -288,6 +288,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
       advertiserToCampaignsMap={advertiserToCampaignsMap}
+      // Add the weekly campaigns props
+      selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
+      onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
     />
   );
 };

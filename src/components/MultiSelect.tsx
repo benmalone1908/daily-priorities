@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,8 @@ interface MultiSelectProps {
   popoverClassName?: string;
   containerClassName?: string;
   showGroups?: boolean;
-  singleSelect?: boolean; // Add this prop to support single selection mode
+  singleSelect?: boolean;
+  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -35,7 +37,8 @@ export function MultiSelect({
   popoverClassName,
   containerClassName,
   showGroups = false,
-  singleSelect = false, // Default to multi-select mode
+  singleSelect = false,
+  disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -116,11 +119,12 @@ export function MultiSelect({
 
   return (
     <div className={containerClassName}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
+        <PopoverTrigger asChild disabled={disabled}>
           <button
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className={cn(
               "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               className
