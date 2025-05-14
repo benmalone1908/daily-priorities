@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -358,6 +359,9 @@ const DashboardContent = ({
   const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedWeeklyCampaigns, setSelectedWeeklyCampaigns] = useState<string[]>([]);
+  // Add new state variables for metrics filters
+  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
+  const [selectedMetricsAgencies, setSelectedMetricsAgencies] = useState<string[]>([]);
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
@@ -534,6 +538,20 @@ const DashboardContent = ({
     setSelectedRevenueCampaigns([]);
   };
 
+  // Add handlers for metrics advertisers and agencies
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+    // Reset campaigns when advertisers change
+    setSelectedMetricsCampaigns([]);
+  };
+
+  const handleMetricsAgenciesChange = (selected: string[]) => {
+    setSelectedMetricsAgencies(selected);
+    // Reset advertisers and campaigns when agencies change
+    setSelectedMetricsAdvertisers([]);
+    setSelectedMetricsCampaigns([]);
+  };
+
   const handleWeeklyCampaignsChange = (selected: string[]) => {
     setSelectedWeeklyCampaigns(selected);
   };
@@ -593,7 +611,11 @@ const DashboardContent = ({
         <TabsContent value="dashboard">
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
-            metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+            metricsData={getFilteredDataByCampaignsAndAdvertisersAndAgencies(
+              selectedMetricsCampaigns,
+              selectedMetricsAdvertisers,
+              selectedMetricsAgencies
+            )}
             revenueData={getFilteredDataByCampaignsAndAdvertisersAndAgencies(
               selectedRevenueCampaigns, 
               selectedRevenueAdvertisers,
@@ -609,6 +631,11 @@ const DashboardContent = ({
             onRevenueAgenciesChange={handleRevenueAgenciesChange}
             selectedWeeklyCampaigns={selectedWeeklyCampaigns}
             onWeeklyCampaignsChange={handleWeeklyCampaignsChange}
+            // Add new props for metrics filters
+            selectedMetricsAdvertisers={selectedMetricsAdvertisers}
+            selectedMetricsAgencies={selectedMetricsAgencies}
+            onMetricsAdvertisersChange={handleMetricsAdvertisersChange}
+            onMetricsAgenciesChange={handleMetricsAgenciesChange}
           />
         </TabsContent>
         <TabsContent value="sparks">

@@ -12,12 +12,18 @@ interface DashboardWrapperProps {
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
   selectedRevenueAgencies: string[];
+  // Add props for metrics filters
+  selectedMetricsAdvertisers: string[];
+  selectedMetricsAgencies: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
   onRevenueAgenciesChange: (selected: string[]) => void;
-  selectedWeeklyCampaigns: string[]; // Updated to array for multiple selections
-  onWeeklyCampaignsChange: (selected: string[]) => void; // Updated handler for array of selections
+  // Add handlers for metrics filters
+  onMetricsAdvertisersChange: (selected: string[]) => void;
+  onMetricsAgenciesChange: (selected: string[]) => void;
+  selectedWeeklyCampaigns: string[]; 
+  onWeeklyCampaignsChange: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -260,7 +266,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
   debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
-  // Pass all props to Dashboard, including weekly campaigns props
+  // Pass all props to Dashboard, including the new metrics filters props
   return (
     <DashboardProxy
       data={props.data}
@@ -284,9 +290,13 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
       advertiserToCampaignsMap={advertiserToCampaignsMap}
-      // Also pass the weekly campaigns props
       selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
+      // Add the new metrics filters props
+      selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
+      selectedMetricsAgencies={props.selectedMetricsAgencies}
+      onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
+      onMetricsAgenciesChange={props.onMetricsAgenciesChange}
     />
   );
 };
