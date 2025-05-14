@@ -1240,6 +1240,16 @@ const Dashboard = ({
             </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
+              {onRevenueAgenciesChange && agencyOptions.length > 0 && (
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedRevenueAgencies}
+                  onChange={onRevenueAgenciesChange}
+                  placeholder="Agency"
+                  className="w-[200px]"
+                />
+              )}
+              
               {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
                 <MultiSelect
                   options={advertiserOptions}
