@@ -55,12 +55,20 @@ export function MultiSelect({
     }
   };
   
-  const filteredOptions = React.useMemo(() => {
-    if (!searchQuery.trim()) return options;
+  // Filter out options with empty values or labels first
+  const validOptions = React.useMemo(() => {
     return options.filter(option => 
+      option.value?.trim() && option.label?.trim()
+    );
+  }, [options]);
+  
+  // Then apply search filtering on valid options
+  const filteredOptions = React.useMemo(() => {
+    if (!searchQuery.trim()) return validOptions;
+    return validOptions.filter(option => 
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [options, searchQuery]);
+  }, [validOptions, searchQuery]);
 
   // Group options if showGroups is enabled
   const groupedOptions = React.useMemo(() => {
@@ -105,19 +113,21 @@ export function MultiSelect({
             </div>
           </div>
           <div className="max-h-[300px] overflow-auto p-1">
-            <div
-              className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
-              onClick={handleSelectAll}
-            >
-              <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                {selected.length === options.length ? (
-                  <CheckSquare className="h-4 w-4 text-primary" />
-                ) : (
-                  <Square className="h-4 w-4 text-muted-foreground" />
-                )}
+            {validOptions.length > 0 && (
+              <div
+                className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
+                onClick={handleSelectAll}
+              >
+                <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
+                  {selected.length === validOptions.length ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <span className="truncate">Select All</span>
               </div>
-              <span className="truncate">Select All</span>
-            </div>
+            )}
             
             {showGroups ? (
               Object.entries(groupedOptions).map(([groupName, groupOptions]) => (
