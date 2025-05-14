@@ -943,10 +943,10 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
                   </div>
                 </div>
               </div>
-            </Card>
-          );
-        })
-      }
+            </div>
+          </Card>
+        );
+      })
       
       {modalData.isOpen && (
         <SparkChartModal
