@@ -136,6 +136,61 @@ const Dashboard = ({
 
   const { extractAgencyInfo, extractAdvertiserName } = useCampaignFilter();
   
+  // Create filtered advertiser options for the Attribution Revenue chart
+  const filteredRevenueAdvertiserOptions = useMemo(() => {
+    if (!selectedRevenueAgencies.length) {
+      return advertisers.map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+    }
+    
+    const validAdvertisers = new Set<string>();
+    
+    selectedRevenueAgencies.forEach(agency => {
+      const advertisersForAgency = agencyToAdvertisersMap[agency];
+      if (advertisersForAgency) {
+        advertisersForAgency.forEach(advertiser => {
+          validAdvertisers.add(advertiser);
+        });
+      }
+    });
+    
+    console.log(`Filtered advertisers for agencies ${selectedRevenueAgencies.join(', ')}:`, Array.from(validAdvertisers));
+    
+    return Array.from(validAdvertisers)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+  }, [selectedRevenueAgencies, advertisers, agencyToAdvertisersMap]);
+
+  // Create filtered campaign options for the Attribution Revenue chart
+  const filteredRevenueCampaignOptions = useMemo(() => {
+    let validCampaigns = campaigns;
+    
+    if (selectedRevenueAgencies.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedRevenueAgencies.includes(agency) && agency !== "";
+      });
+    }
+    
+    if (selectedRevenueAdvertisers.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedRevenueAdvertisers.includes(advertiser) && advertiser !== "";
+      });
+    }
+    
+    console.log(`Filtered revenue campaign options: ${validCampaigns.length} campaigns`);
+    
+    return validCampaigns;
+  }, [campaigns, selectedRevenueAgencies, selectedRevenueAdvertisers, extractAgencyInfo, extractAdvertiserName]);
+
   const filteredWeeklyAdvertiserOptions = useMemo(() => {
     if (!selectedWeeklyAgencies.length) {
       return advertisers.map(advertiser => ({
@@ -185,33 +240,6 @@ const Dashboard = ({
       label: agency
     }));
   }, [agencies]);
-
-  const filteredWeeklyCampaignOptions = useMemo(() => {
-    let validCampaigns = campaignOptions;
-    
-    if (selectedWeeklyAgencies.length > 0) {
-      validCampaigns = validCampaigns.filter(option => {
-        const campaignName = option.value;
-        const { agency } = extractAgencyInfo(campaignName);
-        return selectedWeeklyAgencies.includes(agency) && agency !== "";
-      });
-    }
-    
-    if (selectedWeeklyAdvertisers.length > 0) {
-      validCampaigns = validCampaigns.filter(option => {
-        const campaignName = option.value;
-        const advertiser = extractAdvertiserName(campaignName);
-        return selectedWeeklyAdvertisers.includes(advertiser) && advertiser !== "";
-      });
-    }
-    
-    console.log(`Filtered weekly campaign options: ${validCampaigns.length} campaigns`);
-    
-    return [
-      { value: "all", label: "All Campaigns" },
-      ...validCampaigns
-    ];
-  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies, extractAgencyInfo, extractAdvertiserName]);
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     if (selectedWeeklyAgencies.length > 0) {
@@ -316,7 +344,6 @@ const Dashboard = ({
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
-    // Additional logic for metrics advertisers can be added here
   };
 
   const detectAnomalies = (inputData: any[]) => {
@@ -1250,9 +1277,9 @@ const Dashboard = ({
                 />
               )}
               
-              {onRevenueAdvertisersChange && advertiserOptions.length > 0 && (
+              {onRevenueAdvertisersChange && filteredRevenueAdvertiserOptions.length > 0 && (
                 <MultiSelect
-                  options={advertiserOptions}
+                  options={filteredRevenueAdvertiserOptions}
                   selected={selectedRevenueAdvertisers}
                   onChange={onRevenueAdvertisersChange}
                   placeholder="Advertiser"
@@ -1260,9 +1287,9 @@ const Dashboard = ({
                 />
               )}
               
-              {onRevenueCampaignsChange && campaignOptions.length > 0 && (
+              {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
                 <MultiSelect
-                  options={campaignOptions}
+                  options={filteredRevenueCampaignOptions}
                   selected={selectedRevenueCampaigns}
                   onChange={onRevenueCampaignsChange}
                   placeholder="Campaign"
@@ -1392,7 +1419,7 @@ const Dashboard = ({
                     <SelectValue placeholder="Campaign" />
                   </SelectTrigger>
                   <SelectContent className="w-[400px]">
-                    {filteredWeeklyCampaignOptions.map(option => (
+                    {filteredRevenueCampaignOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
