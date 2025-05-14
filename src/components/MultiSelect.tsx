@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { Check, ChevronsUpDown, Square, CheckSquare, ListChecks, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +23,7 @@ interface MultiSelectProps {
   popoverClassName?: string;
   containerClassName?: string;
   showGroups?: boolean;
+  singleSelect?: boolean; // Add this prop to support single selection mode
 }
 
 export function MultiSelect({
@@ -35,15 +35,23 @@ export function MultiSelect({
   popoverClassName,
   containerClassName,
   showGroups = false,
+  singleSelect = false, // Default to multi-select mode
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   const handleSelect = (value: string) => {
-    if (selected.includes(value)) {
-      onChange(selected.filter((item) => item !== value));
+    if (singleSelect) {
+      // If single select mode, just replace the selection
+      onChange([value]);
+      setOpen(false); // Close dropdown after selection in single select mode
     } else {
-      onChange([...selected, value]);
+      // Original multi-select behavior
+      if (selected.includes(value)) {
+        onChange(selected.filter((item) => item !== value));
+      } else {
+        onChange([...selected, value]);
+      }
     }
   };
 
@@ -94,6 +102,18 @@ export function MultiSelect({
     }
   }, [options, validOptions, filteredOptions]);
 
+  // Modify the display text for single select mode
+  const displayText = React.useMemo(() => {
+    if (selected.length === 0) return placeholder;
+    
+    if (singleSelect && selected.length === 1) {
+      const selectedOption = options.find(opt => opt.value === selected[0]);
+      return selectedOption?.label || selected[0];
+    }
+    
+    return `${selected.length} selected`;
+  }, [selected, options, placeholder, singleSelect]);
+
   return (
     <div className={containerClassName}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -106,7 +126,7 @@ export function MultiSelect({
               className
             )}
           >
-            {selected.length === 0 ? placeholder : `${selected.length} selected`}
+            {displayText}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
         </PopoverTrigger>
@@ -123,7 +143,8 @@ export function MultiSelect({
             </div>
           </div>
           <div className="max-h-[300px] overflow-auto p-1">
-            {validOptions.length > 0 && (
+            {/* Hide Select All in single select mode */}
+            {!singleSelect && validOptions.length > 0 && (
               <div
                 className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
                 onClick={handleSelectAll}

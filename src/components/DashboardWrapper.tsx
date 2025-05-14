@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -18,6 +19,8 @@ interface DashboardWrapperProps {
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
   onRevenueAgenciesChange: (selected: string[]) => void;
+  selectedWeeklyCampaigns?: string[]; // Add new prop for weekly campaigns multi-select
+  onWeeklyCampaignsChange?: (selected: string[]) => void; // Add new handler
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
