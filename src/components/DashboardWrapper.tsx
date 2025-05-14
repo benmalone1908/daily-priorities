@@ -104,6 +104,31 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
   }, [props.data, extractAgencyInfo, isTestCampaign]);
 
+  // Create a mapping from agency to advertisers
+  const agencyToAdvertisersMap = useMemo(() => {
+    const mapping: Record<string, Set<string>> = {};
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const { agency } = extractAgencyInfo(campaignName);
+      const advertiser = extractAdvertiserName(campaignName);
+      
+      if (agency && advertiser) {
+        if (!mapping[agency]) {
+          mapping[agency] = new Set<string>();
+        }
+        mapping[agency].add(advertiser);
+      }
+    });
+    
+    return mapping;
+  }, [props.data, extractAgencyInfo, extractAdvertiserName, isTestCampaign]);
+
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
     if (!props.data || props.data.length === 0) return [];
@@ -160,6 +185,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       sortedAdvertiserOptions={sortedAdvertiserOptions}
       sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
+      agencyToAdvertisersMap={agencyToAdvertisersMap}
     />
   );
 };

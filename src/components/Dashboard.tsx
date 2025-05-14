@@ -37,7 +37,8 @@ interface DashboardProps {
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
   sortedAgencyOptions?: string[];
-  aggregatedMetricsData?: any[]; // Added this property
+  aggregatedMetricsData?: any[];
+  agencyToAdvertisersMap?: Record<string, Set<string>>;
 }
 
 interface WeeklyData {
@@ -76,7 +77,8 @@ const Dashboard = ({
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
   sortedAgencyOptions = [],
-  aggregatedMetricsData
+  aggregatedMetricsData,
+  agencyToAdvertisersMap = {}
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -127,6 +129,35 @@ const Dashboard = ({
     return [];
   }, [sortedAgencyOptions]);
 
+  const filteredWeeklyAdvertiserOptions = useMemo(() => {
+    if (!selectedWeeklyAgencies.length) {
+      return advertisers.map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+    }
+    
+    const validAdvertisers = new Set<string>();
+    
+    selectedWeeklyAgencies.forEach(agency => {
+      const advertisersForAgency = agencyToAdvertisersMap[agency];
+      if (advertisersForAgency) {
+        advertisersForAgency.forEach(advertiser => {
+          validAdvertisers.add(advertiser);
+        });
+      }
+    });
+    
+    console.log(`Filtered advertisers for agencies ${selectedWeeklyAgencies.join(', ')}:`, Array.from(validAdvertisers));
+    
+    return Array.from(validAdvertisers)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+  }, [selectedWeeklyAgencies, advertisers, agencyToAdvertisersMap]);
+
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
@@ -148,123 +179,98 @@ const Dashboard = ({
     }));
   }, [agencies]);
 
-  const filteredMetricsCampaignOptions = useMemo(() => {
-    if (!selectedMetricsAdvertisers.length) return campaignOptions;
-    
-    return campaignOptions.filter(option => {
-      const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedMetricsAdvertisers.includes(advertiser);
-    });
-  }, [campaignOptions, selectedMetricsAdvertisers]);
-
-  const filteredRevenueCampaignOptions = useMemo(() => {
-    if (!selectedRevenueAdvertisers.length) return campaignOptions;
-    
-    return campaignOptions.filter(option => {
-      const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedRevenueAdvertisers.includes(advertiser);
-    });
-  }, [campaignOptions, selectedRevenueAdvertisers]);
-
   const filteredWeeklyCampaignOptions = useMemo(() => {
-    if (!selectedWeeklyAdvertisers.length && !selectedWeeklyAgencies.length) {
-      return [
-        { value: "all", label: "All Campaigns" },
-        ...campaignOptions
-      ];
-    }
+    let validCampaigns = campaignOptions;
     
-    const filteredCampaigns = campaignOptions.filter(option => {
-      const campaignName = option.value;
-      
-      // Filter by advertiser
-      if (selectedWeeklyAdvertisers.length > 0) {
-        const advertiserMatch = campaignName.match(/SM:\s+([^-]+)/);
-        const advertiser = advertiserMatch ? advertiserMatch[1].trim() : "";
-        if (!selectedWeeklyAdvertisers.includes(advertiser)) {
-          return false;
-        }
-      }
-      
-      // Filter by agency
-      if (selectedWeeklyAgencies.length > 0) {
-        // Check if any selected agency is in the campaign name
-        let hasMatchingAgency = false;
+    if (selectedWeeklyAgencies.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option.value;
+        
         for (const agency of selectedWeeklyAgencies) {
+          const abbreviationMatch = campaignName.match(/^([^:]+):/);
+          if (abbreviationMatch) {
+            const abbreviation = abbreviationMatch[1].trim();
+            const agencyAbbreviations: Record<string, string> = {
+              'SM': 'SM Services',
+              'MJ': 'MediaJel',
+              'BLO': 'Be Local One',
+              '2RS': '2RS',
+              '6D': '6 Degrees Media',
+              'FLD': 'Fieldtest',
+              'HD': 'Highday',
+              'HG': 'Happy Greens',
+              'HRB': 'Herb.co',
+              'NLMC': 'NLMC',
+              'NP': 'Noble People',
+              'PRP': 'Propaganda Creative',
+              'TF': 'Top Flight'
+            };
+            if (agencyAbbreviations[abbreviation] === agency) {
+              return true;
+            }
+          }
+          
           if (campaignName.includes(agency)) {
-            hasMatchingAgency = true;
-            break;
+            return true;
           }
         }
-        if (!hasMatchingAgency) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
+        
+        return false;
+      });
+    }
+    
+    if (selectedWeeklyAdvertisers.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option.value;
+        const advertiserMatch = campaignName.match(/:\s+([^-]+)/);
+        const advertiser = advertiserMatch ? advertiserMatch[1].trim() : "";
+        return selectedWeeklyAdvertisers.includes(advertiser);
+      });
+    }
+    
+    console.log(`Filtered weekly campaign options: ${validCampaigns.length} campaigns`);
     
     return [
       { value: "all", label: "All Campaigns" },
-      ...filteredCampaigns
+      ...validCampaigns
     ];
   }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies]);
 
-  const handleMetricsAdvertisersChange = (selected: string[]) => {
-    setSelectedMetricsAdvertisers(selected);
-    
-    if (selected.length > 0 && onMetricsCampaignsChange) {
-      const validCampaigns = selectedMetricsCampaigns.filter(campaign => {
-        const match = campaign.match(/SM:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
-        return selected.includes(advertiser);
+  const handleWeeklyAdvertisersChange = (selected: string[]) => {
+    if (selectedWeeklyAgencies.length > 0) {
+      const validAdvertisers = new Set<string>();
+      
+      selectedWeeklyAgencies.forEach(agency => {
+        const advertisersForAgency = agencyToAdvertisersMap[agency];
+        if (advertisersForAgency) {
+          advertisersForAgency.forEach(advertiser => {
+            validAdvertisers.add(advertiser);
+          });
+        }
       });
       
-      onMetricsCampaignsChange(validCampaigns);
-    }
-    
-    if (selected.length > 0) {
-      const matchingCampaigns = campaigns.filter(campaign => {
-        const match = campaign.match(/SM:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
-        return selected.includes(advertiser);
-      });
+      const filteredSelected = selected.filter(advertiser => validAdvertisers.has(advertiser));
       
-      if (selectedMetricsCampaigns.length === 0 || !selectedMetricsCampaigns.some(campaign => matchingCampaigns.includes(campaign))) {
-        if (onMetricsCampaignsChange) {
-          onMetricsCampaignsChange(matchingCampaigns);
+      setSelectedWeeklyAdvertisers(filteredSelected);
+      
+      if (selectedWeeklyCampaign !== "all") {
+        const match = selectedWeeklyCampaign.match(/:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        
+        if (!filteredSelected.includes(advertiser)) {
+          setSelectedWeeklyCampaign("all");
         }
       }
-    } else if (selected.length === 0 && onMetricsCampaignsChange) {
-      onMetricsCampaignsChange([]);
-    }
-  };
-
-  const handleRevenueAdvertisersChange = (selected: string[]) => {
-    if (onRevenueAdvertisersChange) {
-      onRevenueAdvertisersChange(selected);
-    }
-  };
-
-  const handleRevenueAgenciesChange = (selected: string[]) => {
-    if (onRevenueAgenciesChange) {
-      onRevenueAgenciesChange(selected);
-    }
-  };
-
-  const handleWeeklyAdvertisersChange = (selected: string[]) => {
-    setSelectedWeeklyAdvertisers(selected);
-    
-    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-      const match = selectedWeeklyCampaign.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
+    } else {
+      setSelectedWeeklyAdvertisers(selected);
       
-      if (!selected.includes(advertiser)) {
-        setSelectedWeeklyCampaign("all");
+      if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
+        const match = selectedWeeklyCampaign.match(/:\s+([^-]+)/);
+        const advertiser = match ? match[1].trim() : "";
+        
+        if (!selected.includes(advertiser)) {
+          setSelectedWeeklyCampaign("all");
+        }
       }
     }
   };
@@ -272,17 +278,61 @@ const Dashboard = ({
   const handleWeeklyAgenciesChange = (selected: string[]) => {
     setSelectedWeeklyAgencies(selected);
     
-    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-      let hasMatchingAgency = false;
-      for (const agency of selected) {
-        if (selectedWeeklyCampaign.includes(agency)) {
-          hasMatchingAgency = true;
-          break;
-        }
-      }
+    if (selected.length > 0 && selectedWeeklyAdvertisers.length > 0) {
+      const validAdvertisers = new Set<string>();
       
-      if (!hasMatchingAgency) {
-        setSelectedWeeklyCampaign("all");
+      selected.forEach(agency => {
+        const advertisersForAgency = agencyToAdvertisersMap[agency];
+        if (advertisersForAgency) {
+          advertisersForAgency.forEach(advertiser => {
+            validAdvertisers.add(advertiser);
+          });
+        }
+      });
+      
+      const filteredAdvertisers = selectedWeeklyAdvertisers.filter(advertiser => 
+        validAdvertisers.has(advertiser)
+      );
+      
+      setSelectedWeeklyAdvertisers(filteredAdvertisers);
+      
+      if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
+        let hasMatchingAgency = false;
+        for (const agency of selected) {
+          const campaignName = selectedWeeklyCampaign;
+          const abbreviationMatch = campaignName.match(/^([^:]+):/);
+          if (abbreviationMatch) {
+            const abbreviation = abbreviationMatch[1].trim();
+            const agencyAbbreviations: Record<string, string> = {
+              'SM': 'SM Services',
+              'MJ': 'MediaJel',
+              'BLO': 'Be Local One',
+              '2RS': '2RS',
+              '6D': '6 Degrees Media',
+              'FLD': 'Fieldtest',
+              'HD': 'Highday',
+              'HG': 'Happy Greens',
+              'HRB': 'Herb.co',
+              'NLMC': 'NLMC',
+              'NP': 'Noble People',
+              'PRP': 'Propaganda Creative',
+              'TF': 'Top Flight'
+            };
+            if (agencyAbbreviations[abbreviation] === agency) {
+              hasMatchingAgency = true;
+              break;
+            }
+          }
+          
+          if (campaignName.includes(agency)) {
+            hasMatchingAgency = true;
+            break;
+          }
+        }
+        
+        if (!hasMatchingAgency) {
+          setSelectedWeeklyCampaign("all");
+        }
       }
     }
   };
@@ -674,29 +724,47 @@ const Dashboard = ({
         console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
       }
       
-      // Filter by advertisers if any are selected
-      if (selectedAdvertisers.length > 0) {
-        filteredData = filteredData.filter((row: any) => {
-          if (!row["CAMPAIGN ORDER NAME"]) return false;
-          
-          const campaignName = row["CAMPAIGN ORDER NAME"];
-          const match = campaignName.match(/SM:\s+([^-]+)/);
-          const advertiser = match ? match[1].trim() : "";
-          return selectedAdvertisers.includes(advertiser);
-        });
-        console.log(`After advertiser filter: ${filteredData.length} rows`);
-      }
-      
-      // Filter by agencies if any are selected
       if (selectedAgencies.length > 0) {
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
-          // Check if any selected agency is in the campaign name
-          return selectedAgencies.some(agency => campaignName.includes(agency));
+          const abbreviationMatch = campaignName.match(/^([^:]+):/);
+          if (!abbreviationMatch) return false;
+          
+          const abbreviation = abbreviationMatch[1].trim();
+          const agencyAbbreviations: Record<string, string> = {
+            'SM': 'SM Services',
+            'MJ': 'MediaJel',
+            'BLO': 'Be Local One',
+            '2RS': '2RS',
+            '6D': '6 Degrees Media',
+            'FLD': 'Fieldtest',
+            'HD': 'Highday',
+            'HG': 'Happy Greens',
+            'HRB': 'Herb.co',
+            'NLMC': 'NLMC',
+            'NP': 'Noble People',
+            'PRP': 'Propaganda Creative',
+            'TF': 'Top Flight'
+          };
+          const agency = agencyAbbreviations[abbreviation];
+          
+          return selectedAgencies.includes(agency);
         });
         console.log(`After agency filter: ${filteredData.length} rows`);
+      }
+      
+      if (selectedAdvertisers.length > 0) {
+        filteredData = filteredData.filter((row: any) => {
+          if (!row["CAMPAIGN ORDER NAME"]) return false;
+          
+          const campaignName = row["CAMPAIGN ORDER NAME"];
+          const match = campaignName.match(/:\s+([^-]+)/);
+          const advertiser = match ? match[1].trim() : "";
+          return selectedAdvertisers.includes(advertiser);
+        });
+        console.log(`After advertiser filter: ${filteredData.length} rows`);
       }
       
       if (selectedCampaign !== "all") {
@@ -866,11 +934,11 @@ const Dashboard = ({
       
       const periods: ComparisonPeriod[] = ["7"];
       
-      if (totalDays >= 28) { // Need at least 2 x 14-day periods
+      if (totalDays >= 28) {
         periods.push("14");
       }
       
-      if (totalDays >= 60) { // Need at least 2 x 30-day periods
+      if (totalDays >= 60) {
         periods.push("30");
       }
       
@@ -1299,7 +1367,6 @@ const Dashboard = ({
               </div>
               <span className="text-sm font-medium mr-1">Filter by:</span>
               <div className="flex items-center gap-2">
-                {/* Reordered: Agency first */}
                 <MultiSelect
                   options={agencyOptions}
                   selected={selectedWeeklyAgencies}
@@ -1308,16 +1375,14 @@ const Dashboard = ({
                   className="w-[200px]"
                 />
                 
-                {/* Advertiser second */}
                 <MultiSelect
-                  options={advertiserOptions}
+                  options={filteredWeeklyAdvertiserOptions}
                   selected={selectedWeeklyAdvertisers}
                   onChange={handleWeeklyAdvertisersChange}
                   placeholder="Advertiser"
                   className="w-[200px]"
                 />
                 
-                {/* Campaign third */}
                 <Select 
                   value={selectedWeeklyCampaign} 
                   onValueChange={setSelectedWeeklyCampaign}
@@ -1345,12 +1410,10 @@ const Dashboard = ({
                 const previousPeriod = weeklyDataState[index + 1];
                 const periodLabel = `${formatDate(period.periodStart)} - ${formatDate(period.periodEnd)}`;
                 
-                // Calculate derived metrics
                 const ctr = calculateCTR(period.CLICKS, period.IMPRESSIONS);
                 const previousCtr = previousPeriod ? calculateCTR(previousPeriod.CLICKS, previousPeriod.IMPRESSIONS) : 0;
                 
-                // Use the TRANSACTIONS property or estimate based on revenue
-                const transactions = period.TRANSACTIONS || Math.round(period.REVENUE / 50); // Default AOV of $50 if no transactions
+                const transactions = period.TRANSACTIONS || Math.round(period.REVENUE / 50);
                 const previousTransactions = previousPeriod ? (previousPeriod.TRANSACTIONS || Math.round(previousPeriod.REVENUE / 50)) : 0;
                 
                 const aov = calculateAOV(period.REVENUE, transactions);
@@ -1448,7 +1511,7 @@ const Dashboard = ({
           </ScrollArea>
         ) : (
           <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">No period data available for the selected campaign</p>
+            <p className="text-muted-foreground">No period data available for the selected filters</p>
           </div>
         )}
       </Card>
