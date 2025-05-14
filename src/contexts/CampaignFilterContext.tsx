@@ -54,6 +54,20 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAgencyInfo = (campaignName: string): { agency: string, abbreviation: string } => {
     if (!campaignName) return { agency: "", abbreviation: "" };
     
+    // Special case for the campaign with Partner-PRP
+    if (campaignName.includes('2001943:Partner-PRP-Pend Oreille')) {
+      return { agency: 'Propaganda Creative', abbreviation: 'PRP' };
+    }
+    
+    // Handle campaign names with slashes in the IO number
+    // Format like "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404"
+    const slashFormatMatch = campaignName.match(/^\d+\/\d+:\s*([^:]+):/);
+    if (slashFormatMatch && slashFormatMatch[1]) {
+      const abbreviation = slashFormatMatch[1].trim();
+      const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+      return { agency, abbreviation };
+    }
+    
     // New regex pattern to better match the format "2001367: HRB: District Cannabis-241217"
     // This will extract just the agency abbreviation between first and second colon
     const agencyMatch = campaignName.match(/^\d+:\s*([^:]+):/);
@@ -92,7 +106,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     
     // For the new format "2001367: HRB: District Cannabis-241217"
     // This will extract the advertiser name between second colon and dash
-    const newFormatMatch = campaignName.match(/^\d+:\s*[^:]+:\s*([^-]+)/);
+    const newFormatMatch = campaignName.match(/^\d+(?:\/\d+)?:\s*[^:]+:\s*([^-]+)/);
     if (newFormatMatch && newFormatMatch[1]) {
       const extracted = newFormatMatch[1].trim();
       console.log(`New format extraction result: "${extracted}" from "${campaignName}"`);
@@ -163,6 +177,19 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       const agencyInfo = extractAgencyInfo(test);
       const isTest = isTestCampaign(test);
       console.log(`Test: "${test}" -> Advertiser: "${result}", Agency: "${agencyInfo.agency}", Abbreviation: "${agencyInfo.abbreviation}", Is Test Campaign: ${isTest}`);
+    });
+    
+    // Test our specific problem cases
+    console.log("\nTesting special problem cases:");
+    const problemCases = [
+      "2001216/2001505: NLMC: Strawberry Fields-Pueblo North-250411",
+      "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404",
+      "2001943:Partner-PRP-Pend Oreille Spokane DIS-250416"
+    ];
+    
+    problemCases.forEach(test => {
+      const agencyInfo = extractAgencyInfo(test);
+      console.log(`Problem case: "${test}" -> Agency: "${agencyInfo.agency}", Abbreviation: "${agencyInfo.abbreviation}"`);
     });
     
     // Test some test/demo/draft cases
