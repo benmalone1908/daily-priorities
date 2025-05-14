@@ -48,10 +48,10 @@ export function MultiSelect({
   };
 
   const handleSelectAll = () => {
-    if (selected.length === options.length) {
+    if (selected.length === validOptions.length) {
       onChange([]);
     } else {
-      onChange(options.map(option => option.value));
+      onChange(validOptions.map(option => option.value));
     }
   };
   
@@ -83,6 +83,16 @@ export function MultiSelect({
       return groups;
     }, {});
   }, [filteredOptions, showGroups]);
+
+  // Add debugging to see what's happening with options
+  React.useEffect(() => {
+    if (filteredOptions.length === 0 && validOptions.length > 0) {
+      console.log('Search query filtering out all options:', searchQuery);
+    }
+    if (validOptions.length === 0 && options.length > 0) {
+      console.log('All options are invalid. First 5 options:', options.slice(0, 5));
+    }
+  }, [filteredOptions, validOptions, options, searchQuery]);
 
   return (
     <div className={containerClassName}>

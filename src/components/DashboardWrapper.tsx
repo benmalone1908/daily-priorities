@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -30,7 +31,12 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
         campaignSet.add(campaignName);
       }
     });
-    return Array.from(campaignSet).sort((a, b) => a.localeCompare(b));
+    
+    // Create campaign option objects for the MultiSelect component
+    return Array.from(campaignSet).sort((a, b) => a.localeCompare(b)).map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
   }, [props.data, isTestCampaign]);
 
   // Get sorted advertiser options from the filtered data
@@ -71,7 +77,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     const hasSolFlower = advertiserSet.has("Sol Flower");
     console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
     
-    return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
+    // Create advertiser option objects for the MultiSelect component
+    return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b)).map(advertiser => ({
+      value: advertiser,
+      label: advertiser
+    }));
   }, [props.data, extractAdvertiserName, isTestCampaign]);
 
   // Get sorted agency options from the filtered data
@@ -100,7 +110,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     console.log('Total unique agencies found:', agencySet.size);
     console.log('Agency list:', Array.from(agencySet).sort());
     
-    return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
+    // Create agency option objects for the MultiSelect component
+    return Array.from(agencySet).sort((a, b) => a.localeCompare(b)).map(agency => ({
+      value: agency,
+      label: agency
+    }));
   }, [props.data, extractAgencyInfo, isTestCampaign]);
 
   // Create a mapping from agency to advertisers
