@@ -434,6 +434,42 @@ const Dashboard = ({
     }));
   }, [agencies, formattedAgencyOptions]);
 
+  // Create filtered advertiser options for the metrics chart
+  const filteredMetricsAdvertiserOptions = useMemo(() => {
+    if (selectedMetricsAdvertisers.length === 0) {
+      return advertisers.map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+    }
+    
+    return selectedMetricsAdvertisers.map(advertiser => ({
+      value: advertiser,
+      label: advertiser
+    }));
+  }, [selectedMetricsAdvertisers, advertisers]);
+
+  // Create filtered campaign options for the Metrics chart
+  const filteredMetricsCampaignOptions = useMemo(() => {
+    let validCampaigns = campaigns;
+    
+    if (selectedMetricsAdvertisers.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedMetricsAdvertisers.includes(advertiser) && advertiser !== "";
+      });
+    }
+    
+    console.log(`Filtered metrics campaign options: ${validCampaigns.length} campaigns`);
+    
+    // Map strings to Option objects before returning
+    return validCampaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
+  }, [campaigns, selectedMetricsAdvertisers, extractAdvertiserName]);
+
   // Handle metrics advertisers change function
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
@@ -973,7 +1009,7 @@ const Dashboard = ({
               
               {onMetricsCampaignsChange && campaignOptions.length > 0 && (
                 <MultiSelect
-                  options={campaignOptions}
+                  options={filteredMetricsCampaignOptions}
                   selected={selectedMetricsCampaigns}
                   onChange={onMetricsCampaignsChange}
                   placeholder="Campaign"
