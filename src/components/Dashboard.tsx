@@ -576,7 +576,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues = Object.values(weeklyData);
+            const weeklyValues: WeeklyAggregation[] = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -713,7 +713,7 @@ const Dashboard = ({
         dateGroups[normalizedDate].REVENUE += Number(row.REVENUE) || 0;
       });
 
-      const result = Object.values(dateGroups).sort((a: any, b: any) => {
+      const result: any[] = Object.values(dateGroups).sort((a: any, b: any) => {
         try {
           return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
         } catch (err) {
@@ -781,7 +781,7 @@ const Dashboard = ({
       
       console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
-      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
+      return Object.values(dayOfWeekGroups) as any[];
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
       return [];
