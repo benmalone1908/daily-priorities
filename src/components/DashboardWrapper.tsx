@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -12,9 +11,11 @@ interface DashboardWrapperProps {
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
+  selectedRevenueAgencies: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
+  onRevenueAgenciesChange: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -119,9 +120,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsCampaigns={props.selectedMetricsCampaigns}
       selectedRevenueCampaigns={props.selectedRevenueCampaigns}
       selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
+      selectedRevenueAgencies={props.selectedRevenueAgencies}
       onMetricsCampaignsChange={props.onMetricsCampaignsChange}
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
+      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
       aggregatedMetricsData={aggregatedMetricsData}
