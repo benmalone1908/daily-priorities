@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MetricCard } from "@/components/MetricCard";
-import MultiSelect from "@/components/MultiSelect";
+import MetricCard from "@/components/MetricCard";
+import { MultiSelect } from "@/components/MultiSelect";
 import {
   BarChart,
   Bar,
@@ -19,19 +20,7 @@ import {
 } from "recharts";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
-const Dashboard = ({
-  data,
-  metricsData,
-  revenueData,
-  selectedMetricsCampaigns,
-  selectedRevenueCampaigns,
-  selectedRevenueAdvertisers,
-  selectedRevenueAgencies,
-  onMetricsCampaignsChange,
-  onRevenueCampaignsChange,
-  onRevenueAdvertisersChange,
-  onRevenueAgenciesChange,
-}: {
+interface DashboardProps {
   data: any[];
   metricsData: any[];
   revenueData: any[];
@@ -43,6 +32,27 @@ const Dashboard = ({
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
   onRevenueAgenciesChange?: (selected: string[]) => void;
+  sortedCampaignOptions?: string[];
+  sortedAdvertiserOptions?: string[];
+  sortedAgencyOptions?: string[];
+  aggregatedMetricsData?: any[];
+  agencyToAdvertisersMap?: Record<string, Set<string>>;
+  agencyToCampaignsMap?: Record<string, Set<string>>;
+  advertiserToCampaignsMap?: Record<string, Set<string>>;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({
+  data,
+  metricsData,
+  revenueData,
+  selectedMetricsCampaigns,
+  selectedRevenueCampaigns,
+  selectedRevenueAdvertisers,
+  selectedRevenueAgencies,
+  onMetricsCampaignsChange,
+  onRevenueCampaignsChange,
+  onRevenueAdvertisersChange,
+  onRevenueAgenciesChange,
 }) => {
   const [activeTab, setActiveTab] = useState("performance");
   const [showWeeklyExplainer, setShowWeeklyExplainer] = useState(false);
@@ -50,7 +60,7 @@ const Dashboard = ({
   const { extractAdvertiserName, extractAgencyInfo, showDebugInfo } = useCampaignFilter();
 
   // Get all available campaigns in the data
-  const campaignOptions = useMemo(() => {
+  const metricsTabCampaignOptions = useMemo(() => {
     const campaignsSet = new Set<string>();
     
     data.forEach(row => {
@@ -151,7 +161,7 @@ const Dashboard = ({
   }, [data, selectedRevenueAgencies, extractAdvertiserName, extractAgencyInfo, showDebugInfo]);
 
   // Get campaign options based on selected agencies and advertisers
-  const campaignOptions = useMemo(() => {
+  const revenueTabCampaignOptions = useMemo(() => {
     let filteredData = data;
     
     // Filter by selected agencies if any
@@ -381,7 +391,7 @@ const Dashboard = ({
                   <span className="text-sm font-medium">Filter by:</span>
                   {onMetricsCampaignsChange && (
                     <MultiSelect
-                      options={campaignOptions}
+                      options={metricsTabCampaignOptions}
                       selected={selectedMetricsCampaigns}
                       onChange={onMetricsCampaignsChange}
                       placeholder="Campaign"
@@ -579,9 +589,9 @@ const Dashboard = ({
                         />
                       )}
                       
-                      {onRevenueCampaignsChange && campaignOptions.length > 0 && (
+                      {onRevenueCampaignsChange && revenueTabCampaignOptions.length > 0 && (
                         <MultiSelect
-                          options={campaignOptions}
+                          options={revenueTabCampaignOptions}
                           selected={selectedRevenueCampaigns}
                           onChange={onRevenueCampaignsChange}
                           placeholder="Campaign"
