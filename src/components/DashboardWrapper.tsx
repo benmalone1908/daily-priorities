@@ -240,11 +240,20 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
-  // Now we properly prepare both formats needed by the different components:
-  // 1. The raw string arrays needed by the Dashboard methods
+  // Prepare both option formats needed by the different components
+  // 1. Array of option objects with value/label for Select/MultiSelect components
+  const campaignOptionsForMultiSelect = sortedCampaignOptions;
+  const advertiserOptionsForMultiSelect = sortedAdvertiserOptions;
+  const agencyOptionsForMultiSelect = sortedAgencyOptions;
+  
+  // 2. Array of strings for filtering logic
   const campaignOptionsForDashboard = sortedCampaignOptions.map(option => option.value);
   const advertiserOptionsForDashboard = sortedAdvertiserOptions.map(option => option.value);
   const agencyOptionsForDashboard = sortedAgencyOptions.map(option => option.value);
+
+  // Add debugging
+  console.log('Campaign options prepared for Dashboard:', campaignOptionsForDashboard.slice(0, 5), `(${campaignOptionsForDashboard.length} total)`);
+  console.log('Campaign options with value/label:', campaignOptionsForMultiSelect.slice(0, 5), `(${campaignOptionsForMultiSelect.length} total)`);
 
   // Pass all the sorted options to the Dashboard component
   return (
@@ -263,6 +272,10 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       sortedCampaignOptions={campaignOptionsForDashboard}
       sortedAdvertiserOptions={advertiserOptionsForDashboard}
       sortedAgencyOptions={agencyOptionsForDashboard}
+      // Also pass the formatted options for MultiSelect/Select components
+      formattedCampaignOptions={campaignOptionsForMultiSelect}
+      formattedAdvertiserOptions={advertiserOptionsForMultiSelect}
+      formattedAgencyOptions={agencyOptionsForMultiSelect}
       aggregatedMetricsData={aggregatedMetricsData}
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
