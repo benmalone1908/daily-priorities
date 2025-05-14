@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -17,13 +18,13 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import SparkChartModal from './SparkChartModal';
 import CampaignSparkCharts from './CampaignSparkCharts';
 import MetricCard from './MetricCard';
 import { AnomalyColor } from '@/utils/anomalyColors';
 import AnomalyDetails from './AnomalyDetails';
-import CampaignStatusToggle from './CampaignStatusToggle';
+import { CampaignStatusToggle } from './CampaignStatusToggle';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -107,7 +108,7 @@ const Dashboard = ({
   selectedWeeklyCampaigns = [], // Default to empty array
   onWeeklyCampaignsChange = () => {}, // Default no-op function
 }: DashboardProps) => {
-  const { isMobile } = useMobile();
+  const isMobile = useIsMobile();
   const [showSparkChart, setShowSparkChart] = useState(false);
   const [sparkChartData, setSparkChartData] = useState<any[]>([]);
   const [sparkChartTitle, setSparkChartTitle] = useState('');
@@ -229,16 +230,13 @@ const Dashboard = ({
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Campaign Dashboard</h1>
       
-      <CampaignStatusToggle 
-        showAnomalies={showAnomalies} 
-        setShowAnomalies={setShowAnomalies} 
-      />
+      <CampaignStatusToggle />
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        <MetricCard label="Total Impressions" value={totalImpressions} />
-        <MetricCard label="Total Clicks" value={totalClicks} />
-        <MetricCard label="Total Revenue" value={totalRevenue} formatted={true} />
-        <MetricCard label="Total Transactions" value={totalTransactions} />
+        <MetricCard title="Total Impressions" anomalies={[]} metric="IMPRESSIONS" anomalyPeriod="daily" />
+        <MetricCard title="Total Clicks" anomalies={[]} metric="CLICKS" anomalyPeriod="daily" />
+        <MetricCard title="Total Revenue" anomalies={[]} metric="REVENUE" anomalyPeriod="daily" />
+        <MetricCard title="Total Transactions" anomalies={[]} metric="TRANSACTIONS" anomalyPeriod="daily" />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -382,7 +380,7 @@ const Dashboard = ({
                 <tbody className="bg-white divide-y divide-gray-200">
                   {anomalies.map((anomaly, index) => {
                     const anomalyScore = Math.abs(anomaly.actual - anomaly.expected) / anomaly.expected;
-                    let anomalyColor = AnomalyColor(anomalyScore);
+                    let anomalyColorClass = AnomalyColor(anomalyScore);
                     
                     return (
                       <tr key={index}>
@@ -392,7 +390,9 @@ const Dashboard = ({
                         <td className="px-6 py-4 whitespace-nowrap">{anomaly.expected.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{anomaly.actual.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <AnomalyDetails score={anomalyScore} color={anomalyColor} />
+                          <div className={`px-2 py-1 rounded inline-block ${anomalyColorClass}`}>
+                            {(anomalyScore * 100).toFixed(1)}%
+                          </div>
                         </td>
                       </tr>
                     );
@@ -408,6 +408,7 @@ const Dashboard = ({
       
       {showSparkChart && (
         <SparkChartModal
+          isOpen={showSparkChart}
           onClose={() => setShowSparkChart(false)}
           data={sparkChartData}
           title={sparkChartTitle}

@@ -17,3 +17,9 @@ export const getColorClasses = (deviation: number) => {
     return 'bg-red-300 border-red-500 text-red-900'; // 50.1% or more
   }
 };
+
+// Adding the AnomalyColor function that's being referenced in Dashboard.tsx
+export const AnomalyColor = (score: number) => {
+  const percentage = score * 100;
+  return getColorClasses(percentage);
+};
