@@ -54,9 +54,20 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAgencyInfo = (campaignName: string): { agency: string, abbreviation: string } => {
     if (!campaignName) return { agency: "", abbreviation: "" };
     
-    // Special case for the campaign with Partner-PRP
-    if (campaignName.includes('2001943:Partner-PRP-Pend Oreille')) {
+    // Special case for the campaigns with Partner-PRP or PRP-Pend Oreille
+    if (campaignName.includes('2001943:Partner-PRP') || campaignName.includes('2001943: PRP-Pend Oreille')) {
       return { agency: 'Propaganda Creative', abbreviation: 'PRP' };
+    }
+    
+    // Handle campaign names with "Awaiting IO"
+    if (campaignName.startsWith('Awaiting IO:')) {
+      // Extract the agency abbreviation after "Awaiting IO:"
+      const awaitingIOMatch = campaignName.match(/^Awaiting IO:\s*([^:]+):/);
+      if (awaitingIOMatch && awaitingIOMatch[1]) {
+        const abbreviation = awaitingIOMatch[1].trim();
+        const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+        return { agency, abbreviation };
+      }
     }
     
     // Handle campaign names with slashes in the IO number
@@ -102,6 +113,16 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     if (campaignName.includes('Sol Flower')) {
       console.log(`Found Sol Flower campaign: "${campaignName}"`);
       return "Sol Flower";
+    }
+    
+    // Handle "Awaiting IO" format
+    if (campaignName.startsWith('Awaiting IO:')) {
+      const awaitingIOMatch = campaignName.match(/^Awaiting IO:\s*[^:]+:\s*([^-]+)/);
+      if (awaitingIOMatch && awaitingIOMatch[1]) {
+        const extracted = awaitingIOMatch[1].trim();
+        console.log(`Awaiting IO format extraction result: "${extracted}" from "${campaignName}"`);
+        return extracted;
+      }
     }
     
     // For the new format "2001367: HRB: District Cannabis-241217"
@@ -184,7 +205,9 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     const problemCases = [
       "2001216/2001505: NLMC: Strawberry Fields-Pueblo North-250411",
       "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404",
-      "2001943:Partner-PRP-Pend Oreille Spokane DIS-250416"
+      "2001943:Partner-PRP-Pend Oreille Spokane DIS-250416",
+      "2001943: PRP-Pend Oreille CTV-250415",
+      "Awaiting IO: MJ: Test Client-Campaign Name-250501"
     ];
     
     problemCases.forEach(test => {
