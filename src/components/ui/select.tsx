@@ -113,7 +113,7 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
-    // Allow passing either a simple value or an object value
+    // Allow passing either a simple value or an object value with value and label
     value: string;
   }
 >(({ className, children, ...props }, ref) => (
