@@ -57,6 +57,7 @@ interface WeeklyData {
 
 interface WeeklyAggregation {
   weekStart: string;
+  weekNumber: number;
   [metric: string]: any;
   rows: any[];
 }
@@ -781,6 +782,7 @@ const Dashboard = ({
       
       console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
+      // Fix: Explicitly type the returned array to avoid type error
       return Object.values(dayOfWeekGroups) as any[];
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
