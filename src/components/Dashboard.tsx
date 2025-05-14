@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CampaignStatusToggle from "./CampaignStatusToggle";
+import { CampaignStatusToggle } from "./CampaignStatusToggle";
 import CampaignSparkCharts from "./CampaignSparkCharts";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { MultiSelect } from "./MultiSelect";
@@ -21,7 +21,7 @@ import {
   BarChart,
   Label,
 } from "recharts";
-import { setToStartOfDay, setToEndOfDay, parseDateString, formatDate, formatNumber } from "@/lib/utils";
+import { setToStartOfDay, setToEndOfDay, parseDateString, formatNumber } from "@/lib/utils";
 import AnomalyDetails from "./AnomalyDetails";
 import MetricCard from "./MetricCard";
 
@@ -39,7 +39,7 @@ export interface DashboardProps {
   onRevenueAgenciesChange: (selected: string[]) => void;
   sortedCampaignOptions: string[];
   sortedAdvertiserOptions: string[];
-  sortedAgencyOptions: string[]; // Added this prop
+  sortedAgencyOptions: string[];
   aggregatedMetricsData: any[];
 }
 
@@ -57,7 +57,7 @@ const Dashboard = ({
   onRevenueAgenciesChange,
   sortedCampaignOptions,
   sortedAdvertiserOptions,
-  sortedAgencyOptions, // Added this prop
+  sortedAgencyOptions,
   aggregatedMetricsData,
 }: DashboardProps) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -109,7 +109,7 @@ const Dashboard = ({
     label: advertiser
   }));
 
-  // New: Format agency options for MultiSelect
+  // Format agency options for MultiSelect
   const revenueAgencyOptions = sortedAgencyOptions.map(agency => ({
     value: agency,
     label: agency
@@ -241,8 +241,8 @@ const Dashboard = ({
         <div className="flex items-center gap-2">
           <CampaignStatusToggle />
           <DateRangePicker
-            date={dateRange}
-            onDateChange={setDateRange}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
           />
         </div>
       </div>
@@ -256,41 +256,39 @@ const Dashboard = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <MetricCard 
               title="Impressions" 
-              value={aggregateTotals.impressions} 
-              formatter={(value) => formatNumber(value, { abbreviate: true })}
-              icon="eye"
+              anomalies={[]}
+              metric="IMPRESSIONS"
+              anomalyPeriod="daily"
             />
             <MetricCard 
               title="Clicks" 
-              value={aggregateTotals.clicks} 
-              formatter={(value) => formatNumber(value, { abbreviate: true })}
-              icon="mouse-pointer"
+              anomalies={[]}
+              metric="CLICKS"
+              anomalyPeriod="daily"
             />
             <MetricCard 
               title="CTR" 
-              value={aggregateTotals.ctr} 
-              formatter={(value) => formatNumber(value, { decimals: 2, suffix: '%' })}
-              icon="percent"
+              anomalies={[]}
+              metric="CTR"
+              anomalyPeriod="daily"
             />
             <MetricCard 
               title="Revenue" 
-              value={aggregateTotals.revenue} 
-              formatter={(value) => `$${formatNumber(value, { abbreviate: true })}`}
-              icon="dollar-sign"
-              anomaly={aggregateTotals.revenue > 100000}
-              anomalyText="High revenue detected"
+              anomalies={[]}
+              metric="REVENUE"
+              anomalyPeriod="daily"
             />
             <MetricCard 
               title="ROAS" 
-              value={aggregateTotals.roas} 
-              formatter={(value) => formatNumber(value, { decimals: 2, suffix: 'x' })}
-              icon="trending-up"
+              anomalies={[]}
+              metric="ROAS"
+              anomalyPeriod="daily"
             />
             <MetricCard 
               title="Ad Spend" 
-              value={aggregateTotals.spend} 
-              formatter={(value) => `$${formatNumber(value, { abbreviate: true })}`}
-              icon="credit-card"
+              anomalies={[]}
+              metric="SPEND"
+              anomalyPeriod="daily"
             />
           </div>
 
@@ -516,7 +514,6 @@ const Dashboard = ({
                     dataKey="revenue" 
                     fill="#8884d8" 
                     name="Revenue"
-                    formatter={(value) => `$${value}`}
                   />
                   <Bar 
                     yAxisId="right"
@@ -529,7 +526,11 @@ const Dashboard = ({
             </CardContent>
           </Card>
 
-          <AnomalyDetails />
+          <AnomalyDetails 
+            anomalies={[]}
+            metric="REVENUE"
+            anomalyPeriod="daily"
+          />
         </TabsContent>
         <TabsContent value="campaigns" className="space-y-4">
           <CampaignSparkCharts data={filteredData} dateRange={dateRange} />
