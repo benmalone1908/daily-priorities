@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -226,7 +225,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
-  // Pass only the props that Dashboard expects
+  // Pass all the sorted options to the Dashboard component
   return (
     <Dashboard
       data={props.data}
@@ -240,6 +239,13 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
+      sortedCampaignOptions={sortedCampaignOptions}
+      sortedAdvertiserOptions={sortedAdvertiserOptions}
+      sortedAgencyOptions={sortedAgencyOptions}
+      aggregatedMetricsData={aggregatedMetricsData}
+      agencyToAdvertisersMap={agencyToAdvertisersMap}
+      agencyToCampaignsMap={agencyToCampaignsMap}
+      advertiserToCampaignsMap={advertiserToCampaignsMap}
     />
   );
 };
