@@ -39,6 +39,8 @@ interface DashboardProps {
   sortedAgencyOptions?: string[];
   aggregatedMetricsData?: any[];
   agencyToAdvertisersMap?: Record<string, Set<string>>;
+  agencyToCampaignsMap?: Record<string, Set<string>>;
+  advertiserToCampaignsMap?: Record<string, Set<string>>;
 }
 
 interface WeeklyData {
@@ -78,7 +80,9 @@ const Dashboard = ({
   sortedAdvertiserOptions = [],
   sortedAgencyOptions = [],
   aggregatedMetricsData,
-  agencyToAdvertisersMap = {}
+  agencyToAdvertisersMap = {},
+  agencyToCampaignsMap = {},
+  advertiserToCampaignsMap = {}
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
