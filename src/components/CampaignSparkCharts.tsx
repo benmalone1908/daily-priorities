@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from "react";
 import { 
   ResponsiveContainer,
@@ -945,7 +946,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             </div>
           </Card>
         );
-      })
+      })}
       
       {modalData.isOpen && (
         <SparkChartModal
