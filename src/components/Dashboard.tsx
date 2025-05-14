@@ -576,7 +576,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues = Object.values(weeklyData);\
+            const weeklyValues = Object.values(weeklyData);
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -674,7 +674,7 @@ const Dashboard = ({
       
       console.log(`Aggregating ${filteredData.length} rows of data`);
       
-      const allDates = filteredData.map(row => row.DATE).filter(Boolean);\
+      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
       if (allDates.length > 0) {
         const sortedDates = [...allDates].sort();
         console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
@@ -858,4 +858,63 @@ const Dashboard = ({
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
-          const prefix = extractAgencyPrefix(campaign
+          const prefix = extractAgencyPrefix(campaignName);
+          const agency = getAgencyFromPrefix(prefix);
+          
+          return agency && selectedAgencies.includes(agency);
+        });
+      }
+      
+      const weeklyData: WeeklyData[] = [];
+      
+      filteredData.forEach(row => {
+        if (!row || !row.DATE) return;
+        
+        const normalizedDate = normalizeDate(row.DATE);
+        if (!normalizedDate) {
+          console.warn(`Invalid date in row: ${row.DATE}`);
+          return;
+        }
+        
+        const date = new Date(normalizedDate);
+        if (isNaN(date.getTime())) return;
+        
+        const dayOfWeek = date.getDay();
+        
+        const weekNumber = Math.floor((date.getTime() - setToStartOfDay(date).getTime()) / (1000 * 60 * 60 * 24 * 7));
+        
+        const weekStart = setToStartOfDay(date);
+        const weekEnd = setToEndOfDay(weekStart);
+        
+        const weekData: WeeklyData = {
+          periodStart: weekStart.toISOString(),
+          periodEnd: weekEnd.toISOString(),
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          ROAS: 0,
+          count: 1
+        };
+        
+        weekData.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        weekData.CLICKS += Number(row.CLICKS) || 0;
+        weekData.REVENUE += Number(row.REVENUE) || 0;
+        
+        weekData.ROAS = calculateROAS(weekData.REVENUE, weekData.IMPRESSIONS);
+        
+        weeklyData.push(weekData);
+      });
+      
+      return weeklyData;
+    } catch (error) {
+      console.error("Error in getWeeklyData:", error);
+      return [];
+    }
+  };
+
+  return (
+    <div>Dashboard Content</div>
+  );
+};
+
+export default Dashboard;
