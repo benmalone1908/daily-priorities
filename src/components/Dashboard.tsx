@@ -228,6 +228,7 @@ const Dashboard = ({
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
   const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
+  const [selectedMetricsAgencies, setSelectedMetricsAgencies] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
   const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
@@ -436,22 +437,43 @@ const Dashboard = ({
 
   // Create filtered advertiser options for the metrics chart
   const filteredMetricsAdvertiserOptions = useMemo(() => {
-    if (selectedMetricsAdvertisers.length === 0) {
+    if (!selectedMetricsAgencies.length) {
       return advertisers.map(advertiser => ({
         value: advertiser,
         label: advertiser
       }));
     }
     
-    return selectedMetricsAdvertisers.map(advertiser => ({
-      value: advertiser,
-      label: advertiser
-    }));
-  }, [selectedMetricsAdvertisers, advertisers]);
+    const validAdvertisers = new Set<string>();
+    
+    selectedMetricsAgencies.forEach(agency => {
+      const advertisersForAgency = agencyToAdvertisersMap[agency];
+      if (advertisersForAgency) {
+        advertisersForAgency.forEach(advertiser => {
+          validAdvertisers.add(advertiser);
+        });
+      }
+    });
+    
+    return Array.from(validAdvertisers)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+  }, [selectedMetricsAgencies, advertisers, agencyToAdvertisersMap]);
 
   // Create filtered campaign options for the Metrics chart
   const filteredMetricsCampaignOptions = useMemo(() => {
     let validCampaigns = campaigns;
+    
+    if (selectedMetricsAgencies.length > 0) {
+      validCampaigns = validCampaigns.filter(option => {
+        const campaignName = option;
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedMetricsAgencies.includes(agency) && agency !== "";
+      });
+    }
     
     if (selectedMetricsAdvertisers.length > 0) {
       validCampaigns = validCampaigns.filter(option => {
@@ -468,11 +490,38 @@ const Dashboard = ({
       value: campaign,
       label: campaign
     }));
-  }, [campaigns, selectedMetricsAdvertisers, extractAdvertiserName]);
+  }, [campaigns, selectedMetricsAgencies, selectedMetricsAdvertisers, extractAgencyInfo, extractAdvertiserName]);
 
-  // Handle metrics advertisers change function
+  // Add handler for agency changes in metrics
+  const handleMetricsAgenciesChange = (selected: string[]) => {
+    setSelectedMetricsAgencies(selected);
+    // Reset advertiser and campaign selections when agencies change
+    setSelectedMetricsAdvertisers([]);
+    if (onMetricsCampaignsChange) {
+      onMetricsCampaignsChange([]);
+    }
+  };
+
+  // Update metrics advertisers change handler to respect agency selection
   const handleMetricsAdvertisersChange = (selected: string[]) => {
-    setSelectedMetricsAdvertisers(selected);
+    if (selectedMetricsAgencies.length > 0) {
+      const validAdvertisers = new Set<string>();
+      
+      selectedMetricsAgencies.forEach(agency => {
+        const advertisersForAgency = agencyToAdvertisersMap[agency];
+        if (advertisersForAgency) {
+          advertisersForAgency.forEach(advertiser => {
+            validAdvertisers.add(advertiser);
+          });
+        }
+      });
+      
+      const filteredSelected = selected.filter(advertiser => validAdvertisers.has(advertiser));
+      setSelectedMetricsAdvertisers(filteredSelected);
+    } else {
+      setSelectedMetricsAdvertisers(selected);
+    }
+    
     // Reset campaign selection when advertisers change
     if (onMetricsCampaignsChange) {
       onMetricsCampaignsChange([]);
@@ -997,9 +1046,19 @@ const Dashboard = ({
             </div>
             <span className="text-sm font-medium mr-1">Filter by:</span>
             <div className="flex items-center gap-2">
+              {agencyOptions.length > 0 && (
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedMetricsAgencies}
+                  onChange={handleMetricsAgenciesChange}
+                  placeholder="Agency"
+                  className="w-[200px]"
+                />
+              )}
+              
               {advertiserOptions.length > 0 && (
                 <MultiSelect
-                  options={advertiserOptions}
+                  options={filteredMetricsAdvertiserOptions}
                   selected={selectedMetricsAdvertisers}
                   onChange={handleMetricsAdvertisersChange}
                   placeholder="Advertiser"
