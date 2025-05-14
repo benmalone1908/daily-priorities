@@ -71,6 +71,17 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     
     console.log('-------- Extracting advertisers in DashboardWrapper --------');
     
+    // First determine if we should filter by agencies
+    const filterByAgencies = props.selectedMetricsAgencies?.length || props.selectedRevenueAgencies?.length;
+    const agenciesForFilter = new Set([
+      ...(props.selectedMetricsAgencies || []),
+      ...(props.selectedRevenueAgencies || [])
+    ]);
+    
+    if (filterByAgencies) {
+      console.log(`Filtering advertisers by agencies: ${Array.from(agenciesForFilter).join(', ')}`);
+    }
+    
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       
@@ -79,32 +90,37 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
         return;
       }
       
+      // If filtering by agency, check if this campaign belongs to one of the selected agencies
+      if (filterByAgencies) {
+        const prefix = extractAgencyPrefix(campaignName);
+        const agency = getAgencyFromPrefix(prefix);
+        
+        if (!agency || !agenciesForFilter.has(agency)) {
+          return; // Skip this campaign as it doesn't match selected agencies
+        }
+      }
+      
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
       
-      // Additional explicit logging for Sol Flower
-      if (campaignName.includes('Sol Flower')) {
-        console.log(`Sol Flower campaign found: "${campaignName}" -> Extracted: "${advertiser}"`);
-      }
-      
       if (advertiser) {
         advertiserSet.add(advertiser);
-        // Log when adding Sol Flower to the set
-        if (advertiser === "Sol Flower") {
-          console.log(`Added "Sol Flower" to advertiser set, current size: ${advertiserSet.size}`);
-        }
       }
     });
     
     console.log('Total unique advertisers found:', advertiserSet.size);
     console.log('Advertiser list:', Array.from(advertiserSet).sort());
     
-    // Check if Sol Flower exists in the final set
-    const hasSolFlower = advertiserSet.has("Sol Flower");
-    console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
-    
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
-  }, [props.data, extractAdvertiserName, isTestCampaign]);
+  }, [
+    props.data, 
+    props.selectedMetricsAgencies, 
+    props.selectedRevenueAgencies, 
+    extractAdvertiserName, 
+    extractAgencyPrefix,
+    getAgencyFromPrefix,
+    isTestCampaign
+  ]);
 
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
