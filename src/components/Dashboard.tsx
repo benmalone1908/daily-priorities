@@ -45,6 +45,8 @@ interface DashboardProps {
   agencyToAdvertisersMap?: Record<string, Set<string>>;
   agencyToCampaignsMap?: Record<string, Set<string>>;
   advertiserToCampaignsMap?: Record<string, Set<string>>;
+  selectedWeeklyCampaigns?: string[]; // Updated to array for multiple selections
+  onWeeklyCampaignsChange?: (selected: string[]) => void; // Updated handler for array of selections
 }
 
 interface WeeklyData {
@@ -89,9 +91,11 @@ const Dashboard = ({
   aggregatedMetricsData,
   agencyToAdvertisersMap = {},
   agencyToCampaignsMap = {},
-  advertiserToCampaignsMap = {}
+  advertiserToCampaignsMap = {},
+  selectedWeeklyCampaigns = [], // Changed from selectedWeeklyCampaign to array with default empty array
+  onWeeklyCampaignsChange // Changed to match array handler type
 }: DashboardProps) => {
-  const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
+  // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
   const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
@@ -283,24 +287,16 @@ const Dashboard = ({
       
       setSelectedWeeklyAdvertisers(filteredSelected);
       
-      if (selectedWeeklyCampaign !== "all") {
-        const match = selectedWeeklyCampaign.match(/:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
-        
-        if (!filteredSelected.includes(advertiser)) {
-          setSelectedWeeklyCampaign("all");
-        }
+      // Reset campaign selection when advertisers change
+      if (onWeeklyCampaignsChange) {
+        onWeeklyCampaignsChange([]);
       }
     } else {
       setSelectedWeeklyAdvertisers(selected);
       
-      if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-        const match = selectedWeeklyCampaign.match(/:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
-        
-        if (!selected.includes(advertiser)) {
-          setSelectedWeeklyCampaign("all");
-        }
+      // Reset campaign selection when advertisers change
+      if (onWeeklyCampaignsChange) {
+        onWeeklyCampaignsChange([]);
       }
     }
   };
@@ -326,422 +322,15 @@ const Dashboard = ({
       
       setSelectedWeeklyAdvertisers(filteredAdvertisers);
       
-      if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
-        let hasMatchingAgency = false;
-        for (const agency of selected) {
-          const campaignName = selectedWeeklyCampaign;
-          const abbreviationMatch = campaignName.match(/^([^:]+):/);
-          if (abbreviationMatch) {
-            const abbreviation = abbreviationMatch[1].trim();
-            const agencyAbbreviations: Record<string, string> = {
-              'SM': 'SM Services',
-              'MJ': 'MediaJel',
-              'BLO': 'Be Local One',
-              '2RS': '2RS',
-              '6D': '6 Degrees Media',
-              'FLD': 'Fieldtest',
-              'HD': 'Highday',
-              'HG': 'Happy Greens',
-              'HRB': 'Herb.co',
-              'NLMC': 'NLMC',
-              'NP': 'Noble People',
-              'PRP': 'Propaganda Creative',
-              'TF': 'Top Flight'
-            };
-            if (agencyAbbreviations[abbreviation] === agency) {
-              hasMatchingAgency = true;
-              break;
-            }
-          }
-          
-          if (campaignName.includes(agency)) {
-            hasMatchingAgency = true;
-            break;
-          }
-        }
-        
-        if (!hasMatchingAgency) {
-          setSelectedWeeklyCampaign("all");
-        }
+      // Reset campaign selection when agencies change
+      if (onWeeklyCampaignsChange) {
+        onWeeklyCampaignsChange([]);
       }
     }
   };
 
-  const handleMetricsAdvertisersChange = (selected: string[]) => {
-    setSelectedMetricsAdvertisers(selected);
-  };
-
-  const detectAnomalies = (inputData: any[]) => {
-    if (!inputData || !inputData.length) return {
-      IMPRESSIONS: { anomalies: [] },
-      CLICKS: { anomalies: [] },
-      REVENUE: { anomalies: [] }
-    };
-
-    try {
-      const campaignData: Record<string, any[]> = {};
-      inputData.forEach(row => {
-        if (!row || typeof row !== 'object') return;
-        
-        const campaignName = row["CAMPAIGN ORDER NAME"];
-        if (!campaignName) return;
-        
-        if (!campaignData[campaignName]) {
-          campaignData[campaignName] = [];
-        }
-        campaignData[campaignName].push(row);
-      });
-
-      const metrics = ["IMPRESSIONS", "CLICKS", "REVENUE"];
-      const results: Record<string, any> = {};
-
-      metrics.forEach((metric) => {
-        let allAnomalies: any[] = [];
-
-        if (anomalyPeriod === "daily") {
-          Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
-            if (!campaignRows.length) return;
-            
-            const values = campaignRows.map((row) => Number(row[metric]) || 0);
-            if (!values.length) return;
-            
-            const mean = values.reduce((a, b) => a + b, 0) / values.length;
-            const stdDev = Math.sqrt(
-              values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length
-            );
-
-            const threshold = stdDev * 2;
-
-            const campaignAnomalies = campaignRows.filter((row) => {
-              const value = Number(row[metric]) || 0;
-              
-              const deviationPercent = ((value - mean) / mean) * 100;
-              
-              return Math.abs(deviationPercent) > 10 && Math.abs(value - mean) > threshold;
-            }).map(row => ({
-              ...row,
-              campaign,
-              mean,
-              actualValue: Number(row[metric]) || 0,
-              deviation: ((Number(row[metric]) || 0) - mean) / mean * 100,
-              periodType: "daily"
-            }));
-
-            allAnomalies = [...allAnomalies, ...campaignAnomalies];
-          });
-        } else {
-          Object.entries(campaignData).forEach(([campaign, campaignRows]) => {
-            if (!campaignRows.length) return;
-            
-            const mostRecentDate = campaignRows.reduce((latest, row) => {
-              if (!row.DATE) return latest;
-              
-              try {
-                const rowDate = new Date(row.DATE);
-                if (isNaN(rowDate.getTime())) return latest;
-                
-                return rowDate > latest ? rowDate : latest;
-              } catch (err) {
-                console.error("Error comparing dates:", err);
-                return latest;
-              }
-            }, new Date(0));
-            
-            const weeklyData: Record<number, WeeklyAggregation> = {};
-            
-            campaignRows.forEach(row => {
-              if (!row.DATE) return;
-              
-              try {
-                const rowDate = new Date(row.DATE);
-                if (isNaN(rowDate.getTime())) return;
-                
-                const dayDiff = Math.floor((mostRecentDate.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24));
-                const weekNumber = Math.floor(dayDiff / 7);
-                
-                if (!weeklyData[weekNumber]) {
-                  const periodEnd = new Date(mostRecentDate);
-                  periodEnd.setDate(periodEnd.getDate() - (weekNumber * 7));
-                  
-                  const periodStart = new Date(periodEnd);
-                  periodStart.setDate(periodEnd.getDate() - 6);
-                  
-                  weeklyData[weekNumber] = {
-                    weekStart: `${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()}`,
-                    weekNumber,
-                    [metric]: 0,
-                    rows: []
-                  };
-                }
-                
-                weeklyData[weekNumber][metric] += Number(row[metric]) || 0;
-                weeklyData[weekNumber].rows.push(row);
-              } catch (err) {
-                console.error("Error processing week grouping:", err);
-              }
-            });
-            
-            const weeklyValues = Object.values(weeklyData);
-            if (weeklyValues.length < 2) return;
-            
-            for (let i = 0; i < weeklyValues.length - 1; i++) {
-              const currentWeek = weeklyValues[i];
-              const previousWeek = weeklyValues[i + 1];
-              
-              if (currentWeek.rows.length < 3 || previousWeek.rows.length < 3) continue;
-              
-              const currentValue = currentWeek[metric];
-              const previousValue = previousWeek[metric];
-              
-              const percentChange = ((currentValue - previousValue) / previousValue) * 100;
-              
-              if (Math.abs(percentChange) > 15) {
-                const weekLabel = currentWeek.weekStart;
-                
-                allAnomalies.push({
-                  campaign,
-                  DATE: weekLabel,
-                  mean: previousValue,
-                  actualValue: currentValue,
-                  deviation: percentChange,
-                  periodType: "weekly",
-                  rows: currentWeek.rows,
-                  weekNumber: currentWeek.weekNumber,
-                  comparedTo: previousWeek.weekStart
-                });
-              }
-            }
-            
-            if (weeklyValues.length >= 3) {
-              const allWeekValues = weeklyValues.map(week => week[metric]);
-              const mean = allWeekValues.reduce((a, b) => a + b, 0) / allWeekValues.length;
-              const stdDev = Math.sqrt(
-                allWeekValues.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / allWeekValues.length
-              );
-              
-              const threshold = stdDev * 1.2;
-              
-              weeklyValues.forEach(week => {
-                if (week.rows.length < 3) return;
-                
-                const value = week[metric];
-                const deviationFromAvg = ((value - mean) / mean) * 100;
-                
-                if (Math.abs(deviationFromAvg) > 15 && Math.abs(value - mean) > threshold) {
-                  const alreadyDetected = allAnomalies.some(
-                    a => a.campaign === campaign && 
-                         a.periodType === "weekly" && 
-                         a.weekNumber === week.weekNumber
-                  );
-                  
-                  if (!alreadyDetected) {
-                    allAnomalies.push({
-                      campaign,
-                      DATE: week.weekStart,
-                      mean: mean,
-                      actualValue: value,
-                      deviation: deviationFromAvg,
-                      periodType: "weekly",
-                      rows: week.rows,
-                      weekNumber: week.weekNumber,
-                      comparedTo: "overall average"
-                    });
-                  }
-                }
-              });
-            }
-          });
-        }
-
-        results[metric] = {
-          anomalies: allAnomalies.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation))
-        };
-      });
-
-      return results;
-    } catch (error) {
-      console.error("Error in anomaly detection:", error);
-      return {
-        IMPRESSIONS: { anomalies: [] },
-        CLICKS: { anomalies: [] },
-        REVENUE: { anomalies: [] }
-      };
-    }
-  };
-
-  const anomalies = useMemo(() => {
-    return detectAnomalies(data);
-  }, [data, anomalyPeriod]);
-
-  const getAggregatedData = (filteredData: any[]) => {
-    try {
-      if (!filteredData || !filteredData.length) return [];
-      
-      console.log(`Aggregating ${filteredData.length} rows of data`);
-      
-      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
-      if (allDates.length > 0) {
-        const sortedDates = [...allDates].sort();
-        console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
-        console.log(`Unique dates in input: ${new Set(allDates).size}`);
-      }
-      
-      const dateGroups: Record<string, any> = {};
-      
-      filteredData.forEach(row => {
-        if (!row || !row.DATE) {
-          console.warn(`Skipping row with missing date: ${JSON.stringify(row)}`);
-          return;
-        }
-        
-        const normalizedDate = normalizeDate(row.DATE);
-        if (!normalizedDate) {
-          console.warn(`Invalid date in row: ${row.DATE}`);
-          return;
-        }
-        
-        if (normalizedDate.includes('-04-')) {
-          console.log(`Processing April data: ${normalizedDate}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
-        }
-        
-        if (!dateGroups[normalizedDate]) {
-          dateGroups[normalizedDate] = {
-            DATE: normalizedDate,
-            IMPRESSIONS: 0,
-            CLICKS: 0,
-            REVENUE: 0
-          };
-        }
-        
-        dateGroups[normalizedDate].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        dateGroups[normalizedDate].CLICKS += Number(row.CLICKS) || 0;
-        dateGroups[normalizedDate].REVENUE += Number(row.REVENUE) || 0;
-      });
-
-      const result = Object.values(dateGroups).sort((a: any, b: any) => {
-        try {
-          return new Date(a.DATE).getTime() - new Date(b.DATE).getTime();
-        } catch (err) {
-          console.error(`Error sorting dates: ${a.DATE} vs ${b.DATE}`, err);
-          return 0;
-        }
-      });
-      
-      console.log(`Aggregated data has ${result.length} dates`);
-      if (result.length > 0) {
-        console.log(`Aggregated date range: ${result[0].DATE} to ${result[result.length-1].DATE}`);
-        result.forEach(row => {
-          if (row.DATE && row.DATE.includes('-04-')) {
-            console.log(`Aggregated April data: ${row.DATE}, impressions: ${row.IMPRESSIONS}, clicks: ${row.CLICKS}, revenue: ${row.REVENUE}`);
-          }
-        });
-      }
-      
-      return result;
-    } catch (error) {
-      console.error("Error in getAggregatedData:", error);
-      return [];
-    }
-  };
-
-  const getAggregatedDataByDayOfWeek = (filteredData: any[]) => {
-    try {
-      if (!filteredData || !filteredData.length) return [];
-      
-      console.log(`Aggregating ${filteredData.length} rows by day of week`);
-      
-      const dayOfWeekGroups: Record<number, any> = {
-        0: { dayNum: 0, DAY_OF_WEEK: "Sunday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        1: { dayNum: 1, DAY_OF_WEEK: "Monday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        2: { dayNum: 2, DAY_OF_WEEK: "Tuesday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        3: { dayNum: 3, DAY_OF_WEEK: "Wednesday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        4: { dayNum: 4, DAY_OF_WEEK: "Thursday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        5: { dayNum: 5, DAY_OF_WEEK: "Friday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 },
-        6: { dayNum: 6, DAY_OF_WEEK: "Saturday", IMPRESSIONS: 0, CLICKS: 0, REVENUE: 0, count: 0 }
-      };
-      
-      const includedDates = new Set<string>();
-      
-      filteredData.forEach(row => {
-        if (!row || !row.DATE) return;
-        
-        const normalizedDate = normalizeDate(row.DATE);
-        if (!normalizedDate) {
-          console.warn(`Invalid date in row: ${row.DATE}`);
-          return;
-        }
-        
-        includedDates.add(normalizedDate);
-        
-        const date = new Date(normalizedDate);
-        if (isNaN(date.getTime())) return;
-        
-        const dayOfWeek = date.getDay();
-        
-        dayOfWeekGroups[dayOfWeek].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
-        dayOfWeekGroups[dayOfWeek].CLICKS += Number(row.CLICKS) || 0;
-        dayOfWeekGroups[dayOfWeek].REVENUE += Number(row.REVENUE) || 0;
-        dayOfWeekGroups[dayOfWeek].count += 1;
-      });
-      
-      console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
-      
-      return Object.values(dayOfWeekGroups).sort((a, b) => a.dayNum - b.dayNum);
-    } catch (error) {
-      console.error("Error in getAggregatedDataByDayOfWeek:", error);
-      return [];
-    }
-  };
-
-  const calculateROAS = (revenue: number, impressions: number): number => {
-    try {
-      const spend = (impressions * 15) / 1000;
-      return spend > 0 ? revenue / spend : 0;
-    } catch (error) {
-      console.error("Error calculating ROAS:", error);
-      return 0;
-    }
-  };
-
-  const calculateCTR = (clicks: number, impressions: number): number => {
-    if (impressions === 0) return 0;
-    return (clicks / impressions) * 100;
-  };
-
-  const formatCTR = (value: number) => {
-    try {
-      return `${value.toFixed(3)}%`;
-    } catch (error) {
-      console.error("Error formatting CTR:", error);
-      return "0.000%";
-    }
-  };
-
-  const formatTransactions = (value: number) => {
-    try {
-      return Math.round(value).toLocaleString();
-    } catch (error) {
-      console.error("Error formatting transactions:", error);
-      return "0";
-    }
-  };
-
-  const calculateAOV = (revenue: number, transactions: number): number => {
-    if (transactions === 0) return 0;
-    return revenue / transactions;
-  };
-
-  const formatAOV = (value: number) => {
-    try {
-      return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-    } catch (error) {
-      console.error("Error formatting AOV:", error);
-      return "$0.00";
-    }
-  };
-
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
-    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
+  const getWeeklyData = (selectedCampaigns: string[], selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+    console.log(`getWeeklyData called with campaigns=${selectedCampaigns.join(',')}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
     
     if (!data || data.length === 0) {
       console.log("No data available for weekly comparison");
@@ -810,8 +399,11 @@ const Dashboard = ({
         console.log(`After advertiser filter: ${filteredData.length} rows`);
       }
       
-      if (selectedCampaign !== "all") {
-        filteredData = filteredData.filter((row: any) => row["CAMPAIGN ORDER NAME"] === selectedCampaign);
+      // Updated to filter by an array of campaign names
+      if (selectedCampaigns.length > 0) {
+        filteredData = filteredData.filter((row: any) => 
+          selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"])
+        );
         console.log(`After campaign filter: ${filteredData.length} rows`);
       }
       
@@ -995,10 +587,11 @@ const Dashboard = ({
 
   useEffect(() => {
     console.log("Calculating weekly data...");
-    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
+    // Updated function call to pass selectedWeeklyCampaigns array
+    const calculatedData = getWeeklyData(selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
     console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
     setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod]);
+  }, [data, selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => {
     console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
@@ -1436,21 +1029,14 @@ const Dashboard = ({
                   className="w-[200px]"
                 />
                 
-                <Select 
-                  value={selectedWeeklyCampaign} 
-                  onValueChange={setSelectedWeeklyCampaign}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Campaign" />
-                  </SelectTrigger>
-                  <SelectContent className="w-[400px]">
-                    {filteredRevenueCampaignOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={filteredRevenueCampaignOptions}
+                  selected={selectedWeeklyCampaigns}
+                  onChange={onWeeklyCampaignsChange}
+                  placeholder="Campaign"
+                  className="w-[200px]"
+                  popoverClassName="w-[400px]"
+                />
               </div>
             </div>
           </div>
