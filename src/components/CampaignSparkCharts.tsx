@@ -49,6 +49,7 @@ interface ModalData {
 const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
+  const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("campaign");
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
@@ -58,17 +59,63 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
   });
   
   // Get filter functions from context
-  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { extractAdvertiserName, extractAgencyName, isTestCampaign } = useCampaignFilter();
+  
+  // Get agency options from data
+  const agencyOptions = useMemo(() => {
+    const agencies = new Set<string>();
+    
+    // Add debug logging
+    console.log('-------- Extracting agencies in CampaignSparkCharts --------');
+    console.log('Total data rows:', data.length);
+    
+    // Skip test campaigns and extract agencies from valid campaigns
+    data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test/demo/draft campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      const agency = extractAgencyName(campaignName);
+      if (agency) {
+        agencies.add(agency);
+      }
+    });
+    
+    console.log('Final unique agencies found:', agencies.size);
+    console.log('Agency list:', Array.from(agencies).sort());
+    
+    return Array.from(agencies)
+      .sort((a, b) => a.localeCompare(b))
+      .map(agency => ({
+        value: agency,
+        label: agency
+      }));
+  }, [data, extractAgencyName, isTestCampaign]);
   
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
+    // Filter based on selected agencies first
+    let filteredData = data;
+    
+    // If agencies are selected, filter by them
+    if (selectedAgencies.length > 0) {
+      filteredData = filteredData.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const agency = extractAgencyName(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
     // Add debug logging
     console.log('-------- Extracting advertisers in CampaignSparkCharts --------');
-    console.log('Total data rows:', data.length);
+    console.log('Total filtered data rows after agency filter:', filteredData.length);
     
     // Skip test campaigns and extract advertisers from valid campaigns
-    data.forEach(row => {
+    filteredData.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       
       // Skip test/demo/draft campaigns
@@ -91,7 +138,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: advertiser,
         label: advertiser
       }));
-  }, [data, extractAdvertiserName, isTestCampaign]);
+  }, [data, selectedAgencies, extractAdvertiserName, extractAgencyName, isTestCampaign]);
 
   const campaignOptions = useMemo(() => {
     let filteredData = data;
@@ -102,6 +149,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
+    // If agencies are selected, filter by them first
+    if (selectedAgencies.length > 0) {
+      filteredData = filteredData.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const agency = extractAgencyName(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    // Then filter by advertisers if selected
     if (selectedAdvertisers.length > 0) {
       filteredData = filteredData.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -117,23 +174,60 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: campaign,
         label: campaign
       }));
-  }, [data, selectedAdvertisers, extractAdvertiserName, isTestCampaign]);
+  }, [data, selectedAgencies, selectedAdvertisers, extractAdvertiserName, extractAgencyName, isTestCampaign]);
 
+  // Effect to update advertiser selection when agencies change
   useEffect(() => {
-    if (selectedAdvertisers.length > 0) {
+    if (selectedAgencies.length > 0) {
+      setSelectedAdvertisers(prev => {
+        return prev.filter(advertiser => {
+          // Find campaigns for this advertiser
+          const advertiserCampaigns = data.filter(row => {
+            const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+            const rowAdvertiser = extractAdvertiserName(campaignName);
+            return rowAdvertiser === advertiser;
+          });
+          
+          // Check if any of these campaigns match the selected agencies
+          return advertiserCampaigns.some(row => {
+            const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+            const agency = extractAgencyName(campaignName);
+            return selectedAgencies.includes(agency);
+          });
+        });
+      });
+    }
+  }, [selectedAgencies, data, extractAdvertiserName, extractAgencyName]);
+
+  // Effect to update campaign selection when advertisers change
+  useEffect(() => {
+    if (selectedAdvertisers.length > 0 || selectedAgencies.length > 0) {
       setSelectedCampaigns(prev => {
         return prev.filter(campaign => {
           const campaignRows = data.filter(row => row["CAMPAIGN ORDER NAME"] === campaign);
           if (campaignRows.length === 0) return false;
           
           const campaignName = campaignRows[0]["CAMPAIGN ORDER NAME"] || "";
-          const advertiser = extractAdvertiserName(campaignName);
-          return selectedAdvertisers.includes(advertiser);
+          
+          // Check if campaign passes agency filter
+          if (selectedAgencies.length > 0) {
+            const agency = extractAgencyName(campaignName);
+            if (!selectedAgencies.includes(agency)) return false;
+          }
+          
+          // Check if campaign passes advertiser filter
+          if (selectedAdvertisers.length > 0) {
+            const advertiser = extractAdvertiserName(campaignName);
+            return selectedAdvertisers.includes(advertiser);
+          }
+          
+          return true;
         });
       });
     }
-  }, [selectedAdvertisers, data, extractAdvertiserName, isTestCampaign]);
+  }, [selectedAdvertisers, selectedAgencies, data, extractAdvertiserName, extractAgencyName]);
 
+  
   const filteredDataByDate = useMemo(() => {
     if (!data || data.length === 0) {
       console.log('No data provided to CampaignSparkCharts');
@@ -189,6 +283,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       return !isTestCampaign(campaignName);
     });
     
+    // Filter by agencies if selected
+    if (selectedAgencies.length > 0) {
+      result = result.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const agency = extractAgencyName(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    // Filter by advertisers if selected
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -197,13 +301,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
       });
     }
     
+    // Filter by campaigns if selected
     if (selectedCampaigns.length > 0) {
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     console.log('CampaignSparkCharts final filtered data length:', result.length);
     return result;
-  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, isTestCampaign, extractAdvertiserName]);
+  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, selectedAgencies, isTestCampaign, extractAdvertiserName, extractAgencyName]);
+
+  
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
     // Updated regex to correctly capture advertiser names before hyphens
@@ -407,6 +514,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     }
   }, [filteredData, viewMode]);
 
+  
+
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
     if (chartData.length === 0) {
@@ -497,6 +606,14 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
             
             <div className="flex items-center gap-2">
               <MultiSelect
+                options={agencyOptions}
+                selected={selectedAgencies}
+                onChange={setSelectedAgencies}
+                placeholder="Agency"
+                className="w-[200px]"
+              />
+              
+              <MultiSelect
                 options={advertiserOptions}
                 selected={selectedAdvertisers}
                 onChange={setSelectedAdvertisers}
@@ -548,6 +665,14 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           
           <div className="flex items-center gap-2">
             <MultiSelect
+              options={agencyOptions}
+              selected={selectedAgencies}
+              onChange={setSelectedAgencies}
+              placeholder="Agency"
+              className="w-[200px]"
+            />
+            
+            <MultiSelect
               options={advertiserOptions}
               selected={selectedAdvertisers}
               onChange={setSelectedAdvertisers}
@@ -567,7 +692,8 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         </div>
       </div>
       
-      {chartData.map((item) => {
+      {
+        chartData.map((item) => {
         const impressionsId = `impressions-${getSafeId(item.name)}`;
         const clicksId = `clicks-${getSafeId(item.name)}`;
         const transactionsId = `transactions-${getSafeId(item.name)}`;
@@ -714,130 +840,4 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block cursor-pointer relative group" 
                        onClick={() => handleChartClick(item.name, "ctr", item.timeSeriesData)}>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Maximize className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={item.timeSeriesData}>
-                        <defs>
-                          <linearGradient id={ctrId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Area
-                          type="monotone"
-                          dataKey="ctr"
-                          stroke="#6366F1"
-                          strokeWidth={1.5}
-                          fill={`url(#${ctrId})`}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="hidden sm:block cursor-pointer relative group" 
-                       onClick={() => handleChartClick(item.name, "transactions", item.timeSeriesData)}>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Maximize className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={item.timeSeriesData}>
-                        <defs>
-                          <linearGradient id={transactionsId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Area
-                          type="monotone"
-                          dataKey="transactions"
-                          stroke="#F97316"
-                          strokeWidth={1.5}
-                          fill={`url(#${transactionsId})`}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="hidden sm:block cursor-pointer relative group" 
-                       onClick={() => handleChartClick(item.name, "revenue", item.timeSeriesData)}>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Maximize className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={item.timeSeriesData}>
-                        <defs>
-                          <linearGradient id={revenueId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Area
-                          type="monotone"
-                          dataKey="revenue"
-                          stroke="#10B981"
-                          strokeWidth={1.5}
-                          fill={`url(#${revenueId})`}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="hidden sm:block cursor-pointer relative group" 
-                       onClick={() => handleChartClick(item.name, "roas", item.timeSeriesData)}>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Maximize className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={item.timeSeriesData}>
-                        <defs>
-                          <linearGradient id={roasId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Area
-                          type="monotone"
-                          dataKey="roas"
-                          stroke="#F59E0B"
-                          strokeWidth={1.5}
-                          fill={`url(#${roasId})`}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-        );
-      })}
-
-      {/* Modal for expanded chart view */}
-      {modalData.isOpen && (
-        <SparkChartModal
-          open={modalData.isOpen}
-          onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}
-          title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType).title}`}
-          data={modalData.data}
-          dataKey={modalData.metricType}
-          color={getMetricDetails(modalData.metricType).color}
-          gradientId={`${modalData.itemName}-${modalData.metricType}`.replace(/[^a-zA-Z0-9]/g, '-')}
-          valueFormatter={getMetricDetails(modalData.metricType).formatter}
-          labelFormatter={(label) => `${label}`}
-        />
-      )}
-    </div>
-  );
-};
-
-export default CampaignSparkCharts;
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-1
