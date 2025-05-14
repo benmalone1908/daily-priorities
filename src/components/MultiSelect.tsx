@@ -36,28 +36,32 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  // Ensure options and selected are arrays to prevent undefined.length errors
+  const safeOptions = Array.isArray(options) ? options : [];
+  const safeSelected = Array.isArray(selected) ? selected : [];
+
   const handleSelect = (value: string) => {
-    if (selected.includes(value)) {
-      onChange(selected.filter((item) => item !== value));
+    if (safeSelected.includes(value)) {
+      onChange(safeSelected.filter((item) => item !== value));
     } else {
-      onChange([...selected, value]);
+      onChange([...safeSelected, value]);
     }
   };
 
   const handleSelectAll = () => {
-    if (selected.length === options.length) {
+    if (safeSelected.length === safeOptions.length) {
       onChange([]);
     } else {
-      onChange(options.map(option => option.value));
+      onChange(safeOptions.map(option => option.value));
     }
   };
   
   const filteredOptions = React.useMemo(() => {
-    if (!searchQuery.trim()) return options;
-    return options.filter(option => 
+    if (!searchQuery.trim()) return safeOptions;
+    return safeOptions.filter(option => 
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [options, searchQuery]);
+  }, [safeOptions, searchQuery]);
 
   return (
     <div className={containerClassName}>
@@ -71,7 +75,7 @@ export function MultiSelect({
               className
             )}
           >
-            {selected.length === 0 ? placeholder : `${selected.length} selected`}
+            {safeSelected.length === 0 ? placeholder : `${safeSelected.length} selected`}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
         </PopoverTrigger>
@@ -93,7 +97,7 @@ export function MultiSelect({
               onClick={handleSelectAll}
             >
               <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                {selected.length === options.length ? (
+                {safeSelected.length === safeOptions.length ? (
                   <CheckSquare className="h-4 w-4 text-primary" />
                 ) : (
                   <Square className="h-4 w-4 text-muted-foreground" />
@@ -106,12 +110,12 @@ export function MultiSelect({
                 key={option.value}
                 className={cn(
                   "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
-                  selected.includes(option.value) ? "bg-accent/50" : ""
+                  safeSelected.includes(option.value) ? "bg-accent/50" : ""
                 )}
                 onClick={() => handleSelect(option.value)}
               >
                 <div className="flex items-center justify-center mr-2 h-4 w-4 flex-shrink-0">
-                  {selected.includes(option.value) ? (
+                  {safeSelected.includes(option.value) ? (
                     <CheckSquare className="h-4 w-4 text-primary" />
                   ) : (
                     <Square className="h-4 w-4 text-muted-foreground" />

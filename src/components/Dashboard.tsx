@@ -920,10 +920,12 @@ const Dashboard = ({
           <h2 className="text-xl font-semibold">Performance Metrics</h2>
           
           <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+            
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={agencyOptions}
-                value={selectedMetricsAgencies}
+                selected={selectedMetricsAgencies}
                 onChange={handleMetricsAgenciesChange}
                 placeholder="Filter by Agency"
               />
@@ -932,7 +934,7 @@ const Dashboard = ({
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={filteredAdvertiserOptions}
-                value={selectedMetricsAdvertisers}
+                selected={selectedMetricsAdvertisers}
                 onChange={handleMetricsAdvertisersChange}
                 placeholder="Filter by Advertiser"
               />
@@ -941,7 +943,7 @@ const Dashboard = ({
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={filteredMetricsCampaignOptions}
-                value={selectedMetricsCampaigns}
+                selected={selectedMetricsCampaigns}
                 onChange={onMetricsCampaignsChange || (() => {})}
                 placeholder="Filter by Campaign"
               />
@@ -1097,10 +1099,12 @@ const Dashboard = ({
           <h2 className="text-xl font-semibold">Revenue Performance</h2>
           
           <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+            
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={agencyOptions}
-                value={selectedRevenueAgencies}
+                selected={selectedRevenueAgencies}
                 onChange={handleRevenueAgenciesChange}
                 placeholder="Filter by Agency"
               />
@@ -1109,7 +1113,7 @@ const Dashboard = ({
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={filteredAdvertiserOptions}
-                value={selectedRevenueAdvertisers}
+                selected={selectedRevenueAdvertisers}
                 onChange={handleRevenueAdvertisersChange}
                 placeholder="Filter by Advertiser"
               />
@@ -1118,7 +1122,7 @@ const Dashboard = ({
             <div className="flex items-center space-x-2">
               <MultiSelect
                 options={filteredRevenueCampaignOptions}
-                value={selectedRevenueCampaigns}
+                selected={selectedRevenueCampaigns}
                 onChange={onRevenueCampaignsChange || (() => {})}
                 placeholder="Filter by Campaign"
               />
