@@ -55,6 +55,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       
       if (agency) {
         agencySet.add(agency);
+        console.log(`Found agency "${agency}" for campaign "${campaignName}"`);
       }
     });
     

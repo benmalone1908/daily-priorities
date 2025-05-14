@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -478,10 +479,19 @@ const DashboardContent = ({
 
   const getFilteredDataByAgencies = (agencies: string[]) => {
     if (!agencies.length) return filteredDataByLiveStatus;
+    
+    console.log(`Filtering data by agencies: ${agencies.join(', ')}`);
+    
     return filteredDataByLiveStatus.filter(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       const agency = extractAgencyName(campaignName);
-      return agencies.includes(agency);
+      const result = agencies.includes(agency);
+      
+      if (result) {
+        console.log(`Campaign "${campaignName}" matched agency "${agency}"`);
+      }
+      
+      return result;
     });
   };
 
@@ -514,6 +524,7 @@ const DashboardContent = ({
     let filtered = filteredDataByLiveStatus;
     
     if (selectedMetricsAgencies.length > 0) {
+      console.log(`Filtering metrics data by agencies: ${selectedMetricsAgencies.join(', ')}`);
       // Filter by agency first if agencies are selected
       filtered = filtered.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -527,6 +538,7 @@ const DashboardContent = ({
       filtered = filtered.filter(row => selectedMetricsCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
+    console.log(`Metrics filtered data has ${filtered.length} rows`);
     return filtered;
   };
 
@@ -536,6 +548,7 @@ const DashboardContent = ({
 
   const handleMetricsAgenciesChange = (selected: string[]) => {
     setSelectedMetricsAgencies(selected);
+    console.log(`Selected metrics agencies updated: ${selected.join(', ')}`);
   };
 
   const handleRevenueCampaignsChange = (selected: string[]) => {
@@ -548,6 +561,7 @@ const DashboardContent = ({
   
   const handleRevenueAgenciesChange = (selected: string[]) => {
     setSelectedRevenueAgencies(selected);
+    console.log(`Selected revenue agencies updated: ${selected.join(', ')}`);
   };
 
   const getDateRangeDisplayText = () => {

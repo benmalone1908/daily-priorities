@@ -61,12 +61,6 @@ export function MultiSelect({
     );
   }, [options, searchQuery]);
 
-  // Debug log to see if options are being correctly passed
-  React.useEffect(() => {
-    console.log("MultiSelect options:", options);
-    console.log("MultiSelect selected:", selected);
-  }, [options, selected]);
-
   return (
     <div className={containerClassName}>
       <Popover open={open} onOpenChange={setOpen}>

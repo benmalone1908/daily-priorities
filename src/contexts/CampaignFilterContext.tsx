@@ -72,16 +72,19 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       return "Two Rivers";
     }
     
-    // Try to extract the agency prefix
-    const agencyPrefixes = Object.keys(agencyMapping).join('|');
-    const prefixRegex = new RegExp(`^(${agencyPrefixes}):`);
-    const match = campaignName.match(prefixRegex);
-    
-    if (match && match[1]) {
-      // Convert prefix to full agency name
-      return getAgencyFromPrefix(match[1]);
+    // Fix: Use exact prefix matching with a more reliable approach
+    for (const prefix of Object.keys(agencyMapping)) {
+      if (campaignName.startsWith(`${prefix}:`)) {
+        return getAgencyFromPrefix(prefix);
+      }
     }
     
+    // Additional check for 2RS without using regex
+    if (campaignName.startsWith("2RS:")) {
+      return "Two Rivers";
+    }
+    
+    console.log(`No agency found for campaign: "${campaignName}"`);
     return "";
   };
 
@@ -130,50 +133,17 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
 
   // Log some test cases for debugging
   useEffect(() => {
-    console.log("Testing advertiser and agency extraction with special cases and multiple agency prefixes:");
+    console.log("Testing agency extraction with sample campaign names:");
     const testCases = [
       "SM: Sol Flower-Tucson Foothills-241030",
-      "SM: Sol Flower-Tempe University-241030",
-      "SM: ABC Company-Campaign Name-123456",
-      "SM: XYZ Inc - With Space - 987654",
-      "2RS: Agency Name-Campaign Details-123", // Updated to use Two Rivers
+      "MJ: Test Brand-Campaign-123456",
+      "2RS: Agency Name-Campaign Details-123",
       "6D: Digital Marketing-Summer Promo-456",
-      "BLO: Big Agency-Fall Campaign-789",
-      "FLD: Field Agency-Retail Push-101",
-      "HD: Heavy Digital-Brand Awareness-112",
-      "HG: Higher Ground-New Product-131",
-      "HRB: Herbal Co-Seasonal-415",
-      "MJ: Major Media-Product Launch-617",
-      "NLMC: Northern Lights-Holiday Special-718",
-      "NP: North Point-Black Friday-819",
-      "PRP: Purple Rain-Winter Sale-920",
-      "TF: Top Flight-Spring Collection-1021",
-      "TRN: Turn Key-Summer Festival-1122",
-      "W&T: White & Teal-Fashion Week-1223",
-      "WWX: Worldwide Express-Global Campaign-1324",
-      "SM: Something Else",
-      "This doesn't match any pattern"
     ];
     
     testCases.forEach(test => {
-      const advertiser = extractAdvertiserName(test);
       const agency = extractAgencyName(test);
-      const isTest = isTestCampaign(test);
-      console.log(`Test: "${test}" -> Advertiser: "${advertiser}", Agency: "${agency}", Is Test Campaign: ${isTest}`);
-    });
-    
-    // Test some test/demo/draft cases
-    const testCampaignCases = [
-      "SM: Agency-Test Campaign-123",
-      "2RS: Company-DEMO Campaign-456",
-      "MJ: Client-dRaFt Version-789",
-      "Regular Campaign Name",
-    ];
-    
-    console.log("\nTesting test/demo/draft detection:");
-    testCampaignCases.forEach(test => {
-      const isTest = isTestCampaign(test);
-      console.log(`"${test}" is test campaign: ${isTest}`);
+      console.log(`Test: "${test}" -> Agency: "${agency}"`);
     });
   }, []);
 
