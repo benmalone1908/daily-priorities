@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -907,8 +908,7 @@ const Dashboard = ({
         weeklyData.push(weekData);
       });
       
-      // Fix: Return the array directly since it's already properly typed as WeeklyData[]
-      return weeklyData;
+      return weeklyData as WeeklyData[];
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
       return [];
