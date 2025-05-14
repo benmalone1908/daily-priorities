@@ -41,6 +41,17 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     const agencySet = new Set<string>();
     
     console.log('-------- Extracting agencies in DashboardWrapper --------');
+    console.log('Total data rows:', props.data.length);
+    
+    // Add debug logging for campaign names
+    const campaignNames = new Set<string>();
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (campaignName) {
+        campaignNames.add(campaignName);
+      }
+    });
+    console.log('Unique campaign names found:', Array.from(campaignNames).slice(0, 10), `... (total: ${campaignNames.size})`);
     
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
@@ -55,7 +66,6 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       
       if (agency) {
         agencySet.add(agency);
-        console.log(`Found agency "${agency}" for campaign "${campaignName}"`);
       }
     });
     
@@ -82,26 +92,13 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
       
-      // Additional explicit logging for Sol Flower
-      if (campaignName.includes('Sol Flower')) {
-        console.log(`Sol Flower campaign found: "${campaignName}" -> Extracted: "${advertiser}"`);
-      }
-      
       if (advertiser) {
         advertiserSet.add(advertiser);
-        // Log when adding Sol Flower to the set
-        if (advertiser === "Sol Flower") {
-          console.log(`Added "Sol Flower" to advertiser set, current size: ${advertiserSet.size}`);
-        }
       }
     });
     
     console.log('Total unique advertisers found:', advertiserSet.size);
     console.log('Advertiser list:', Array.from(advertiserSet).sort());
-    
-    // Check if Sol Flower exists in the final set
-    const hasSolFlower = advertiserSet.has("Sol Flower");
-    console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
     
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
   }, [props.data, extractAdvertiserName, isTestCampaign]);

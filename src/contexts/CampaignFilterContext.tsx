@@ -17,6 +17,7 @@ export const agencyMapping: Record<string, string> = {
   "TF": "Tact Firm",
   "TRN": "Terrayn",
   "Two Rivers": "Two Rivers", // Changed from "2RS" to "Two Rivers"
+  "2RS": "Two Rivers", // Keep this entry for backward compatibility
   "W&T": "Water & Trees",
   "WWX": "Wunderworx"
 };
@@ -55,11 +56,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const getAgencyFromPrefix = (prefix: string): string => {
     if (!prefix) return "";
     
-    // Handle special case for "2RS" which is now "Two Rivers"
-    if (prefix === "2RS") {
-      return "Two Rivers";
-    }
-    
+    // Return the mapped agency name if it exists
     return agencyMapping[prefix] || prefix;
   };
   
@@ -67,24 +64,26 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAgencyName = (campaignName: string): string => {
     if (!campaignName) return "";
     
-    // Special case for Two Rivers (formerly 2RS)
-    if (campaignName.startsWith("2RS:")) {
-      return "Two Rivers";
-    }
+    // Debug the incoming campaign name
+    console.log(`Extracting agency from campaign: "${campaignName}"`);
     
-    // Fix: Use exact prefix matching with a more reliable approach
-    for (const prefix of Object.keys(agencyMapping)) {
-      if (campaignName.startsWith(`${prefix}:`)) {
-        return getAgencyFromPrefix(prefix);
+    // Check for the common pattern: PREFIX: Advertiser-Details
+    const colonIndex = campaignName.indexOf(':');
+    if (colonIndex > 0 && colonIndex < 5) {
+      const prefix = campaignName.substring(0, colonIndex).trim();
+      console.log(`Found prefix: "${prefix}" in "${campaignName}"`);
+      
+      // Special handling for "2RS" which is now "Two Rivers"
+      if (prefix === "2RS") {
+        return "Two Rivers";
       }
+      
+      const agencyName = getAgencyFromPrefix(prefix);
+      console.log(`Mapped agency: "${agencyName}" from prefix "${prefix}"`);
+      return agencyName;
     }
     
-    // Additional check for 2RS without using regex
-    if (campaignName.startsWith("2RS:")) {
-      return "Two Rivers";
-    }
-    
-    console.log(`No agency found for campaign: "${campaignName}"`);
+    console.log(`No agency prefix found in campaign: "${campaignName}"`);
     return "";
   };
 
@@ -92,43 +91,26 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAdvertiserName = (campaignName: string): string => {
     if (!campaignName) return "";
     
-    console.log(`Trying to extract advertiser from: "${campaignName}"`);
-    
     // Special case for Sol Flower
     if (campaignName.includes('Sol Flower')) {
-      console.log(`Found Sol Flower campaign: "${campaignName}"`);
       return "Sol Flower";
     }
     
-    // Try with the expanded agency prefixes regex
-    const agencyPrefixes = Object.keys(agencyMapping).join('|');
-    const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
-    
-    const match = campaignName.match(regex);
-    if (match && match[2]) {
-      const extracted = match[2].trim();
-      console.log(`Regex extraction result: "${extracted}" from "${campaignName}"`);
-      return extracted;
-    }
-    
-    // Fallback to splitting by hyphen if the regex fails
-    const prefixMatch = campaignName.match(new RegExp(`^(${agencyPrefixes}):`));
-    if (prefixMatch && campaignName.includes('-')) {
-      const parts = campaignName.split('-');
-      // First part should contain "PREFIX: Advertiser"
-      const firstPart = parts[0].trim();
+    // Extract advertiser from campaign name format: PREFIX: Advertiser-Campaign-Date
+    const colonIndex = campaignName.indexOf(':');
+    if (colonIndex > 0) {
+      // Get everything after the colon and before the first hyphen
+      const afterColon = campaignName.substring(colonIndex + 1).trim();
+      const hyphenIndex = afterColon.indexOf('-');
       
-      const colonIndex = firstPart.indexOf(':');
-      if (colonIndex !== -1) {
-        // Extract everything after ":"
-        const extracted = firstPart.substring(colonIndex + 1).trim();
-        console.log(`Fallback extraction result: "${extracted}" from "${campaignName}"`);
-        return extracted;
+      if (hyphenIndex > 0) {
+        return afterColon.substring(0, hyphenIndex).trim();
+      } else {
+        return afterColon.trim(); // No hyphen found, return everything after colon
       }
     }
     
-    console.log(`Failed to extract advertiser from: "${campaignName}"`);
-    return "";
+    return ""; // No advertiser found
   };
 
   // Log some test cases for debugging
@@ -139,6 +121,8 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       "MJ: Test Brand-Campaign-123456",
       "2RS: Agency Name-Campaign Details-123",
       "6D: Digital Marketing-Summer Promo-456",
+      "TF: Bloom-Display-241003",
+      "W&T: Client-Campaign-DATE"
     ];
     
     testCases.forEach(test => {
