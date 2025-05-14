@@ -1299,14 +1299,7 @@ const Dashboard = ({
               </div>
               <span className="text-sm font-medium mr-1">Filter by:</span>
               <div className="flex items-center gap-2">
-                <MultiSelect
-                  options={advertiserOptions}
-                  selected={selectedWeeklyAdvertisers}
-                  onChange={handleWeeklyAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-                
+                {/* Reordered: Agency first */}
                 <MultiSelect
                   options={agencyOptions}
                   selected={selectedWeeklyAgencies}
@@ -1315,6 +1308,16 @@ const Dashboard = ({
                   className="w-[200px]"
                 />
                 
+                {/* Advertiser second */}
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedWeeklyAdvertisers}
+                  onChange={handleWeeklyAdvertisersChange}
+                  placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+                
+                {/* Campaign third */}
                 <Select 
                   value={selectedWeeklyCampaign} 
                   onValueChange={setSelectedWeeklyCampaign}
