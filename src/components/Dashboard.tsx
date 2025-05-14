@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -37,6 +36,7 @@ interface DashboardProps {
   onRevenueAgenciesChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
+  sortedAgencyOptions?: string[];
   aggregatedMetricsData?: any[]; // Added this property
 }
 
@@ -68,15 +68,19 @@ const Dashboard = ({
   selectedMetricsCampaigns = [],
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
+  selectedRevenueAgencies = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
+  onRevenueAgenciesChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
+  sortedAgencyOptions = [],
   aggregatedMetricsData
 }: DashboardProps) => {
   const [selectedWeeklyCampaign, setSelectedWeeklyCampaign] = useState<string>("all");
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
+  const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
   const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
@@ -118,6 +122,11 @@ const Dashboard = ({
     return Array.from(uniqueAdvertisers).sort();
   }, [data, sortedAdvertiserOptions]);
 
+  const agencies = useMemo(() => {
+    if (sortedAgencyOptions && sortedAgencyOptions.length > 0) return sortedAgencyOptions;
+    return [];
+  }, [sortedAgencyOptions]);
+
   const campaignOptions: Option[] = useMemo(() => {
     return campaigns.map(campaign => ({
       value: campaign,
@@ -131,6 +140,13 @@ const Dashboard = ({
       label: advertiser
     }));
   }, [advertisers]);
+
+  const agencyOptions: Option[] = useMemo(() => {
+    return agencies.map(agency => ({
+      value: agency,
+      label: agency
+    }));
+  }, [agencies]);
 
   const filteredMetricsCampaignOptions = useMemo(() => {
     if (!selectedMetricsAdvertisers.length) return campaignOptions;
@@ -155,7 +171,7 @@ const Dashboard = ({
   }, [campaignOptions, selectedRevenueAdvertisers]);
 
   const filteredWeeklyCampaignOptions = useMemo(() => {
-    if (!selectedWeeklyAdvertisers.length) {
+    if (!selectedWeeklyAdvertisers.length && !selectedWeeklyAgencies.length) {
       return [
         { value: "all", label: "All Campaigns" },
         ...campaignOptions
@@ -164,16 +180,39 @@ const Dashboard = ({
     
     const filteredCampaigns = campaignOptions.filter(option => {
       const campaignName = option.value;
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
-      return selectedWeeklyAdvertisers.includes(advertiser);
+      
+      // Filter by advertiser
+      if (selectedWeeklyAdvertisers.length > 0) {
+        const advertiserMatch = campaignName.match(/SM:\s+([^-]+)/);
+        const advertiser = advertiserMatch ? advertiserMatch[1].trim() : "";
+        if (!selectedWeeklyAdvertisers.includes(advertiser)) {
+          return false;
+        }
+      }
+      
+      // Filter by agency
+      if (selectedWeeklyAgencies.length > 0) {
+        // Check if any selected agency is in the campaign name
+        let hasMatchingAgency = false;
+        for (const agency of selectedWeeklyAgencies) {
+          if (campaignName.includes(agency)) {
+            hasMatchingAgency = true;
+            break;
+          }
+        }
+        if (!hasMatchingAgency) {
+          return false;
+        }
+      }
+      
+      return true;
     });
     
     return [
       { value: "all", label: "All Campaigns" },
       ...filteredCampaigns
     ];
-  }, [campaignOptions, selectedWeeklyAdvertisers]);
+  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies]);
 
   const handleMetricsAdvertisersChange = (selected: string[]) => {
     setSelectedMetricsAdvertisers(selected);
@@ -211,6 +250,12 @@ const Dashboard = ({
     }
   };
 
+  const handleRevenueAgenciesChange = (selected: string[]) => {
+    if (onRevenueAgenciesChange) {
+      onRevenueAgenciesChange(selected);
+    }
+  };
+
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     setSelectedWeeklyAdvertisers(selected);
     
@@ -219,6 +264,24 @@ const Dashboard = ({
       const advertiser = match ? match[1].trim() : "";
       
       if (!selected.includes(advertiser)) {
+        setSelectedWeeklyCampaign("all");
+      }
+    }
+  };
+
+  const handleWeeklyAgenciesChange = (selected: string[]) => {
+    setSelectedWeeklyAgencies(selected);
+    
+    if (selected.length > 0 && selectedWeeklyCampaign !== "all") {
+      let hasMatchingAgency = false;
+      for (const agency of selected) {
+        if (selectedWeeklyCampaign.includes(agency)) {
+          hasMatchingAgency = true;
+          break;
+        }
+      }
+      
+      if (!hasMatchingAgency) {
         setSelectedWeeklyCampaign("all");
       }
     }
@@ -593,8 +656,8 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
-    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, period=${periodLength}`);
+  const getWeeklyData = (selectedCampaign: string, selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+    console.log(`getWeeklyData called with campaign=${selectedCampaign}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
     
     if (!data || data.length === 0) {
       console.log("No data available for weekly comparison");
@@ -611,6 +674,7 @@ const Dashboard = ({
         console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
       }
       
+      // Filter by advertisers if any are selected
       if (selectedAdvertisers.length > 0) {
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
@@ -621,6 +685,18 @@ const Dashboard = ({
           return selectedAdvertisers.includes(advertiser);
         });
         console.log(`After advertiser filter: ${filteredData.length} rows`);
+      }
+      
+      // Filter by agencies if any are selected
+      if (selectedAgencies.length > 0) {
+        filteredData = filteredData.filter((row: any) => {
+          if (!row["CAMPAIGN ORDER NAME"]) return false;
+          
+          const campaignName = row["CAMPAIGN ORDER NAME"];
+          // Check if any selected agency is in the campaign name
+          return selectedAgencies.some(agency => campaignName.includes(agency));
+        });
+        console.log(`After agency filter: ${filteredData.length} rows`);
       }
       
       if (selectedCampaign !== "all") {
@@ -808,10 +884,10 @@ const Dashboard = ({
 
   useEffect(() => {
     console.log("Calculating weekly data...");
-    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod);
+    const calculatedData = getWeeklyData(selectedWeeklyCampaign, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
     console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
     setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, comparisonPeriod]);
+  }, [data, selectedWeeklyCampaign, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod]);
 
   const processedMetricsData = useMemo(() => {
     console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
@@ -1228,6 +1304,14 @@ const Dashboard = ({
                   selected={selectedWeeklyAdvertisers}
                   onChange={handleWeeklyAdvertisersChange}
                   placeholder="Advertiser"
+                  className="w-[200px]"
+                />
+                
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedWeeklyAgencies}
+                  onChange={handleWeeklyAgenciesChange}
+                  placeholder="Agency"
                   className="w-[200px]"
                 />
                 
