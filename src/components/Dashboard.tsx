@@ -21,6 +21,7 @@ import { MultiSelect, Option } from "./MultiSelect";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
+import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 
 interface DashboardProps {
   data: any[];
@@ -133,6 +134,8 @@ const Dashboard = ({
     return [];
   }, [sortedAgencyOptions]);
 
+  const { extractAgencyInfo, extractAdvertiserName } = useCampaignFilter();
+  
   const filteredWeeklyAdvertiserOptions = useMemo(() => {
     if (!selectedWeeklyAgencies.length) {
       return advertisers.map(advertiser => ({
@@ -189,46 +192,16 @@ const Dashboard = ({
     if (selectedWeeklyAgencies.length > 0) {
       validCampaigns = validCampaigns.filter(option => {
         const campaignName = option.value;
-        
-        for (const agency of selectedWeeklyAgencies) {
-          const abbreviationMatch = campaignName.match(/^([^:]+):/);
-          if (abbreviationMatch) {
-            const abbreviation = abbreviationMatch[1].trim();
-            const agencyAbbreviations: Record<string, string> = {
-              'SM': 'SM Services',
-              'MJ': 'MediaJel',
-              'BLO': 'Be Local One',
-              '2RS': '2RS',
-              '6D': '6 Degrees Media',
-              'FLD': 'Fieldtest',
-              'HD': 'Highday',
-              'HG': 'Happy Greens',
-              'HRB': 'Herb.co',
-              'NLMC': 'NLMC',
-              'NP': 'Noble People',
-              'PRP': 'Propaganda Creative',
-              'TF': 'Top Flight'
-            };
-            if (agencyAbbreviations[abbreviation] === agency) {
-              return true;
-            }
-          }
-          
-          if (campaignName.includes(agency)) {
-            return true;
-          }
-        }
-        
-        return false;
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedWeeklyAgencies.includes(agency) && agency !== "";
       });
     }
     
     if (selectedWeeklyAdvertisers.length > 0) {
       validCampaigns = validCampaigns.filter(option => {
         const campaignName = option.value;
-        const advertiserMatch = campaignName.match(/:\s+([^-]+)/);
-        const advertiser = advertiserMatch ? advertiserMatch[1].trim() : "";
-        return selectedWeeklyAdvertisers.includes(advertiser);
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedWeeklyAdvertisers.includes(advertiser) && advertiser !== "";
       });
     }
     
@@ -238,7 +211,7 @@ const Dashboard = ({
       { value: "all", label: "All Campaigns" },
       ...validCampaigns
     ];
-  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies]);
+  }, [campaignOptions, selectedWeeklyAdvertisers, selectedWeeklyAgencies, extractAgencyInfo, extractAdvertiserName]);
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     if (selectedWeeklyAgencies.length > 0) {
