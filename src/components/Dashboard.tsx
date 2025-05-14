@@ -70,6 +70,135 @@ type ChartViewMode = "date" | "dayOfWeek";
 type AnomalyPeriod = "daily" | "weekly";
 type ComparisonPeriod = "7" | "14" | "30";
 
+// Add utility functions for calculations
+const calculateROAS = (revenue: number, impressions: number): number => {
+  if (impressions === 0) return 0;
+  return (revenue / impressions) * 1000;
+};
+
+const calculateCTR = (clicks: number, impressions: number): number => {
+  if (impressions === 0) return 0;
+  return (clicks / impressions) * 100;
+};
+
+const calculateAOV = (revenue: number, transactions: number): number => {
+  if (transactions === 0) return 0;
+  return revenue / transactions;
+};
+
+// Format utility functions
+const formatCTR = (value: number): string => {
+  try {
+    return `${value.toFixed(2)}%`;
+  } catch (error) {
+    console.error("Error formatting CTR:", error);
+    return "0.00%";
+  }
+};
+
+const formatTransactions = (value: number): string => {
+  try {
+    return value.toLocaleString();
+  } catch (error) {
+    console.error("Error formatting transactions:", error);
+    return "0";
+  }
+};
+
+const formatAOV = (value: number): string => {
+  try {
+    return `$${value.toFixed(2)}`;
+  } catch (error) {
+    console.error("Error formatting AOV:", error);
+    return "$0.00";
+  }
+};
+
+// Data aggregation functions
+const getAggregatedData = (data: any[]): any[] => {
+  if (!data || !data.length) return [];
+  
+  try {
+    const dateMap = new Map();
+    
+    data.forEach(row => {
+      if (!row.DATE) return;
+      
+      const dateStr = normalizeDate(row.DATE);
+      if (!dateStr) return;
+      
+      if (!dateMap.has(dateStr)) {
+        dateMap.set(dateStr, {
+          DATE: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          TRANSACTIONS: 0,
+          count: 0
+        });
+      }
+      
+      const entry = dateMap.get(dateStr);
+      entry.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+      entry.CLICKS += Number(row.CLICKS) || 0;
+      entry.REVENUE += Number(row.REVENUE) || 0;
+      entry.TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+      entry.count += 1;
+    });
+    
+    // Sort by date ascending
+    return Array.from(dateMap.values())
+      .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+  } catch (error) {
+    console.error("Error in getAggregatedData:", error);
+    return [];
+  }
+};
+
+const getAggregatedDataByDayOfWeek = (data: any[]): any[] => {
+  if (!data || !data.length) return [];
+  
+  try {
+    const dayMap = new Map();
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    // Initialize all days of week
+    dayNames.forEach((day, index) => {
+      dayMap.set(index, {
+        DAY_OF_WEEK: day,
+        IMPRESSIONS: 0,
+        CLICKS: 0,
+        REVENUE: 0,
+        TRANSACTIONS: 0,
+        count: 0
+      });
+    });
+    
+    data.forEach(row => {
+      if (!row.DATE) return;
+      
+      const dateStr = normalizeDate(row.DATE);
+      if (!dateStr) return;
+      
+      const date = new Date(dateStr);
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+      
+      const entry = dayMap.get(dayOfWeek);
+      entry.IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+      entry.CLICKS += Number(row.CLICKS) || 0;
+      entry.REVENUE += Number(row.REVENUE) || 0;
+      entry.TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+      entry.count += 1;
+    });
+    
+    // Convert to array and sort by day of week
+    return Array.from(dayMap.values());
+  } catch (error) {
+    console.error("Error in getAggregatedDataByDayOfWeek:", error);
+    return [];
+  }
+};
+
 const Dashboard = ({ 
   data,
   metricsData,
@@ -105,6 +234,13 @@ const Dashboard = ({
   const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
   const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
+  
+  // Add anomalies mock data or empty state
+  const [anomalies, setAnomalies] = useState<any>({
+    IMPRESSIONS: { anomalies: [] },
+    CLICKS: { anomalies: [] },
+    REVENUE: { anomalies: [] }
+  });
   
   const renderCountRef = useRef(0);
   
@@ -269,6 +405,15 @@ const Dashboard = ({
       label: agency
     }));
   }, [agencies, formattedAgencyOptions]);
+
+  // Handle metrics advertisers change function
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+    // Reset campaign selection when advertisers change
+    if (onMetricsCampaignsChange) {
+      onMetricsCampaignsChange([]);
+    }
+  };
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     if (selectedWeeklyAgencies.length > 0) {
