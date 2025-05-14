@@ -356,7 +356,6 @@ const DashboardContent = ({
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
-  const [selectedWeeklyCampaigns, setSelectedWeeklyCampaigns] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
@@ -534,10 +533,6 @@ const DashboardContent = ({
     setSelectedRevenueCampaigns([]);
   };
 
-  const handleWeeklyCampaignsChange = (selected: string[]) => {
-    setSelectedWeeklyCampaigns(selected);
-  };
-
   const getDateRangeDisplayText = () => {
     if (!dateRange || !dateRange.from) return null;
     
@@ -607,8 +602,6 @@ const DashboardContent = ({
             onRevenueCampaignsChange={handleRevenueCampaignsChange}
             onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
             onRevenueAgenciesChange={handleRevenueAgenciesChange}
-            selectedWeeklyCampaigns={selectedWeeklyCampaigns}
-            onWeeklyCampaignsChange={handleWeeklyCampaignsChange}
           />
         </TabsContent>
         <TabsContent value="sparks">
