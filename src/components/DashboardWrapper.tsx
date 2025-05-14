@@ -1,10 +1,10 @@
-
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
 import { Card } from '@/components/ui/card';
 import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
 import { Option } from './MultiSelect';
+import { debugLogOptions } from '@/utils/optionsFormatter';
 
 interface DashboardWrapperProps {
   data: any[];
@@ -251,9 +251,14 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   const advertiserOptionsForDashboard = sortedAdvertiserOptions.map(option => option.value);
   const agencyOptionsForDashboard = sortedAgencyOptions.map(option => option.value);
 
-  // Add debugging
+  // Add more detailed debugging
   console.log('Campaign options prepared for Dashboard:', campaignOptionsForDashboard.slice(0, 5), `(${campaignOptionsForDashboard.length} total)`);
   console.log('Campaign options with value/label:', campaignOptionsForMultiSelect.slice(0, 5), `(${campaignOptionsForMultiSelect.length} total)`);
+  
+  // Use our debug utility for better logging
+  debugLogOptions('campaignOptionsForMultiSelect', campaignOptionsForMultiSelect);
+  debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
+  debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
   // Pass all the sorted options to the Dashboard component
   return (

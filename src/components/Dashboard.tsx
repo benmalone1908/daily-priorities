@@ -38,6 +38,9 @@ interface DashboardProps {
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
   sortedAgencyOptions?: string[];
+  formattedCampaignOptions?: Option[]; // Add this property
+  formattedAdvertiserOptions?: Option[]; // Add this property
+  formattedAgencyOptions?: Option[]; // Add this property
   aggregatedMetricsData?: any[];
   agencyToAdvertisersMap?: Record<string, Set<string>>;
   agencyToCampaignsMap?: Record<string, Set<string>>;
@@ -80,6 +83,9 @@ const Dashboard = ({
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
   sortedAgencyOptions = [],
+  formattedCampaignOptions = [], // Add default value
+  formattedAdvertiserOptions = [], // Add default value
+  formattedAgencyOptions = [], // Add default value
   aggregatedMetricsData,
   agencyToAdvertisersMap = {},
   agencyToCampaignsMap = {},
@@ -188,7 +194,11 @@ const Dashboard = ({
     
     console.log(`Filtered revenue campaign options: ${validCampaigns.length} campaigns`);
     
-    return validCampaigns;
+    // Map strings to Option objects before returning
+    return validCampaigns.map(campaign => ({
+      value: campaign,
+      label: campaign
+    }));
   }, [campaigns, selectedRevenueAgencies, selectedRevenueAdvertisers, extractAgencyInfo, extractAdvertiserName]);
 
   const filteredWeeklyAdvertiserOptions = useMemo(() => {
@@ -221,25 +231,40 @@ const Dashboard = ({
   }, [selectedWeeklyAgencies, advertisers, agencyToAdvertisersMap]);
 
   const campaignOptions: Option[] = useMemo(() => {
+    // If formattedCampaignOptions is provided, use it
+    if (formattedCampaignOptions && formattedCampaignOptions.length > 0) {
+      return formattedCampaignOptions;
+    }
+    // Otherwise, create them from the campaigns array
     return campaigns.map(campaign => ({
       value: campaign,
       label: campaign
     }));
-  }, [campaigns]);
+  }, [campaigns, formattedCampaignOptions]);
 
   const advertiserOptions: Option[] = useMemo(() => {
+    // If formattedAdvertiserOptions is provided, use it
+    if (formattedAdvertiserOptions && formattedAdvertiserOptions.length > 0) {
+      return formattedAdvertiserOptions;
+    }
+    // Otherwise, create them from the advertisers array
     return advertisers.map(advertiser => ({
       value: advertiser,
       label: advertiser
     }));
-  }, [advertisers]);
+  }, [advertisers, formattedAdvertiserOptions]);
 
   const agencyOptions: Option[] = useMemo(() => {
+    // If formattedAgencyOptions is provided, use it
+    if (formattedAgencyOptions && formattedAgencyOptions.length > 0) {
+      return formattedAgencyOptions;
+    }
+    // Otherwise, create them from the agencies array
     return agencies.map(agency => ({
       value: agency,
       label: agency
     }));
-  }, [agencies]);
+  }, [agencies, formattedAgencyOptions]);
 
   const handleWeeklyAdvertisersChange = (selected: string[]) => {
     if (selectedWeeklyAgencies.length > 0) {
