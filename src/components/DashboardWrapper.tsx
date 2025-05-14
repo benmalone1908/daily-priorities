@@ -1,9 +1,6 @@
-
 import { useMemo } from 'react';
-import Dashboard from './Dashboard';
+import DashboardProxy from './DashboardProxy';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
-import { Card } from '@/components/ui/card';
-import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
 import { Option } from './MultiSelect';
 import { debugLogOptions } from '@/utils/optionsFormatter';
 
@@ -263,9 +260,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
   debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
-  // Pass all the sorted options to the Dashboard component
+  // Pass all props to Dashboard, including weekly campaigns props
   return (
-    <Dashboard
+    <DashboardProxy
       data={props.data}
       metricsData={props.metricsData}
       revenueData={props.revenueData}
@@ -280,7 +277,6 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       sortedCampaignOptions={campaignOptionsForDashboard}
       sortedAdvertiserOptions={advertiserOptionsForDashboard}
       sortedAgencyOptions={agencyOptionsForDashboard}
-      // Also pass the formatted options for MultiSelect/Select components
       formattedCampaignOptions={campaignOptionsForMultiSelect}
       formattedAdvertiserOptions={advertiserOptionsForMultiSelect}
       formattedAgencyOptions={agencyOptionsForMultiSelect}
@@ -288,7 +284,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
       advertiserToCampaignsMap={advertiserToCampaignsMap}
-      // Add the weekly campaigns props
+      // Also pass the weekly campaigns props
       selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
     />
