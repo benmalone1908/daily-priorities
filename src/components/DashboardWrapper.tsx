@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -19,7 +20,7 @@ interface DashboardWrapperProps {
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
-  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
   
   // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
   const sortedCampaignOptions = useMemo(() => {
@@ -74,6 +75,35 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
   }, [props.data, extractAdvertiserName, isTestCampaign]);
 
+  // Get sorted agency options from the filtered data
+  const sortedAgencyOptions = useMemo(() => {
+    const agencySet = new Set<string>();
+    
+    console.log('-------- Extracting agencies in DashboardWrapper --------');
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      // Use shared function to extract agency names
+      const { agency } = extractAgencyInfo(campaignName);
+      
+      if (agency) {
+        agencySet.add(agency);
+        console.log(`Added agency: "${agency}" from campaign: "${campaignName}"`);
+      }
+    });
+    
+    console.log('Total unique agencies found:', agencySet.size);
+    console.log('Agency list:', Array.from(agencySet).sort());
+    
+    return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
+  }, [props.data, extractAgencyInfo, isTestCampaign]);
+
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
     if (!props.data || props.data.length === 0) return [];
@@ -127,6 +157,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
+      sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
     />
   );

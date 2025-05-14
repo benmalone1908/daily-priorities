@@ -54,14 +54,24 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAgencyInfo = (campaignName: string): { agency: string, abbreviation: string } => {
     if (!campaignName) return { agency: "", abbreviation: "" };
     
-    // Extract the agency abbreviation which appears before the first colon
-    const agencyMatch = campaignName.match(/^([^:]+):/);
+    // New regex pattern to better match the format "2001367: HRB: District Cannabis-241217"
+    // This will extract just the agency abbreviation between first and second colon
+    const agencyMatch = campaignName.match(/^\d+:\s*([^:]+):/);
+    
     if (agencyMatch && agencyMatch[1]) {
       const abbreviation = agencyMatch[1].trim();
       
       // Look up the full agency name from the mapping
       const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
       
+      return { agency, abbreviation };
+    }
+    
+    // Fallback to original regex for backward compatibility
+    const originalAgencyMatch = campaignName.match(/^([^:]+):/);
+    if (originalAgencyMatch && originalAgencyMatch[1]) {
+      const abbreviation = originalAgencyMatch[1].trim();
+      const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
       return { agency, abbreviation };
     }
     
@@ -78,6 +88,15 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     if (campaignName.includes('Sol Flower')) {
       console.log(`Found Sol Flower campaign: "${campaignName}"`);
       return "Sol Flower";
+    }
+    
+    // For the new format "2001367: HRB: District Cannabis-241217"
+    // This will extract the advertiser name between second colon and dash
+    const newFormatMatch = campaignName.match(/^\d+:\s*[^:]+:\s*([^-]+)/);
+    if (newFormatMatch && newFormatMatch[1]) {
+      const extracted = newFormatMatch[1].trim();
+      console.log(`New format extraction result: "${extracted}" from "${campaignName}"`);
+      return extracted;
     }
     
     // Try with the expanded agency prefixes regex
@@ -115,6 +134,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log("Testing advertiser extraction with special cases and multiple agency prefixes:");
     const testCases = [
+      "2001367: HRB: District Cannabis-241217",
       "SM: Sol Flower-Tucson Foothills-241030",
       "SM: Sol Flower-Tempe University-241030",
       "SM: ABC Company-Campaign Name-123456",
