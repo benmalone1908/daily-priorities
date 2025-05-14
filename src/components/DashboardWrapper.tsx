@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -17,18 +18,19 @@ interface DashboardWrapperProps {
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
-  const { extractAdvertiserName } = useCampaignFilter();
+  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
   
-  // Get sorted campaign options from the filtered data
+  // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
   const sortedCampaignOptions = useMemo(() => {
     const campaignSet = new Set<string>();
     props.data.forEach(row => {
-      if (row["CAMPAIGN ORDER NAME"]) {
-        campaignSet.add(row["CAMPAIGN ORDER NAME"]);
+      const campaignName = row["CAMPAIGN ORDER NAME"];
+      if (campaignName && !isTestCampaign(campaignName)) {
+        campaignSet.add(campaignName);
       }
     });
     return Array.from(campaignSet).sort((a, b) => a.localeCompare(b));
-  }, [props.data]);
+  }, [props.data, isTestCampaign]);
 
   // Get sorted advertiser options from the filtered data
   const sortedAdvertiserOptions = useMemo(() => {
@@ -38,6 +40,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
       
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
@@ -64,7 +71,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     console.log(`Final set includes "Sol Flower": ${hasSolFlower}`);
     
     return Array.from(advertiserSet).sort((a, b) => a.localeCompare(b));
-  }, [props.data, extractAdvertiserName]);
+  }, [props.data, extractAdvertiserName, isTestCampaign]);
 
   // Prepare aggregated data for the top spark charts
   const aggregatedMetricsData = useMemo(() => {
@@ -74,6 +81,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     
     props.data.forEach(row => {
       if (!row || !row.DATE || row.DATE === 'Totals') return;
+      
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (isTestCampaign(campaignName)) return; // Skip test campaigns
       
       const dateStr = String(row.DATE).trim();
       if (!dateGroups[dateStr]) {
@@ -99,7 +109,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
         return 0;
       }
     });
-  }, [props.data]);
+  }, [props.data, isTestCampaign]);
 
   return (
     <Dashboard

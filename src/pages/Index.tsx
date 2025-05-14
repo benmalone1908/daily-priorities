@@ -357,7 +357,7 @@ const DashboardContent = ({
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  const { showLiveOnly } = useCampaignFilter();
+  const { showLiveOnly, extractAdvertiserName, isTestCampaign } = useCampaignFilter();
 
   const getMostRecentDate = () => {
     if (!data || data.length === 0) return null;
@@ -437,7 +437,10 @@ const DashboardContent = ({
     
     filteredData.forEach(row => {
       if (row.DATE === mostRecentDate && Number(row.IMPRESSIONS) > 0) {
-        activeCampaignsOnMostRecentDate.add(row["CAMPAIGN ORDER NAME"]);
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        if (!isTestCampaign(campaignName)) { // Skip test campaigns
+          activeCampaignsOnMostRecentDate.add(campaignName);
+        }
       }
     });
     
@@ -446,12 +449,16 @@ const DashboardContent = ({
     // Now filter to include all dates, but only for campaigns active on most recent date
     const liveData = filteredData.filter(row => {
       if (row.DATE === 'Totals') return true;
-      return activeCampaignsOnMostRecentDate.has(row["CAMPAIGN ORDER NAME"]);
+      
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (isTestCampaign(campaignName)) return false; // Skip test campaigns
+      
+      return activeCampaignsOnMostRecentDate.has(campaignName);
     });
     
     console.log(`Filtered from ${filteredData.length} rows to ${liveData.length} live campaign rows`);
     return liveData;
-  }, [filteredData, showLiveOnly]);
+  }, [filteredData, showLiveOnly, isTestCampaign]);
 
   const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
     if (!campaigns.length) return filteredDataByLiveStatus;
@@ -462,8 +469,7 @@ const DashboardContent = ({
     if (!advertisers.length) return filteredDataByLiveStatus;
     return filteredDataByLiveStatus.filter(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const match = campaignName.match(/SM:\s+([^-]+)/);
-      const advertiser = match ? match[1].trim() : "";
+      const advertiser = extractAdvertiserName(campaignName);
       return advertisers.includes(advertiser);
     });
   };

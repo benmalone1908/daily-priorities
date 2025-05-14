@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SparkChartModal from "./SparkChartModal";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface CampaignSparkChartsProps {
   data: any[];
@@ -56,6 +57,9 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     data: []
   });
   
+  // Get filter functions from context
+  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
@@ -63,36 +67,19 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     console.log('-------- Extracting advertisers in CampaignSparkCharts --------');
     console.log('Total data rows:', data.length);
     
-    // Log all campaign names first
-    const solFlowerCampaigns = data.filter(row => {
-      const name = row["CAMPAIGN ORDER NAME"] || "";
-      return name.includes('Sol Flower');
-    });
-    
-    if (solFlowerCampaigns.length > 0) {
-      console.log(`Found ${solFlowerCampaigns.length} Sol Flower campaigns:`);
-      solFlowerCampaigns.forEach(row => {
-        console.log(`- ${row["CAMPAIGN ORDER NAME"]}`);
-      });
-    } else {
-      console.log('WARNING: No Sol Flower campaigns found in data!');
-    }
-    
+    // Skip test campaigns and extract advertisers from valid campaigns
     data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      // Updated regex to correctly capture advertiser names before hyphens
-      const match = campaignName.match(/SM:\s+(.*?)(?=-)/);
       
-      // Debug specific Sol Flower campaigns
-      if (campaignName.includes('Sol Flower')) {
-        console.log(`Processing: "${campaignName}"`);
-        console.log(`  Match result:`, match);
-        const advertiser = match ? match[1].trim() : "";
-        console.log(`  Extracted advertiser: "${advertiser}"`);
+      // Skip test/demo/draft campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
       }
       
-      const advertiser = match ? match[1].trim() : "";
-      if (advertiser) advertisers.add(advertiser);
+      const advertiser = extractAdvertiserName(campaignName);
+      if (advertiser) {
+        advertisers.add(advertiser);
+      }
     });
     
     console.log('Final unique advertisers found:', advertisers.size);
@@ -104,16 +91,21 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: advertiser,
         label: advertiser
       }));
-  }, [data]);
+  }, [data, extractAdvertiserName, isTestCampaign]);
 
   const campaignOptions = useMemo(() => {
     let filteredData = data;
     
+    // First filter out test campaigns
+    filteredData = filteredData.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      return !isTestCampaign(campaignName);
+    });
+    
     if (selectedAdvertisers.length > 0) {
-      filteredData = data.filter(row => {
+      filteredData = filteredData.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const match = campaignName.match(/SM:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
+        const advertiser = extractAdvertiserName(campaignName);
         return selectedAdvertisers.includes(advertiser);
       });
     }
@@ -125,7 +117,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
         value: campaign,
         label: campaign
       }));
-  }, [data, selectedAdvertisers]);
+  }, [data, selectedAdvertisers, extractAdvertiserName, isTestCampaign]);
 
   useEffect(() => {
     if (selectedAdvertisers.length > 0) {
@@ -135,13 +127,12 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
           if (campaignRows.length === 0) return false;
           
           const campaignName = campaignRows[0]["CAMPAIGN ORDER NAME"] || "";
-          const match = campaignName.match(/SM:\s+([^-]+)/);
-          const advertiser = match ? match[1].trim() : "";
+          const advertiser = extractAdvertiserName(campaignName);
           return selectedAdvertisers.includes(advertiser);
         });
       });
     }
-  }, [selectedAdvertisers, data]);
+  }, [selectedAdvertisers, data, extractAdvertiserName, isTestCampaign]);
 
   const filteredDataByDate = useMemo(() => {
     if (!data || data.length === 0) {
@@ -192,11 +183,16 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     console.log('CampaignSparkCharts received data length:', data.length);
     console.log('CampaignSparkCharts filtered by date length:', filteredDataByDate.length);
     
+    // First filter out test campaigns
+    result = result.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      return !isTestCampaign(campaignName);
+    });
+    
     if (selectedAdvertisers.length > 0) {
       result = result.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const match = campaignName.match(/SM:\s+([^-]+)/);
-        const advertiser = match ? match[1].trim() : "";
+        const advertiser = extractAdvertiserName(campaignName);
         return selectedAdvertisers.includes(advertiser);
       });
     }
@@ -207,7 +203,7 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
     
     console.log('CampaignSparkCharts final filtered data length:', result.length);
     return result;
-  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers]);
+  }, [filteredDataByDate, selectedCampaigns, selectedAdvertisers, isTestCampaign, extractAdvertiserName]);
 
   const getAdvertiserFromCampaign = (campaignName: string): string => {
     // Updated regex to correctly capture advertiser names before hyphens
