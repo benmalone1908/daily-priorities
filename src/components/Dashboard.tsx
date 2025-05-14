@@ -31,10 +31,16 @@ interface DashboardProps {
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
   selectedRevenueAgencies?: string[];
+  // Add these missing props to match what we're passing from DashboardProxy
+  selectedMetricsAdvertisers?: string[];
+  selectedMetricsAgencies?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
   onRevenueAgenciesChange?: (selected: string[]) => void;
+  // Add these missing handler props
+  onMetricsAdvertisersChange?: (selected: string[]) => void;
+  onMetricsAgenciesChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
   sortedAgencyOptions?: string[];
@@ -207,10 +213,16 @@ const Dashboard = ({
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
   selectedRevenueAgencies = [],
+  // Update the props destructuring to include the new props
+  selectedMetricsAdvertisers = [],
+  selectedMetricsAgencies = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
   onRevenueAgenciesChange,
+  // Add the new handler props
+  onMetricsAdvertisersChange,
+  onMetricsAgenciesChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
   sortedAgencyOptions = [],
@@ -227,8 +239,9 @@ const Dashboard = ({
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
   const [selectedWeeklyAgencies, setSelectedWeeklyAgencies] = useState<string[]>([]);
-  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
-  const [selectedMetricsAgencies, setSelectedMetricsAgencies] = useState<string[]>([]);
+  // Initialize local state with props values to keep local and parent state in sync
+  const [localSelectedMetricsAdvertisers, setLocalSelectedMetricsAdvertisers] = useState<string[]>(selectedMetricsAdvertisers);
+  const [localSelectedMetricsAgencies, setLocalSelectedMetricsAgencies] = useState<string[]>(selectedMetricsAgencies);
   const [anomalyPeriod, setAnomalyPeriod] = useState<AnomalyPeriod>("daily");
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
   const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
@@ -494,9 +507,14 @@ const Dashboard = ({
 
   // Add handler for agency changes in metrics
   const handleMetricsAgenciesChange = (selected: string[]) => {
-    setSelectedMetricsAgencies(selected);
+    setLocalSelectedMetricsAgencies(selected);
+    // Call parent handler if provided
+    if (onMetricsAgenciesChange) {
+      onMetricsAgenciesChange(selected);
+    }
+    
     // Reset advertiser and campaign selections when agencies change
-    setSelectedMetricsAdvertisers([]);
+    setLocalSelectedMetricsAdvertisers([]);
     if (onMetricsCampaignsChange) {
       onMetricsCampaignsChange([]);
     }
@@ -504,10 +522,10 @@ const Dashboard = ({
 
   // Update metrics advertisers change handler to respect agency selection
   const handleMetricsAdvertisersChange = (selected: string[]) => {
-    if (selectedMetricsAgencies.length > 0) {
+    if (localSelectedMetricsAgencies.length > 0) {
       const validAdvertisers = new Set<string>();
       
-      selectedMetricsAgencies.forEach(agency => {
+      localSelectedMetricsAgencies.forEach(agency => {
         const advertisersForAgency = agencyToAdvertisersMap[agency];
         if (advertisersForAgency) {
           advertisersForAgency.forEach(advertiser => {
@@ -517,9 +535,19 @@ const Dashboard = ({
       });
       
       const filteredSelected = selected.filter(advertiser => validAdvertisers.has(advertiser));
-      setSelectedMetricsAdvertisers(filteredSelected);
+      setLocalSelectedMetricsAdvertisers(filteredSelected);
+      
+      // Call parent handler if provided
+      if (onMetricsAdvertisersChange) {
+        onMetricsAdvertisersChange(filteredSelected);
+      }
     } else {
-      setSelectedMetricsAdvertisers(selected);
+      setLocalSelectedMetricsAdvertisers(selected);
+      
+      // Call parent handler if provided
+      if (onMetricsAdvertisersChange) {
+        onMetricsAdvertisersChange(selected);
+      }
     }
     
     // Reset campaign selection when advertisers change
@@ -984,7 +1012,7 @@ const Dashboard = ({
     <div className="space-y-8 animate-fade-in">
       {dateRange && (
         <div className="text-sm text-muted-foreground text-center">
-          Showing data for: <span className="font-medium">{dateRangeText}</span> 
+          <span className="font-medium">{dateRangeText}</span> 
           ({data.length.toLocaleString()} records)
         </div>
       )}
@@ -1049,7 +1077,7 @@ const Dashboard = ({
               {agencyOptions.length > 0 && (
                 <MultiSelect
                   options={agencyOptions}
-                  selected={selectedMetricsAgencies}
+                  selected={localSelectedMetricsAgencies}
                   onChange={handleMetricsAgenciesChange}
                   placeholder="Agency"
                   className="w-[200px]"
@@ -1059,7 +1087,7 @@ const Dashboard = ({
               {advertiserOptions.length > 0 && (
                 <MultiSelect
                   options={filteredMetricsAdvertiserOptions}
-                  selected={selectedMetricsAdvertisers}
+                  selected={localSelectedMetricsAdvertisers}
                   onChange={handleMetricsAdvertisersChange}
                   placeholder="Advertiser"
                   className="w-[200px]"
