@@ -669,6 +669,20 @@ const Dashboard = ({
     return detectAnomalies(data);
   }, [data, anomalyPeriod]);
 
+  // Transform anomaly object to array for AnomalyDetails component
+  const getAnomalyArray = (anomalyData: Record<string, { anomalies: any[] }> | undefined, metric?: string): any[] => {
+    if (!anomalyData) return [];
+    
+    if (metric && anomalyData[metric]) {
+      return anomalyData[metric].anomalies || [];
+    }
+    
+    // Combine all anomalies from all metrics
+    return Object.values(anomalyData).reduce((acc: any[], curr: { anomalies: any[] }) => {
+      return [...acc, ...(curr.anomalies || [])];
+    }, []);
+  };
+
   const getAggregatedData = (filteredData: any[]): any[] => {
     try {
       if (!filteredData || !filteredData.length) return [];
@@ -1272,7 +1286,11 @@ const Dashboard = ({
         
         {showAnomalySection && (
           <ScrollArea className="h-[400px]">
-            <AnomalyDetails anomalies={anomalies} />
+            <AnomalyDetails 
+              anomalies={getAnomalyArray(anomalies)} 
+              metric="IMPRESSIONS"
+              anomalyPeriod={anomalyPeriod}
+            />
           </ScrollArea>
         )}
       </div>
