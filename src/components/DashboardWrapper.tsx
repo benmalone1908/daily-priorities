@@ -1,5 +1,5 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
 import { Card } from '@/components/ui/card';
@@ -19,11 +19,18 @@ interface DashboardWrapperProps {
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
   onRevenueAgenciesChange: (selected: string[]) => void;
-  selectedWeeklyCampaigns?: string[]; // Add new prop for weekly campaigns multi-select
-  onWeeklyCampaignsChange?: (selected: string[]) => void; // Add new handler
+  selectedWeeklyCampaigns?: string[]; // Keep prop for weekly campaigns multi-select
+  onWeeklyCampaignsChange?: (selected: string[]) => void; // Keep handler
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
+  // Add state for weekly campaigns selection if not provided via props
+  const [localSelectedWeeklyCampaigns, setLocalSelectedWeeklyCampaigns] = useState<string[]>([]);
+  
+  // Use props if provided, otherwise use local state
+  const selectedWeeklyCampaigns = props.selectedWeeklyCampaigns || localSelectedWeeklyCampaigns;
+  const handleWeeklyCampaignsChange = props.onWeeklyCampaignsChange || setLocalSelectedWeeklyCampaigns;
+
   const { extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
   
   // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
@@ -288,6 +295,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
       advertiserToCampaignsMap={advertiserToCampaignsMap}
+      // Add the weekly campaigns props
+      selectedWeeklyCampaigns={selectedWeeklyCampaigns}
+      onWeeklyCampaignsChange={handleWeeklyCampaignsChange}
     />
   );
 };
