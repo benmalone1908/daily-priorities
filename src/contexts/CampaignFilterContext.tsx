@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define agency mapping
 export const agencyMapping: Record<string, string> = {
-  "2RS": "2RS",
+  "2RS": "Two Rivers",
   "6D": "6 Degrees Media",
   "BLO": "Be Local One",
   "FLD": "Fieldtest",

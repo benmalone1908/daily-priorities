@@ -22,6 +22,7 @@ interface MultiSelectProps {
   className?: string;
   popoverClassName?: string;
   containerClassName?: string;
+  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -32,6 +33,7 @@ export function MultiSelect({
   className,
   popoverClassName,
   containerClassName,
+  disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -66,6 +68,7 @@ export function MultiSelect({
           <button
             role="combobox"
             aria-expanded={open}
+            disabled={disabled}
             className={cn(
               "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               className

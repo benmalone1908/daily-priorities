@@ -356,6 +356,7 @@ const DashboardContent = ({
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
   const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
+  const [selectedMetricsAgencies, setSelectedMetricsAgencies] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
   const { showLiveOnly, extractAdvertiserName, extractAgencyName, isTestCampaign } = useCampaignFilter();
@@ -508,8 +509,33 @@ const DashboardContent = ({
     return filtered;
   };
 
+  // New function to filter metrics data by agencies
+  const getMetricsFilteredData = () => {
+    let filtered = filteredDataByLiveStatus;
+    
+    if (selectedMetricsAgencies.length > 0) {
+      // Filter by agency first if agencies are selected
+      filtered = filtered.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const agency = extractAgencyName(campaignName);
+        return selectedMetricsAgencies.includes(agency);
+      });
+    }
+    
+    if (selectedMetricsCampaigns.length > 0) {
+      // Then filter by campaigns if any are selected
+      filtered = filtered.filter(row => selectedMetricsCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    }
+    
+    return filtered;
+  };
+
   const handleMetricsCampaignsChange = (selected: string[]) => {
     setSelectedMetricsCampaigns(selected);
+  };
+
+  const handleMetricsAgenciesChange = (selected: string[]) => {
+    setSelectedMetricsAgencies(selected);
   };
 
   const handleRevenueCampaignsChange = (selected: string[]) => {
@@ -579,17 +605,19 @@ const DashboardContent = ({
         <TabsContent value="dashboard">
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
-            metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
+            metricsData={getMetricsFilteredData()}
             revenueData={getFilteredDataByCampaignsAndAdvertisers(
               selectedRevenueCampaigns, 
               selectedRevenueAdvertisers,
               selectedRevenueAgencies
             )}
             selectedMetricsCampaigns={selectedMetricsCampaigns}
+            selectedMetricsAgencies={selectedMetricsAgencies}
             selectedRevenueCampaigns={selectedRevenueCampaigns}
             selectedRevenueAdvertisers={selectedRevenueAdvertisers}
             selectedRevenueAgencies={selectedRevenueAgencies}
             onMetricsCampaignsChange={handleMetricsCampaignsChange}
+            onMetricsAgenciesChange={handleMetricsAgenciesChange}
             onRevenueCampaignsChange={handleRevenueCampaignsChange}
             onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
             onRevenueAgenciesChange={handleRevenueAgenciesChange}

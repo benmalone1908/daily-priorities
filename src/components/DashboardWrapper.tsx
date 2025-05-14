@@ -13,10 +13,12 @@ interface DashboardWrapperProps {
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
   selectedRevenueAgencies: string[];
+  selectedMetricsAgencies: string[]; // Added for metrics agencies
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
   onRevenueAgenciesChange: (selected: string[]) => void;
+  onMetricsAgenciesChange: (selected: string[]) => void; // Added handler for metrics agencies
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -147,10 +149,12 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       metricsData={props.metricsData}
       revenueData={props.revenueData}
       selectedMetricsCampaigns={props.selectedMetricsCampaigns}
+      selectedMetricsAgencies={props.selectedMetricsAgencies} // Added metrics agencies
       selectedRevenueCampaigns={props.selectedRevenueCampaigns}
       selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
       selectedRevenueAgencies={props.selectedRevenueAgencies}
       onMetricsCampaignsChange={props.onMetricsCampaignsChange}
+      onMetricsAgenciesChange={props.onMetricsAgenciesChange} // Added handler
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
