@@ -840,4 +840,128 @@ const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
 
                   <div className="hidden sm:block cursor-pointer relative group" 
                        onClick={() => handleChartClick(item.name, "ctr", item.timeSeriesData)}>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-1
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={item.timeSeriesData}>
+                        <defs>
+                          <linearGradient id={ctrId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="ctr"
+                          stroke="#6366F1"
+                          strokeWidth={1.5}
+                          fill={`url(#${ctrId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "transactions", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={item.timeSeriesData}>
+                        <defs>
+                          <linearGradient id={transactionsId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F97316" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F97316" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="transactions"
+                          stroke="#F97316"
+                          strokeWidth={1.5}
+                          fill={`url(#${transactionsId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "revenue", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={item.timeSeriesData}>
+                        <defs>
+                          <linearGradient id={revenueId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#10B981"
+                          strokeWidth={1.5}
+                          fill={`url(#${revenueId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="hidden sm:block cursor-pointer relative group" 
+                       onClick={() => handleChartClick(item.name, "roas", item.timeSeriesData)}>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={item.timeSeriesData}>
+                        <defs>
+                          <linearGradient id={roasId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="roas"
+                          stroke="#F59E0B"
+                          strokeWidth={1.5}
+                          fill={`url(#${roasId})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })
+      }
+      
+      {modalData.isOpen && (
+        <SparkChartModal
+          isOpen={modalData.isOpen}
+          onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
+          title={`${modalData.itemName} - ${getMetricDetails(modalData.metricType)?.title}`}
+          data={modalData.data}
+          dataKey={modalData.metricType}
+          color={getMetricDetails(modalData.metricType)?.color || "#000"}
+          dateFormat="MMM d"
+          formatter={getMetricDetails(modalData.metricType)?.formatter}
+        />
+      )}
+    </div>
+  );
+};
+
+export default CampaignSparkCharts;
