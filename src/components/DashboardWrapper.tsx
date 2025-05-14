@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -239,13 +240,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
-  // Now we need to update the Dashboard component prop types by modifying the Dashboard type in Dashboard.tsx file
-  // Since we can't modify Dashboard.tsx directly, we need to adapt our data to match its expected types
-  // We need to extract just the values from our option objects to match the string[] types expected by Dashboard
-
-  const campaignValues = sortedCampaignOptions.map(option => option.value);
-  const advertiserValues = sortedAdvertiserOptions.map(option => option.value);
-  const agencyValues = sortedAgencyOptions.map(option => option.value);
+  // Now we convert the string arrays to Option arrays when passing to Dashboard
+  // This is the key fix for the "no options found" issue
+  const campaignOptionsForDashboard = sortedCampaignOptions.map(option => option.value);
+  const advertiserOptionsForDashboard = sortedAdvertiserOptions.map(option => option.value);
+  const agencyOptionsForDashboard = sortedAgencyOptions.map(option => option.value);
 
   // Pass all the sorted options to the Dashboard component with the correct types
   return (
@@ -261,9 +260,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
-      sortedCampaignOptions={campaignValues}
-      sortedAdvertiserOptions={advertiserValues}
-      sortedAgencyOptions={agencyValues}
+      sortedCampaignOptions={campaignOptionsForDashboard}
+      sortedAdvertiserOptions={advertiserOptionsForDashboard}
+      sortedAgencyOptions={agencyOptionsForDashboard}
       aggregatedMetricsData={aggregatedMetricsData}
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}

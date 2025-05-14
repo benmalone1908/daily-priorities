@@ -49,6 +49,7 @@ export function MultiSelect({
 
   // Filter out options with empty values or labels first
   const validOptions = React.useMemo(() => {
+    console.log("MultiSelect received options:", options);
     return options.filter(option => 
       option && option.value?.trim() && option.label?.trim()
     );
@@ -84,6 +85,15 @@ export function MultiSelect({
     }, {});
   }, [filteredOptions, showGroups]);
 
+  // Add debug console.log to check the exact format of the options
+  React.useEffect(() => {
+    console.log("MultiSelect - validOptions count:", validOptions.length);
+    console.log("MultiSelect - filteredOptions count:", filteredOptions.length);
+    if (validOptions.length === 0 && options.length > 0) {
+      console.log("First few options received:", options.slice(0, 3));
+    }
+  }, [options, validOptions, filteredOptions]);
+
   return (
     <div className={containerClassName}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -100,7 +110,7 @@ export function MultiSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className={cn("p-0 bg-background shadow-lg", popoverClassName)} align="start">
+        <PopoverContent className={cn("p-0 bg-background shadow-lg z-50", popoverClassName)} align="start">
           <div className="p-2 border-b">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
