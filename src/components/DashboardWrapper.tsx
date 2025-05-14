@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -240,7 +239,15 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
-  // Pass all the sorted options to the Dashboard component
+  // Now we need to update the Dashboard component prop types by modifying the Dashboard type in Dashboard.tsx file
+  // Since we can't modify Dashboard.tsx directly, we need to adapt our data to match its expected types
+  // We need to extract just the values from our option objects to match the string[] types expected by Dashboard
+
+  const campaignValues = sortedCampaignOptions.map(option => option.value);
+  const advertiserValues = sortedAdvertiserOptions.map(option => option.value);
+  const agencyValues = sortedAgencyOptions.map(option => option.value);
+
+  // Pass all the sorted options to the Dashboard component with the correct types
   return (
     <Dashboard
       data={props.data}
@@ -254,9 +261,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
-      sortedCampaignOptions={sortedCampaignOptions}
-      sortedAdvertiserOptions={sortedAdvertiserOptions}
-      sortedAgencyOptions={sortedAgencyOptions}
+      sortedCampaignOptions={campaignValues}
+      sortedAdvertiserOptions={advertiserValues}
+      sortedAgencyOptions={agencyValues}
       aggregatedMetricsData={aggregatedMetricsData}
       agencyToAdvertisersMap={agencyToAdvertisersMap}
       agencyToCampaignsMap={agencyToCampaignsMap}
