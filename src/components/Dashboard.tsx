@@ -337,6 +337,11 @@ const Dashboard = ({
     }
   };
 
+  const handleMetricsAdvertisersChange = (selected: string[]) => {
+    setSelectedMetricsAdvertisers(selected);
+    // Additional logic for metrics advertisers can be added here
+  };
+
   const detectAnomalies = (inputData: any[]) => {
     if (!inputData || !inputData.length) return {
       IMPRESSIONS: { anomalies: [] },
@@ -1162,9 +1167,9 @@ const Dashboard = ({
                 />
               )}
               
-              {onMetricsCampaignsChange && filteredMetricsCampaignOptions.length > 0 && (
+              {onMetricsCampaignsChange && campaignOptions.length > 0 && (
                 <MultiSelect
-                  options={filteredMetricsCampaignOptions}
+                  options={campaignOptions}
                   selected={selectedMetricsCampaigns}
                   onChange={onMetricsCampaignsChange}
                   placeholder="Campaign"
@@ -1253,15 +1258,15 @@ const Dashboard = ({
                 <MultiSelect
                   options={advertiserOptions}
                   selected={selectedRevenueAdvertisers}
-                  onChange={handleRevenueAdvertisersChange}
+                  onChange={onRevenueAdvertisersChange}
                   placeholder="Advertiser"
                   className="w-[200px]"
                 />
               )}
               
-              {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
+              {onRevenueCampaignsChange && campaignOptions.length > 0 && (
                 <MultiSelect
-                  options={filteredRevenueCampaignOptions}
+                  options={campaignOptions}
                   selected={selectedRevenueCampaigns}
                   onChange={onRevenueCampaignsChange}
                   placeholder="Campaign"
