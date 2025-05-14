@@ -700,52 +700,61 @@ const Dashboard = ({
       let filteredData = JSON.parse(JSON.stringify(data));
       console.log(`Starting with ${filteredData.length} rows of data`);
       
-      const allDates = filteredData.map((row: any) => row.DATE).filter(Boolean);
-      if (allDates.length > 0) {
-        const sortedDates = [...allDates].sort();
-        console.log(`Weekly data input range: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
-      }
+      // For debugging purposes, look at a few sample campaign names
+      const sampleCampaigns = filteredData.slice(0, 5).map((row: any) => row["CAMPAIGN ORDER NAME"]);
+      console.log("Sample campaign names:", sampleCampaigns);
       
       if (selectedAgencies.length > 0) {
+        console.log(`Filtering by agencies: ${selectedAgencies.join(", ")}`);
+        
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
-          const abbreviationMatch = campaignName.match(/^([^:]+):/);
-          if (!abbreviationMatch) return false;
+          const { agency } = extractAgencyInfo(campaignName);
           
-          const abbreviation = abbreviationMatch[1].trim();
-          const agencyAbbreviations: Record<string, string> = {
-            'SM': 'SM Services',
-            'MJ': 'MediaJel',
-            'BLO': 'Be Local One',
-            '2RS': '2RS',
-            '6D': '6 Degrees Media',
-            'FLD': 'Fieldtest',
-            'HD': 'Highday',
-            'HG': 'Happy Greens',
-            'HRB': 'Herb.co',
-            'NLMC': 'NLMC',
-            'NP': 'Noble People',
-            'PRP': 'Propaganda Creative',
-            'TF': 'Top Flight'
-          };
-          const agency = agencyAbbreviations[abbreviation];
+          const isIncluded = selectedAgencies.includes(agency) && agency !== "";
           
-          return selectedAgencies.includes(agency);
+          // Debug log for a few rows to see what's happening
+          if (sampleCampaigns.includes(campaignName)) {
+            console.log(`Campaign: "${campaignName}" -> Agency: "${agency}", Included: ${isIncluded}`);
+          }
+          
+          return isIncluded;
         });
+        
         console.log(`After agency filter: ${filteredData.length} rows`);
+        
+        // Additional debugging - check what agencies are actually in the data
+        const uniqueAgencies = new Set<string>();
+        filteredData.slice(0, 100).forEach((row: any) => {
+          if (row["CAMPAIGN ORDER NAME"]) {
+            const { agency } = extractAgencyInfo(row["CAMPAIGN ORDER NAME"]);
+            if (agency) uniqueAgencies.add(agency);
+          }
+        });
+        console.log("Agencies found in filtered data:", Array.from(uniqueAgencies));
       }
       
       if (selectedAdvertisers.length > 0) {
+        console.log(`Filtering by advertisers: ${selectedAdvertisers.join(", ")}`);
+        
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
           
           const campaignName = row["CAMPAIGN ORDER NAME"];
-          const match = campaignName.match(/:\s+([^-]+)/);
-          const advertiser = match ? match[1].trim() : "";
-          return selectedAdvertisers.includes(advertiser);
+          const advertiser = extractAdvertiserName(campaignName);
+          
+          const isIncluded = selectedAdvertisers.includes(advertiser) && advertiser !== "";
+          
+          // Debug log for a few rows to see what's happening
+          if (sampleCampaigns.includes(campaignName)) {
+            console.log(`Campaign: "${campaignName}" -> Advertiser: "${advertiser}", Included: ${isIncluded}`);
+          }
+          
+          return isIncluded;
         });
+        
         console.log(`After advertiser filter: ${filteredData.length} rows`);
       }
       
