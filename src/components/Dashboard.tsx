@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -783,7 +782,6 @@ const Dashboard = ({
       
       console.log(`Day of week aggregation includes ${includedDates.size} unique dates`);
       
-      // Fix: Explicitly type the returned array to avoid type error
       return Object.values(dayOfWeekGroups) as any[];
     } catch (error) {
       console.error("Error in getAggregatedDataByDayOfWeek:", error);
@@ -870,7 +868,7 @@ const Dashboard = ({
       
       const weeklyData: WeeklyData[] = [];
       
-      filteredData.forEach(row => {
+      filteredData.forEach((row: any) => {
         if (!row || !row.DATE) return;
         
         const normalizedDate = normalizeDate(row.DATE);
@@ -908,7 +906,7 @@ const Dashboard = ({
         weeklyData.push(weekData);
       });
       
-      return weeklyData as WeeklyData[];
+      return weeklyData;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
       return [];
