@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -408,8 +407,8 @@ const Dashboard = ({
       
       {showSparkChart && (
         <SparkChartModal
-          isOpen={showSparkChart}
-          onClose={() => setShowSparkChart(false)}
+          open={showSparkChart}
+          onOpenChange={() => setShowSparkChart(false)}
           data={sparkChartData}
           title={sparkChartTitle}
         />
