@@ -4,6 +4,7 @@ import Dashboard from './Dashboard';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
 import { Card } from '@/components/ui/card';
 import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
+import { Option } from './MultiSelect';
 
 interface DashboardWrapperProps {
   data: any[];
