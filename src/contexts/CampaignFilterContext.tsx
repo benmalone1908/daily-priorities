@@ -1,8 +1,8 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define agency mapping
 export const agencyMapping: Record<string, string> = {
-  "2RS": "Two Rivers",
   "6D": "6 Degrees Media",
   "BLO": "Be Local One",
   "FLD": "Fieldtest",
@@ -16,6 +16,7 @@ export const agencyMapping: Record<string, string> = {
   "SM": "SM Services",
   "TF": "Tact Firm",
   "TRN": "Terrayn",
+  "Two Rivers": "Two Rivers", // Changed from "2RS" to "Two Rivers"
   "W&T": "Water & Trees",
   "WWX": "Wunderworx"
 };
@@ -53,12 +54,23 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   // Get the full agency name from the prefix
   const getAgencyFromPrefix = (prefix: string): string => {
     if (!prefix) return "";
+    
+    // Handle special case for "2RS" which is now "Two Rivers"
+    if (prefix === "2RS") {
+      return "Two Rivers";
+    }
+    
     return agencyMapping[prefix] || prefix;
   };
   
   // Helper function to extract agency prefix from campaign name
   const extractAgencyName = (campaignName: string): string => {
     if (!campaignName) return "";
+    
+    // Special case for Two Rivers (formerly 2RS)
+    if (campaignName.startsWith("2RS:")) {
+      return "Two Rivers";
+    }
     
     // Try to extract the agency prefix
     const agencyPrefixes = Object.keys(agencyMapping).join('|');
@@ -124,7 +136,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       "SM: Sol Flower-Tempe University-241030",
       "SM: ABC Company-Campaign Name-123456",
       "SM: XYZ Inc - With Space - 987654",
-      "2RS: Agency Name-Campaign Details-123",
+      "2RS: Agency Name-Campaign Details-123", // Updated to use Two Rivers
       "6D: Digital Marketing-Summer Promo-456",
       "BLO: Big Agency-Fall Campaign-789",
       "FLD: Field Agency-Retail Push-101",
