@@ -520,9 +520,9 @@ const DashboardContent = ({
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <img 
-              src="/lovable-uploads/8d86c84a-0c96-4897-8d80-48ae466c4000.png" 
+              src="/lovable-uploads/7653cd45-6cfe-4e1c-89a4-cb182393e54b.png" 
               alt="Display Campaign Monitor" 
-              className="h-14 w-auto"
+              className="h-[75px] w-auto"
             />
             <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
           </div>
