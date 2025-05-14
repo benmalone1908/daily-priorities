@@ -576,7 +576,7 @@ const Dashboard = ({
               }
             });
             
-            const weeklyValues = Object.values(weeklyData);
+            const weeklyValues = Object.values(weeklyData);\
             if (weeklyValues.length < 2) return;
             
             for (let i = 0; i < weeklyValues.length - 1; i++) {
@@ -674,7 +674,7 @@ const Dashboard = ({
       
       console.log(`Aggregating ${filteredData.length} rows of data`);
       
-      const allDates = filteredData.map(row => row.DATE).filter(Boolean);
+      const allDates = filteredData.map(row => row.DATE).filter(Boolean);\
       if (allDates.length > 0) {
         const sortedDates = [...allDates].sort();
         console.log(`Input date range for aggregation: ${sortedDates[0]} to ${sortedDates[sortedDates.length-1]}`);
