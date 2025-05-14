@@ -22,9 +22,9 @@ interface SparkChartModalProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   data: any[];
-  dataKey?: string;
-  color?: string;
-  gradientId?: string;
+  dataKey: string;
+  color: string;
+  gradientId: string;
   valueFormatter?: (value: number) => string;
   labelFormatter?: (label: string) => string;
 }
@@ -34,9 +34,9 @@ const SparkChartModal = ({
   onOpenChange,
   title,
   data,
-  dataKey = "REVENUE",
-  color = "#0088FE",
-  gradientId = "sparkChart",
+  dataKey,
+  color,
+  gradientId,
   valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
   labelFormatter = (label) => label,
 }: SparkChartModalProps) => {
