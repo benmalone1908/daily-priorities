@@ -12,13 +12,15 @@ interface DashboardWrapperProps {
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
+  selectedRevenueAgencies: string[];
   onMetricsCampaignsChange: (selected: string[]) => void;
   onRevenueCampaignsChange: (selected: string[]) => void;
   onRevenueAdvertisersChange: (selected: string[]) => void;
+  onRevenueAgenciesChange: (selected: string[]) => void;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
-  const { extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { extractAdvertiserName, extractAgencyName, isTestCampaign } = useCampaignFilter();
   
   // Get sorted campaign options from the filtered data, excluding test/demo/draft campaigns
   const sortedCampaignOptions = useMemo(() => {
@@ -31,6 +33,34 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
     return Array.from(campaignSet).sort((a, b) => a.localeCompare(b));
   }, [props.data, isTestCampaign]);
+
+  // Get sorted agency options from the filtered data
+  const sortedAgencyOptions = useMemo(() => {
+    const agencySet = new Set<string>();
+    
+    console.log('-------- Extracting agencies in DashboardWrapper --------');
+    
+    props.data.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      
+      // Skip test campaigns
+      if (isTestCampaign(campaignName)) {
+        return;
+      }
+      
+      // Use shared function to extract agency names
+      const agency = extractAgencyName(campaignName);
+      
+      if (agency) {
+        agencySet.add(agency);
+      }
+    });
+    
+    console.log('Total unique agencies found:', agencySet.size);
+    console.log('Agency list:', Array.from(agencySet).sort());
+    
+    return Array.from(agencySet).sort((a, b) => a.localeCompare(b));
+  }, [props.data, extractAgencyName, isTestCampaign]);
 
   // Get sorted advertiser options from the filtered data
   const sortedAdvertiserOptions = useMemo(() => {
@@ -119,11 +149,14 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsCampaigns={props.selectedMetricsCampaigns}
       selectedRevenueCampaigns={props.selectedRevenueCampaigns}
       selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
+      selectedRevenueAgencies={props.selectedRevenueAgencies}
       onMetricsCampaignsChange={props.onMetricsCampaignsChange}
       onRevenueCampaignsChange={props.onRevenueCampaignsChange}
       onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
+      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
+      sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
     />
   );

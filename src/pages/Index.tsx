@@ -355,9 +355,10 @@ const DashboardContent = ({
   const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
   const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
   const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
+  const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  const { showLiveOnly, extractAdvertiserName, isTestCampaign } = useCampaignFilter();
+  const { showLiveOnly, extractAdvertiserName, extractAgencyName, isTestCampaign } = useCampaignFilter();
 
   const getMostRecentDate = () => {
     if (!data || data.length === 0) return null;
@@ -474,11 +475,30 @@ const DashboardContent = ({
     });
   };
 
-  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[]) => {
+  const getFilteredDataByAgencies = (agencies: string[]) => {
+    if (!agencies.length) return filteredDataByLiveStatus;
+    return filteredDataByLiveStatus.filter(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      const agency = extractAgencyName(campaignName);
+      return agencies.includes(agency);
+    });
+  };
+
+  const getFilteredDataByCampaignsAndAdvertisers = (campaigns: string[], advertisers: string[], agencies: string[]) => {
     let filtered = filteredDataByLiveStatus;
+    
+    if (agencies.length > 0) {
+      filtered = getFilteredDataByAgencies(agencies);
+    }
     
     if (advertisers.length > 0) {
       filtered = getFilteredDataByAdvertisers(advertisers);
+      
+      if (campaigns.length > 0) {
+        return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+      }
+      
+      return filtered;
     }
     
     if (campaigns.length > 0) {
@@ -498,6 +518,10 @@ const DashboardContent = ({
 
   const handleRevenueAdvertisersChange = (selected: string[]) => {
     setSelectedRevenueAdvertisers(selected);
+  };
+  
+  const handleRevenueAgenciesChange = (selected: string[]) => {
+    setSelectedRevenueAgencies(selected);
   };
 
   const getDateRangeDisplayText = () => {
@@ -556,13 +580,19 @@ const DashboardContent = ({
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
             metricsData={getFilteredDataBySelectedCampaigns(selectedMetricsCampaigns)}
-            revenueData={getFilteredDataByCampaignsAndAdvertisers(selectedRevenueCampaigns, selectedRevenueAdvertisers)}
+            revenueData={getFilteredDataByCampaignsAndAdvertisers(
+              selectedRevenueCampaigns, 
+              selectedRevenueAdvertisers,
+              selectedRevenueAgencies
+            )}
             selectedMetricsCampaigns={selectedMetricsCampaigns}
             selectedRevenueCampaigns={selectedRevenueCampaigns}
             selectedRevenueAdvertisers={selectedRevenueAdvertisers}
+            selectedRevenueAgencies={selectedRevenueAgencies}
             onMetricsCampaignsChange={handleMetricsCampaignsChange}
             onRevenueCampaignsChange={handleRevenueCampaignsChange}
             onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
+            onRevenueAgenciesChange={handleRevenueAgenciesChange}
           />
         </TabsContent>
         <TabsContent value="sparks">

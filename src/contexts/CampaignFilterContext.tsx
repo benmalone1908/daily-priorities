@@ -1,6 +1,26 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
+// Define agency mapping
+export const agencyMapping: Record<string, string> = {
+  "2RS": "2RS",
+  "6D": "6 Degrees Media",
+  "BLO": "Be Local One",
+  "FLD": "Fieldtest",
+  "HD": "Highday",
+  "HG": "Happy Greens",
+  "HRB": "Herb.co",
+  "MJ": "MediaJel",
+  "NLMC": "NLMC",
+  "NP": "Noble People",
+  "PRP": "Propaganda Creative",
+  "SM": "SM Services",
+  "TF": "Tact Firm",
+  "TRN": "Terrayn",
+  "W&T": "Water & Trees",
+  "WWX": "Wunderworx"
+};
+
 type CampaignFilterContextType = {
   showLiveOnly: boolean;
   setShowLiveOnly: (value: boolean) => void;
@@ -9,6 +29,8 @@ type CampaignFilterContextType = {
   showDebugInfo: boolean;
   setShowDebugInfo: (value: boolean) => void;
   extractAdvertiserName: (campaignName: string) => string;
+  extractAgencyName: (campaignName: string) => string;
+  getAgencyFromPrefix: (prefix: string) => string;
   isTestCampaign: (campaignName: string) => boolean;
 };
 
@@ -28,6 +50,29 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
            lowerCaseName.includes('demo') || 
            lowerCaseName.includes('draft');
   };
+  
+  // Get the full agency name from the prefix
+  const getAgencyFromPrefix = (prefix: string): string => {
+    if (!prefix) return "";
+    return agencyMapping[prefix] || prefix;
+  };
+  
+  // Helper function to extract agency prefix from campaign name
+  const extractAgencyName = (campaignName: string): string => {
+    if (!campaignName) return "";
+    
+    // Try to extract the agency prefix
+    const agencyPrefixes = Object.keys(agencyMapping).join('|');
+    const prefixRegex = new RegExp(`^(${agencyPrefixes}):`);
+    const match = campaignName.match(prefixRegex);
+    
+    if (match && match[1]) {
+      // Convert prefix to full agency name
+      return getAgencyFromPrefix(match[1]);
+    }
+    
+    return "";
+  };
 
   // Helper function to extract advertiser name from campaign name
   const extractAdvertiserName = (campaignName: string): string => {
@@ -42,7 +87,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     }
     
     // Try with the expanded agency prefixes regex
-    const agencyPrefixes = "SM|2RS|6D|BLO|FLD|HD|HG|HRB|MJ|NLMC|NP|PRP|TF|TRN|W&T|WWX";
+    const agencyPrefixes = Object.keys(agencyMapping).join('|');
     const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
     
     const match = campaignName.match(regex);
@@ -74,7 +119,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
 
   // Log some test cases for debugging
   useEffect(() => {
-    console.log("Testing advertiser extraction with special cases and multiple agency prefixes:");
+    console.log("Testing advertiser and agency extraction with special cases and multiple agency prefixes:");
     const testCases = [
       "SM: Sol Flower-Tucson Foothills-241030",
       "SM: Sol Flower-Tempe University-241030",
@@ -100,9 +145,10 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     ];
     
     testCases.forEach(test => {
-      const result = extractAdvertiserName(test);
+      const advertiser = extractAdvertiserName(test);
+      const agency = extractAgencyName(test);
       const isTest = isTestCampaign(test);
-      console.log(`Test: "${test}" -> "${result}", Is Test Campaign: ${isTest}`);
+      console.log(`Test: "${test}" -> Advertiser: "${advertiser}", Agency: "${agency}", Is Test Campaign: ${isTest}`);
     });
     
     // Test some test/demo/draft cases
@@ -129,6 +175,8 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       showDebugInfo,
       setShowDebugInfo,
       extractAdvertiserName,
+      extractAgencyName,
+      getAgencyFromPrefix,
       isTestCampaign
     }}>
       {children}
