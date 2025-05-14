@@ -43,16 +43,11 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     console.log('-------- Extracting agencies in DashboardWrapper --------');
     console.log('Total data rows:', props.data.length);
     
-    // Add debug logging for campaign names
-    const campaignNames = new Set<string>();
-    props.data.forEach(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      if (campaignName) {
-        campaignNames.add(campaignName);
-      }
-    });
-    console.log('Unique campaign names found:', Array.from(campaignNames).slice(0, 10), `... (total: ${campaignNames.size})`);
+    // Debug: Log the first few campaign names
+    const sampleCampaigns = props.data.slice(0, 5).map(row => row["CAMPAIGN ORDER NAME"]);
+    console.log('Sample campaigns:', sampleCampaigns);
     
+    // Process all campaign names to extract agencies
     props.data.forEach(row => {
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       

@@ -69,15 +69,11 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     
     // Check for the common pattern: PREFIX: Advertiser-Details
     const colonIndex = campaignName.indexOf(':');
-    if (colonIndex > 0 && colonIndex < 5) {
+    if (colonIndex > 0) {
       const prefix = campaignName.substring(0, colonIndex).trim();
       console.log(`Found prefix: "${prefix}" in "${campaignName}"`);
       
-      // Special handling for "2RS" which is now "Two Rivers"
-      if (prefix === "2RS") {
-        return "Two Rivers";
-      }
-      
+      // Get the agency name from the mapping
       const agencyName = getAgencyFromPrefix(prefix);
       console.log(`Mapped agency: "${agencyName}" from prefix "${prefix}"`);
       return agencyName;
@@ -122,12 +118,14 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       "2RS: Agency Name-Campaign Details-123",
       "6D: Digital Marketing-Summer Promo-456",
       "TF: Bloom-Display-241003",
-      "W&T: Client-Campaign-DATE"
+      "W&T: Client-Campaign-DATE",
+      "HRB: Blue Sage-Campaign-123"
     ];
     
     testCases.forEach(test => {
       const agency = extractAgencyName(test);
-      console.log(`Test: "${test}" -> Agency: "${agency}"`);
+      const advertiser = extractAdvertiserName(test);
+      console.log(`Test: "${test}" -> Agency: "${agency}", Advertiser: "${advertiser}"`);
     });
   }, []);
 

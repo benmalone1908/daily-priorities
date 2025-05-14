@@ -38,6 +38,11 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  // Debug the options passed to MultiSelect
+  React.useEffect(() => {
+    console.log('MultiSelect options:', options.length ? options.slice(0, 5) : 'No options');
+  }, [options]);
+
   const handleSelect = (value: string) => {
     if (selected.includes(value)) {
       onChange(selected.filter((item) => item !== value));
@@ -91,7 +96,7 @@ export function MultiSelect({
             </div>
           </div>
           <div className="max-h-[300px] overflow-auto p-1">
-            {options.length > 0 ? (
+            {options && options.length > 0 ? (
               <>
                 <div
                   className="relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground border-b border-border"
