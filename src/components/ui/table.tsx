@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -51,19 +52,23 @@ const TableFooter = React.forwardRef<
 ))
 TableFooter.displayName = "TableFooter"
 
-const TableRow = React.forwardRef<
-  HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
-  <tr
-    ref={ref}
-    className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
+interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  variant?: "default" | "aggregate"
+}
+
+const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
+  ({ className, variant = "default", ...props }, ref) => (
+    <tr
+      ref={ref}
+      className={cn(
+        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        variant === "aggregate" && "bg-[#D9D9D9]",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
