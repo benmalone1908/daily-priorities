@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define the agency mapping
@@ -68,6 +67,12 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
         const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
         return { agency, abbreviation };
       }
+    }
+    
+    // Special case for campaigns starting with numeric IDs and containing WWX-
+    // (e.g., "2001863: WWX-Client Name" or "2001864-WWX-Client Name")
+    if (campaignName.match(/^\d+:?\s*WWX-/) || campaignName.includes('-WWX-')) {
+      return { agency: 'Wunderworx', abbreviation: 'WWX' };
     }
     
     // Handle campaign names with slashes in the IO number
@@ -207,7 +212,9 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404",
       "2001943:Partner-PRP-Pend Oreille Spokane DIS-250416",
       "2001943: PRP-Pend Oreille CTV-250415",
-      "Awaiting IO: MJ: Test Client-Campaign Name-250501"
+      "Awaiting IO: MJ: Test Client-Campaign Name-250501",
+      "2001863: WWX-Some Client-250514", // New WWX case with colon
+      "2001864-WWX-Another Client-250514"  // New WWX case with hyphen
     ];
     
     problemCases.forEach(test => {
