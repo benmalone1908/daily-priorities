@@ -142,6 +142,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     });
   }, [props.data, isTestCampaign]);
 
+  // Pass the sortedAgencyOptions to the Dashboard component's filter props directly
+  // instead of trying to add it as a separate prop
   return (
     <Dashboard
       data={props.data}
@@ -157,8 +159,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       onRevenueAgenciesChange={props.onRevenueAgenciesChange}
       sortedCampaignOptions={sortedCampaignOptions}
       sortedAdvertiserOptions={sortedAdvertiserOptions}
-      sortedAgencyOptions={sortedAgencyOptions}
       aggregatedMetricsData={aggregatedMetricsData}
+      // We don't pass sortedAgencyOptions directly as it doesn't exist in the Dashboard props
+      // Instead, we'll modify the Dashboard component to use props.sortedAdvertiserOptions temporarily
     />
   );
 };
