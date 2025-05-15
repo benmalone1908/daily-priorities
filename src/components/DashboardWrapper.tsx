@@ -24,6 +24,8 @@ interface DashboardWrapperProps {
   onMetricsAgenciesChange: (selected: string[]) => void;
   selectedWeeklyCampaigns: string[]; 
   onWeeklyCampaignsChange: (selected: string[]) => void;
+  // Flag to indicate if we're using global filters
+  useGlobalFilters?: boolean;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -266,7 +268,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
   debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
-  // Pass all props to Dashboard, including the new metrics filters props
+  // Pass all props to Dashboard, including the useGlobalFilters flag
   return (
     <DashboardProxy
       data={props.data}
@@ -297,6 +299,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsAgencies={props.selectedMetricsAgencies}
       onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
       onMetricsAgenciesChange={props.onMetricsAgenciesChange}
+      // Add the flag for global filters
+      useGlobalFilters={props.useGlobalFilters}
     />
   );
 };

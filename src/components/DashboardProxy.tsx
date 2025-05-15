@@ -30,6 +30,7 @@ interface DashboardProxyProps {
   advertiserToCampaignsMap: Record<string, Set<string>>;
   selectedWeeklyCampaigns: string[];
   onWeeklyCampaignsChange: (selected: string[]) => void;
+  useGlobalFilters?: boolean;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -74,6 +75,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
       advertiserToCampaignsMap={props.advertiserToCampaignsMap}
       selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
+      useGlobalFilters={props.useGlobalFilters}
     />
   );
 };

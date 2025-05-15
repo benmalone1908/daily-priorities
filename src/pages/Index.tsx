@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -17,6 +16,7 @@ import { getColorClasses } from "@/utils/anomalyColors";
 import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import GlobalFilters from "@/components/GlobalFilters";
 
 type MetricType = 
   | "impressions" 
@@ -354,15 +354,11 @@ const DashboardContent = ({
   dateRange: DateRange | undefined; 
   onDateRangeChange: (range: DateRange | undefined) => void; 
 }) => {
-  const [selectedMetricsCampaigns, setSelectedMetricsCampaigns] = useState<string[]>([]);
-  const [selectedRevenueCampaigns, setSelectedRevenueCampaigns] = useState<string[]>([]);
-  const [selectedRevenueAdvertisers, setSelectedRevenueAdvertisers] = useState<string[]>([]);
-  const [selectedRevenueAgencies, setSelectedRevenueAgencies] = useState<string[]>([]);
+  // Global filters state - used across all charts
+  const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
+  const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedWeeklyCampaigns, setSelectedWeeklyCampaigns] = useState<string[]>([]);
-  // Add new state variables for metrics filters
-  const [selectedMetricsAdvertisers, setSelectedMetricsAdvertisers] = useState<string[]>([]);
-  const [selectedMetricsAgencies, setSelectedMetricsAgencies] = useState<string[]>([]);
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
@@ -432,6 +428,7 @@ const DashboardContent = ({
   const filteredData = getFilteredData();
   
   const filteredDataByLiveStatus = useMemo(() => {
+    // ... keep existing code (filteredDataByLiveStatus logic)
     if (!showLiveOnly) return filteredData;
 
     const mostRecentDate = getMostRecentDate();
@@ -467,94 +464,139 @@ const DashboardContent = ({
     return liveData;
   }, [filteredData, showLiveOnly, isTestCampaign]);
 
-  const getFilteredDataBySelectedCampaigns = (campaigns: string[]) => {
-    if (!campaigns.length) return filteredDataByLiveStatus;
-    return filteredDataByLiveStatus.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
-  };
-
-  const getFilteredDataByAdvertisers = (advertisers: string[]) => {
-    if (!advertisers.length) return filteredDataByLiveStatus;
-    return filteredDataByLiveStatus.filter(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const advertiser = extractAdvertiserName(campaignName);
-      return advertisers.includes(advertiser);
-    });
-  };
-
-  const getFilteredDataByAgencies = (agencies: string[]) => {
-    if (!agencies.length) return filteredDataByLiveStatus;
-    return filteredDataByLiveStatus.filter(row => {
-      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-      const { agency } = extractAgencyInfo(campaignName);
-      return agencies.includes(agency);
-    });
-  };
-
-  const getFilteredDataByCampaignsAndAdvertisersAndAgencies = (
-    campaigns: string[], 
-    advertisers: string[], 
-    agencies: string[]
-  ) => {
+  // Get filtered data by global filters
+  const getFilteredDataByGlobalFilters = () => {
     let filtered = filteredDataByLiveStatus;
     
-    if (agencies.length > 0) {
-      filtered = getFilteredDataByAgencies(agencies);
-    }
-    
-    if (advertisers.length > 0) {
+    if (selectedAgencies.length > 0) {
       filtered = filtered.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        const advertiser = extractAdvertiserName(campaignName);
-        return advertisers.includes(advertiser);
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
       });
     }
     
-    if (campaigns.length > 0) {
-      return filtered.filter(row => campaigns.includes(row["CAMPAIGN ORDER NAME"]));
+    if (selectedAdvertisers.length > 0) {
+      filtered = filtered.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedAdvertisers.includes(advertiser);
+      });
+    }
+    
+    if (selectedCampaigns.length > 0) {
+      filtered = filtered.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
     
     return filtered;
   };
 
-  const handleMetricsCampaignsChange = (selected: string[]) => {
-    setSelectedMetricsCampaigns(selected);
-  };
+  const globalFilteredData = useMemo(() => getFilteredDataByGlobalFilters(), 
+    [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAdvertiserName, extractAgencyInfo]);
 
-  const handleRevenueCampaignsChange = (selected: string[]) => {
-    setSelectedRevenueCampaigns(selected);
-  };
-
-  const handleRevenueAdvertisersChange = (selected: string[]) => {
-    setSelectedRevenueAdvertisers(selected);
+  // Prepare the filter options
+  const agencyOptions = useMemo(() => {
+    const agencies = new Set<string>();
     
-    // Reset campaigns when advertisers change
-    setSelectedRevenueCampaigns([]);
-  };
-
-  const handleRevenueAgenciesChange = (selected: string[]) => {
-    setSelectedRevenueAgencies(selected);
+    filteredDataByLiveStatus.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (!isTestCampaign(campaignName)) {
+        const { agency } = extractAgencyInfo(campaignName);
+        if (agency) agencies.add(agency);
+      }
+    });
     
-    // Reset advertisers and campaigns when agencies change
-    setSelectedRevenueAdvertisers([]);
-    setSelectedRevenueCampaigns([]);
+    return Array.from(agencies)
+      .sort((a, b) => a.localeCompare(b))
+      .map(agency => ({
+        value: agency,
+        label: agency
+      }));
+  }, [filteredDataByLiveStatus, extractAgencyInfo, isTestCampaign]);
+
+  const advertiserOptions = useMemo(() => {
+    const advertisers = new Set<string>();
+    
+    // Apply agency filter first if selected
+    let filteredByAgency = filteredDataByLiveStatus;
+    if (selectedAgencies.length > 0) {
+      filteredByAgency = filteredDataByLiveStatus.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    filteredByAgency.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (!isTestCampaign(campaignName)) {
+        const advertiser = extractAdvertiserName(campaignName);
+        if (advertiser) advertisers.add(advertiser);
+      }
+    });
+    
+    return Array.from(advertisers)
+      .sort((a, b) => a.localeCompare(b))
+      .map(advertiser => ({
+        value: advertiser,
+        label: advertiser
+      }));
+  }, [filteredDataByLiveStatus, selectedAgencies, extractAdvertiserName, extractAgencyInfo, isTestCampaign]);
+
+  const campaignOptions = useMemo(() => {
+    // Start with filtered data
+    let filteredForCampaigns = filteredDataByLiveStatus;
+    
+    // Apply agency filter if selected
+    if (selectedAgencies.length > 0) {
+      filteredForCampaigns = filteredForCampaigns.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    // Apply advertiser filter if selected
+    if (selectedAdvertisers.length > 0) {
+      filteredForCampaigns = filteredForCampaigns.filter(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedAdvertisers.includes(advertiser);
+      });
+    }
+    
+    const campaigns = new Set<string>();
+    filteredForCampaigns.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+      if (!isTestCampaign(campaignName)) {
+        campaigns.add(campaignName);
+      }
+    });
+    
+    return Array.from(campaigns)
+      .sort((a, b) => a.localeCompare(b))
+      .map(campaign => ({
+        value: campaign,
+        label: campaign
+      }));
+  }, [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, extractAdvertiserName, extractAgencyInfo, isTestCampaign]);
+
+  // Handle filter changes
+  const handleAgenciesChange = (selected: string[]) => {
+    setSelectedAgencies(selected);
+    // Clear dependent filters when parent filter changes
+    setSelectedAdvertisers([]);
+    setSelectedCampaigns([]);
   };
 
-  // Add handlers for metrics advertisers and agencies
-  const handleMetricsAdvertisersChange = (selected: string[]) => {
-    setSelectedMetricsAdvertisers(selected);
-    // Reset campaigns when advertisers change
-    setSelectedMetricsCampaigns([]);
+  const handleAdvertisersChange = (selected: string[]) => {
+    setSelectedAdvertisers(selected);
+    // Clear campaigns when advertiser changes
+    setSelectedCampaigns([]);
   };
 
-  const handleMetricsAgenciesChange = (selected: string[]) => {
-    setSelectedMetricsAgencies(selected);
-    // Reset advertisers and campaigns when agencies change
-    setSelectedMetricsAdvertisers([]);
-    setSelectedMetricsCampaigns([]);
-  };
-
-  const handleWeeklyCampaignsChange = (selected: string[]) => {
-    setSelectedWeeklyCampaigns(selected);
+  const handleCampaignsChange = (selected: string[]) => {
+    setSelectedCampaigns(selected);
   };
 
   const getDateRangeDisplayText = () => {
@@ -615,42 +657,53 @@ const DashboardContent = ({
         </div>
       )}
       
+      {/* Global filters that apply to all charts */}
+      <GlobalFilters
+        agencyOptions={agencyOptions}
+        advertiserOptions={advertiserOptions}
+        campaignOptions={campaignOptions}
+        selectedAgencies={selectedAgencies}
+        selectedAdvertisers={selectedAdvertisers}
+        selectedCampaigns={selectedCampaigns}
+        onAgenciesChange={handleAgenciesChange}
+        onAdvertisersChange={handleAdvertisersChange}
+        onCampaignsChange={handleCampaignsChange}
+      />
+      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard">
           <DashboardWrapper 
-            data={showLiveOnly ? filteredDataByLiveStatus : filteredData} 
-            metricsData={getFilteredDataByCampaignsAndAdvertisersAndAgencies(
-              selectedMetricsCampaigns,
-              selectedMetricsAdvertisers,
-              selectedMetricsAgencies
-            )}
-            revenueData={getFilteredDataByCampaignsAndAdvertisersAndAgencies(
-              selectedRevenueCampaigns, 
-              selectedRevenueAdvertisers,
-              selectedRevenueAgencies
-            )}
-            selectedMetricsCampaigns={selectedMetricsCampaigns}
-            selectedRevenueCampaigns={selectedRevenueCampaigns}
-            selectedRevenueAdvertisers={selectedRevenueAdvertisers}
-            selectedRevenueAgencies={selectedRevenueAgencies}
-            onMetricsCampaignsChange={handleMetricsCampaignsChange}
-            onRevenueCampaignsChange={handleRevenueCampaignsChange}
-            onRevenueAdvertisersChange={handleRevenueAdvertisersChange}
-            onRevenueAgenciesChange={handleRevenueAgenciesChange}
-            selectedWeeklyCampaigns={selectedWeeklyCampaigns}
-            onWeeklyCampaignsChange={handleWeeklyCampaignsChange}
-            // Add new props for metrics filters
-            selectedMetricsAdvertisers={selectedMetricsAdvertisers}
-            selectedMetricsAgencies={selectedMetricsAgencies}
-            onMetricsAdvertisersChange={handleMetricsAdvertisersChange}
-            onMetricsAgenciesChange={handleMetricsAgenciesChange}
+            data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
+            metricsData={globalFilteredData}
+            revenueData={globalFilteredData}
+            // Pass empty arrays for individual chart filters since we're using global filters now
+            selectedMetricsCampaigns={[]}
+            selectedRevenueCampaigns={[]}
+            selectedRevenueAdvertisers={[]}
+            selectedRevenueAgencies={[]}
+            onMetricsCampaignsChange={() => {}}
+            onRevenueCampaignsChange={() => {}}
+            onRevenueAdvertisersChange={() => {}}
+            onRevenueAgenciesChange={() => {}}
+            selectedWeeklyCampaigns={[]}
+            onWeeklyCampaignsChange={() => {}}
+            selectedMetricsAdvertisers={[]}
+            selectedMetricsAgencies={[]}
+            onMetricsAdvertisersChange={() => {}}
+            onMetricsAgenciesChange={() => {}}
+            // Flag to indicate we're using global filters
+            useGlobalFilters={true}
           />
         </TabsContent>
         <TabsContent value="sparks">
           <AggregatedSparkCharts 
-            data={filteredDataByLiveStatus.filter(row => row.DATE !== 'Totals')}
+            data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
           />
-          <CampaignSparkCharts data={showLiveOnly ? filteredDataByLiveStatus : filteredData} dateRange={dateRange} />
+          <CampaignSparkCharts 
+            data={globalFilteredData} 
+            dateRange={dateRange}
+            useGlobalFilters={true}
+          />
         </TabsContent>
       </Tabs>
     </>
