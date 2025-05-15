@@ -388,7 +388,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           <TableHeader>
             <TableRow className="text-xs">
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[25%]"
                 onClick={() => handleSort("CAMPAIGN ORDER NAME")}
               >
                 Campaign Name
@@ -399,7 +399,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               {view === "daily" && (
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-2 px-2"
+                  className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[9.375%]"
                   onClick={() => handleSort("DATE")}
                 >
                   Date
@@ -410,7 +410,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               )}
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("IMPRESSIONS")}
               >
                 Impressions
@@ -420,7 +420,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("CLICKS")}
               >
                 Clicks
@@ -430,7 +430,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("CTR")}
               >
                 CTR
@@ -440,7 +440,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("TRANSACTIONS")}
               >
                 Transactions
@@ -450,7 +450,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("REVENUE")}
               >
                 Revenue
@@ -460,7 +460,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("SPEND")}
               >
                 Spend
@@ -470,7 +470,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-2 px-2"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
                 onClick={() => handleSort("ROAS")}
               >
                 ROAS
@@ -484,26 +484,26 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             {paginatedData.length > 0 ? (
               paginatedData.map((row, index) => (
                 <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
-                  <TableCell className="font-medium py-2 px-2 break-words" title={row["CAMPAIGN ORDER NAME"]}>
+                  <TableCell className="font-medium py-1 px-1 break-words" title={row["CAMPAIGN ORDER NAME"]}>
                     {row["CAMPAIGN ORDER NAME"]}
                   </TableCell>
                   
                   {view === "daily" && (
-                    <TableCell className="py-2 px-2">{formatColumnValue(row, "DATE")}</TableCell>
+                    <TableCell className="py-1 px-1 text-right">{formatColumnValue(row, "DATE")}</TableCell>
                   )}
                   
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "CLICKS")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "CTR")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "REVENUE")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "SPEND")}</TableCell>
-                  <TableCell className="text-right py-2 px-2">{formatColumnValue(row, "ROAS")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CLICKS")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CTR")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "REVENUE")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "SPEND")}</TableCell>
+                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "ROAS")}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-2">
+                <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
                   No data available
                 </TableCell>
               </TableRow>
