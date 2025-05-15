@@ -1014,7 +1014,8 @@ const Dashboard = ({
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {dateRange && (
+      {/* Only show date range info when NOT using global filters */}
+      {!useGlobalFilters && dateRange && (
         <div className="text-sm text-muted-foreground text-center">
           <span className="font-medium">{dateRangeText}</span> 
           ({data.length.toLocaleString()} records)
