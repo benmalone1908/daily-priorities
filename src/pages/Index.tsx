@@ -599,20 +599,6 @@ const DashboardContent = ({
     setSelectedCampaigns(selected);
   };
 
-  const getDateRangeDisplayText = () => {
-    if (!dateRange || !dateRange.from) return null;
-    
-    const fromDate = dateRange.from;
-    const toDate = dateRange.to || fromDate;
-    
-    const fromStr = `${fromDate.getMonth() + 1}/${fromDate.getDate()}/${fromDate.getFullYear()}`;
-    const toStr = `${toDate.getMonth() + 1}/${toDate.getDate()}/${toDate.getFullYear()}`;
-    
-    const recordCount = showLiveOnly ? filteredDataByLiveStatus.length : filteredData.length;
-    
-    return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
-  };
-
   return (
     <>
       <div className="border-b animate-fade-in">

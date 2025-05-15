@@ -37,13 +37,13 @@ const GlobalFilters = ({
       >
         <div className="flex items-center gap-2">
           <FilterIcon className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">Global Filters</h3>
+          <h3 className="text-sm font-medium">Filters</h3>
         </div>
         <div className="text-sm text-muted-foreground">
           {selectedAgencies.length > 0 && `${selectedAgencies.length} agencies • `}
           {selectedAdvertisers.length > 0 && `${selectedAdvertisers.length} advertisers • `}
           {selectedCampaigns.length > 0 && `${selectedCampaigns.length} campaigns`}
-          {selectedAgencies.length === 0 && selectedAdvertisers.length === 0 && selectedCampaigns.length === 0 && "No filters applied"}
+          {/* Removed "No filters applied" message */}
         </div>
       </div>
       
