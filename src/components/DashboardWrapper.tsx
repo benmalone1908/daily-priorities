@@ -3,6 +3,7 @@ import DashboardProxy from './DashboardProxy';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
 import { Option } from './MultiSelect';
 import { debugLogOptions } from '@/utils/optionsFormatter';
+import CombinedMetricsChart from './CombinedMetricsChart';
 
 interface DashboardWrapperProps {
   data: any[];
@@ -270,42 +271,66 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
   debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
+  // Check if we should show the combined metrics chart
+  const showCombinedChart = useMemo(() => {
+    if (!props.hideCharts) return true;
+    return !props.hideCharts.includes("combinedMetricsChart");
+  }, [props.hideCharts]);
+
+  // Determine which data to use for the combined chart
+  const combinedChartData = useMemo(() => {
+    // If using global filters, use the filtered data
+    return props.useGlobalFilters ? props.metricsData : props.data;
+  }, [props.useGlobalFilters, props.metricsData, props.data]);
+
   // Pass all props to Dashboard, including the useGlobalFilters flag and hideCharts
   return (
-    <DashboardProxy
-      data={props.data}
-      metricsData={props.metricsData}
-      revenueData={props.revenueData}
-      selectedMetricsCampaigns={props.selectedMetricsCampaigns}
-      selectedRevenueCampaigns={props.selectedRevenueCampaigns}
-      selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
-      selectedRevenueAgencies={props.selectedRevenueAgencies}
-      onMetricsCampaignsChange={props.onMetricsCampaignsChange}
-      onRevenueCampaignsChange={props.onRevenueCampaignsChange}
-      onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
-      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
-      sortedCampaignOptions={campaignOptionsForDashboard}
-      sortedAdvertiserOptions={advertiserOptionsForDashboard}
-      sortedAgencyOptions={agencyOptionsForDashboard}
-      formattedCampaignOptions={campaignOptionsForMultiSelect}
-      formattedAdvertiserOptions={advertiserOptionsForMultiSelect}
-      formattedAgencyOptions={agencyOptionsForMultiSelect}
-      aggregatedMetricsData={aggregatedMetricsData}
-      agencyToAdvertisersMap={agencyToAdvertisersMap}
-      agencyToCampaignsMap={agencyToCampaignsMap}
-      advertiserToCampaignsMap={advertiserToCampaignsMap}
-      selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
-      onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
-      // Add the new metrics filters props
-      selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
-      selectedMetricsAgencies={props.selectedMetricsAgencies}
-      onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
-      onMetricsAgenciesChange={props.onMetricsAgenciesChange}
-      // Pass the flag for global filters
-      useGlobalFilters={props.useGlobalFilters}
-      // Pass the hideCharts prop to DashboardProxy
-      hideCharts={props.hideCharts}
-    />
+    <>
+      {/* Insert our new combined metrics chart */}
+      {showCombinedChart && (
+        <div className="mb-8">
+          <CombinedMetricsChart 
+            data={combinedChartData} 
+            title="Campaign Performance Over Time"
+          />
+        </div>
+      )}
+      
+      <DashboardProxy
+        data={props.data}
+        metricsData={props.metricsData}
+        revenueData={props.revenueData}
+        selectedMetricsCampaigns={props.selectedMetricsCampaigns}
+        selectedRevenueCampaigns={props.selectedRevenueCampaigns}
+        selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
+        selectedRevenueAgencies={props.selectedRevenueAgencies}
+        onMetricsCampaignsChange={props.onMetricsCampaignsChange}
+        onRevenueCampaignsChange={props.onRevenueCampaignsChange}
+        onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
+        onRevenueAgenciesChange={props.onRevenueAgenciesChange}
+        sortedCampaignOptions={campaignOptionsForDashboard}
+        sortedAdvertiserOptions={advertiserOptionsForDashboard}
+        sortedAgencyOptions={agencyOptionsForDashboard}
+        formattedCampaignOptions={campaignOptionsForMultiSelect}
+        formattedAdvertiserOptions={advertiserOptionsForMultiSelect}
+        formattedAgencyOptions={agencyOptionsForMultiSelect}
+        aggregatedMetricsData={aggregatedMetricsData}
+        agencyToAdvertisersMap={agencyToAdvertisersMap}
+        agencyToCampaignsMap={agencyToCampaignsMap}
+        advertiserToCampaignsMap={advertiserToCampaignsMap}
+        selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
+        onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
+        // Add the new metrics filters props
+        selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
+        selectedMetricsAgencies={props.selectedMetricsAgencies}
+        onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
+        onMetricsAgenciesChange={props.onMetricsAgenciesChange}
+        // Pass the flag for global filters
+        useGlobalFilters={props.useGlobalFilters}
+        // Pass the hideCharts prop to DashboardProxy
+        hideCharts={props.hideCharts}
+      />
+    </>
   );
 };
 

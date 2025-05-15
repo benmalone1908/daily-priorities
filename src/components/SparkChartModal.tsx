@@ -14,6 +14,9 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  Line,
+  ComposedChart,
+  Bar,
 } from "recharts";
 import { formatNumber } from "@/lib/utils";
 
@@ -25,8 +28,17 @@ interface SparkChartModalProps {
   dataKey: string;
   color: string;
   gradientId: string;
+  secondaryDataKey?: string;
+  secondaryColor?: string;
+  secondaryGradientId?: string;
+  chartType?: 'area' | 'composed';
+  showBar?: boolean;
+  barDataKey?: string;
+  barColor?: string;
   valueFormatter?: (value: number) => string;
   labelFormatter?: (label: string) => string;
+  secondaryValueFormatter?: (value: number) => string;
+  barValueFormatter?: (value: number) => string;
 }
 
 const SparkChartModal = ({
@@ -37,8 +49,17 @@ const SparkChartModal = ({
   dataKey,
   color,
   gradientId,
+  secondaryDataKey,
+  secondaryColor = "#8b5cf6",
+  secondaryGradientId,
+  chartType = 'area',
+  showBar = false,
+  barDataKey,
+  barColor = "#ef4444",
   valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
   labelFormatter = (label) => label,
+  secondaryValueFormatter = (value) => formatNumber(value, { abbreviate: false }),
+  barValueFormatter = (value) => formatNumber(value, { abbreviate: false }),
 }: SparkChartModalProps) => {
   // Case-insensitive key matching for metrics
   const lowerDataKey = dataKey.toLowerCase();
@@ -165,6 +186,35 @@ const SparkChartModal = ({
   
   console.log(`Min value: ${minValue}, Max value: ${maxValue}`);
   
+  // Process secondary values if specified
+  let secondaryValues: number[] = [];
+  if (secondaryDataKey) {
+    secondaryValues = processedData.map((item) => {
+      const rawValue = item[secondaryDataKey.toUpperCase()];
+      return parseFloat(rawValue) || 0;
+    });
+    
+    if (secondaryValues.length > 0) {
+      const secondaryMin = Math.min(...secondaryValues);
+      const secondaryMax = Math.max(...secondaryValues);
+      
+      // Update min/max to accommodate both data series
+      minValue = Math.min(minValue, secondaryMin);
+      maxValue = Math.max(maxValue, secondaryMax);
+    }
+  }
+  
+  // Process bar values if specified
+  let barValues: number[] = [];
+  if (showBar && barDataKey) {
+    barValues = processedData.map((item) => {
+      const rawValue = item[barDataKey.toUpperCase()];
+      return parseFloat(rawValue) || 0;
+    });
+    
+    // We don't adjust the Y axis for bar values as they'll use the secondary Y axis
+  }
+  
   // Determine Y-axis domain with special handling for percentages
   let yAxisDomain: [number, number] = [0, 0];
   
@@ -213,6 +263,13 @@ const SparkChartModal = ({
     }
   };
 
+  // Determine secondary y-axis domain if we have bar data
+  let yAxis2Domain: [number, number] = [0, 0];
+  if (showBar && barValues.length > 0) {
+    const barMax = Math.max(...barValues);
+    yAxis2Domain = [0, Math.max(10, barMax * 1.1)];
+  }
+
   // Create a case-insensitive accessor function for the Area component
   const dataKeyAccessor = (item: any) => {
     if (!item) return 0;
@@ -241,6 +298,153 @@ const SparkChartModal = ({
     return parseFloat(value) || 0;
   };
 
+  // Render the appropriate chart based on the chartType prop
+  const renderChart = () => {
+    if (chartType === 'composed') {
+      return (
+        <ComposedChart 
+          data={processedData} 
+          margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
+        >
+          <defs>
+            <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+              <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+            </linearGradient>
+            {secondaryDataKey && secondaryGradientId && (
+              <linearGradient id={`modal-${secondaryGradientId}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={secondaryColor} stopOpacity={0.8} />
+                <stop offset="95%" stopColor={secondaryColor} stopOpacity={0.1} />
+              </linearGradient>
+            )}
+          </defs>
+          <XAxis 
+            dataKey="date" 
+            tick={{ fontSize: 12 }} 
+            tickMargin={10}
+          />
+          <YAxis 
+            yAxisId="left"
+            tick={{ fontSize: 12 }}
+            tickFormatter={effectiveFormatter}
+            domain={yAxisDomain}
+            allowDecimals={true}
+          />
+          {showBar && barDataKey && (
+            <YAxis 
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 12 }}
+              tickFormatter={barValueFormatter}
+              domain={yAxis2Domain}
+              allowDecimals={true}
+            />
+          )}
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <Tooltip 
+            formatter={(value: any, name: string) => {
+              if (name === dataKey.toUpperCase()) {
+                return [effectiveFormatter(value), dataKey];
+              } else if (name === secondaryDataKey?.toUpperCase()) {
+                return [secondaryValueFormatter(value), secondaryDataKey];
+              } else if (name === barDataKey?.toUpperCase()) {
+                return [barValueFormatter(value), barDataKey];
+              }
+              return [value, name];
+            }}
+            labelFormatter={labelFormatter}
+            contentStyle={{ 
+              backgroundColor: "rgba(255, 255, 255, 0.95)", 
+              border: "1px solid #eee",
+              borderRadius: "4px",
+              padding: "8px 12px",
+              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
+            }}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey={dataKey.toUpperCase()}
+            stroke={color}
+            strokeWidth={2}
+            dot={false}
+            yAxisId="left"
+            isAnimationActive={false}
+          />
+          {secondaryDataKey && (
+            <Line
+              type="monotone"
+              dataKey={secondaryDataKey.toUpperCase()}
+              stroke={secondaryColor}
+              strokeWidth={2}
+              dot={false}
+              yAxisId="left"
+              isAnimationActive={false}
+            />
+          )}
+          {showBar && barDataKey && (
+            <Bar
+              dataKey={barDataKey.toUpperCase()}
+              fill={barColor}
+              yAxisId="right"
+              isAnimationActive={false}
+              barSize={20}
+              opacity={0.8}
+            />
+          )}
+        </ComposedChart>
+      );
+    } else {
+      // Default to area chart
+      return (
+        <AreaChart 
+          data={processedData} 
+          margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
+        >
+          <defs>
+            <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+              <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
+          <XAxis 
+            dataKey="date" 
+            tick={{ fontSize: 12 }} 
+            tickMargin={10}
+          />
+          <YAxis 
+            tick={{ fontSize: 12 }}
+            tickFormatter={effectiveFormatter}
+            domain={yAxisDomain}
+            allowDecimals={true}
+          />
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <Tooltip 
+            formatter={(value: any) => [effectiveFormatter(value), title]}
+            labelFormatter={labelFormatter}
+            contentStyle={{ 
+              backgroundColor: "rgba(255, 255, 255, 0.95)", 
+              border: "1px solid #eee",
+              borderRadius: "4px",
+              padding: "8px 12px",
+              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
+            }}
+            isAnimationActive={false}
+          />
+          <Area
+            type="monotone"
+            dataKey={dataKeyAccessor}
+            stroke={color}
+            strokeWidth={2}
+            fill={`url(#modal-${gradientId})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      );
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
@@ -249,49 +453,7 @@ const SparkChartModal = ({
         </DialogHeader>
         <div className="h-[400px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart 
-              data={processedData} 
-              margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
-            >
-              <defs>
-                <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.8} />
-                  <stop offset="95%" stopColor={color} stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }} 
-                tickMargin={10}
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                tickFormatter={effectiveFormatter}
-                domain={yAxisDomain}
-                allowDecimals={true}
-              />
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <Tooltip 
-                formatter={(value: any) => [effectiveFormatter(value), title]}
-                labelFormatter={labelFormatter}
-                contentStyle={{ 
-                  backgroundColor: "rgba(255, 255, 255, 0.95)", 
-                  border: "1px solid #eee",
-                  borderRadius: "4px",
-                  padding: "8px 12px",
-                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
-                }}
-                isAnimationActive={false}
-              />
-              <Area
-                type="monotone"
-                dataKey={dataKeyAccessor}
-                stroke={color}
-                strokeWidth={2}
-                fill={`url(#modal-${gradientId})`}
-                isAnimationActive={false}
-              />
-            </AreaChart>
+            {renderChart()}
           </ResponsiveContainer>
         </div>
       </DialogContent>
