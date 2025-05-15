@@ -57,6 +57,8 @@ interface DashboardProps {
   useGlobalFilters?: boolean;
   // Add hideCharts prop to fix the TypeScript error
   hideCharts?: string[];
+  // Add chartToggleComponent prop to fix the TypeScript error
+  chartToggleComponent?: React.ReactNode;
 }
 
 interface WeeklyData {
@@ -241,7 +243,9 @@ const Dashboard = ({
   onWeeklyCampaignsChange, // Changed to match array handler type
   // Add useGlobalFilters to the destructured props with a default value of false
   useGlobalFilters = false,
-  hideCharts = []
+  hideCharts = [],
+  // Add chartToggleComponent to the destructured props
+  chartToggleComponent
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1072,6 +1076,8 @@ const Dashboard = ({
             <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-4 mr-4">
+                {/* Add the chart toggle component here */}
+                {chartToggleComponent}
                 <span className="text-sm font-medium">View:</span>
                 <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value) => value && setMetricsViewMode(value as ChartViewMode)}>
                   <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
