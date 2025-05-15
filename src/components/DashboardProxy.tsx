@@ -108,7 +108,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         hideCharts={props.hideCharts}
         // Pass our chart toggle and current tab to Dashboard
         chartToggleComponent={chartToggle}
-        activeChartTab={activeTab}
+        activeTab={activeTab} // Changed from activeChartTab to activeTab to match the Dashboard.tsx interface
         onChartTabChange={setActiveTab}
       />
     </div>

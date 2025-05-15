@@ -59,6 +59,10 @@ interface DashboardProps {
   hideCharts?: string[];
   // Add chartToggleComponent prop to fix the TypeScript error
   chartToggleComponent?: React.ReactNode;
+  // Add activeTab prop to fix the current TypeScript error
+  activeTab?: string;
+  // Add onChartTabChange prop
+  onChartTabChange?: (tab: string) => void;
 }
 
 interface WeeklyData {
@@ -245,7 +249,11 @@ const Dashboard = ({
   useGlobalFilters = false,
   hideCharts = [],
   // Add chartToggleComponent to the destructured props
-  chartToggleComponent
+  chartToggleComponent,
+  // Add activeTab to the destructured props with a default value
+  activeTab = "display",
+  // Add onChartTabChange to the destructured props
+  onChartTabChange
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1019,6 +1027,33 @@ const Dashboard = ({
     );
   }
 
+  // Add effect to sync internal state with activeTab prop
+  useEffect(() => {
+    if (activeTab === "attribution") {
+      setRevenueViewMode(revenueViewMode);
+    } else {
+      setMetricsViewMode(metricsViewMode);
+    }
+  }, [activeTab]);
+
+  // Update the metrics view mode handler to also call onChartTabChange if provided
+  const handleMetricsViewModeChange = (value: ChartViewMode) => {
+    if (!value) return;
+    setMetricsViewMode(value);
+    if (onChartTabChange && activeTab !== "display") {
+      onChartTabChange("display");
+    }
+  };
+
+  // Update the revenue view mode handler to also call onChartTabChange if provided
+  const handleRevenueViewModeChange = (value: ChartViewMode) => {
+    if (!value) return;
+    setRevenueViewMode(value);
+    if (onChartTabChange && activeTab !== "attribution") {
+      onChartTabChange("attribution");
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Only show date range info when NOT using global filters */}
@@ -1079,7 +1114,11 @@ const Dashboard = ({
                 {/* Add the chart toggle component here */}
                 {chartToggleComponent}
                 <span className="text-sm font-medium">View:</span>
-                <ToggleGroup type="single" value={metricsViewMode} onValueChange={(value) => value && setMetricsViewMode(value as ChartViewMode)}>
+                <ToggleGroup 
+                  type="single" 
+                  value={metricsViewMode} 
+                  onValueChange={handleMetricsViewModeChange}
+                >
                   <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
                     By Date
                   </ToggleGroupItem>
@@ -1193,8 +1232,14 @@ const Dashboard = ({
             <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-4 mr-4">
+                {/* Add the chart toggle component here too for consistency */}
+                {chartToggleComponent}
                 <span className="text-sm font-medium">View:</span>
-                <ToggleGroup type="single" value={revenueViewMode} onValueChange={(value) => value && setRevenueViewMode(value as ChartViewMode)}>
+                <ToggleGroup 
+                  type="single" 
+                  value={revenueViewMode} 
+                  onValueChange={handleRevenueViewModeChange}
+                >
                   <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
                     By Date
                   </ToggleGroupItem>
