@@ -1,6 +1,7 @@
 
 import { toast as sonnerToast } from "sonner";
-import { useToast as useRadixToast } from "@/components/ui/use-toast";
+// Fix circular import - don't import useToast from component that's importing from here
+import { useToast as useRadixToast } from "@radix-ui/react-toast";
 
 // Re-export the useToast hook from radix UI
 export const useToast = useRadixToast;

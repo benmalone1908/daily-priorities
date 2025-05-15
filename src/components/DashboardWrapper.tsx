@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import DashboardProxy from './DashboardProxy';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -26,6 +27,8 @@ interface DashboardWrapperProps {
   onWeeklyCampaignsChange: (selected: string[]) => void;
   // Flag to indicate if we're using global filters
   useGlobalFilters?: boolean;
+  // Add prop to hide specific charts
+  hideCharts?: string[];
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
