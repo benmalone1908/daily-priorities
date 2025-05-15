@@ -22,7 +22,6 @@ interface CombinedMetricsChartProps {
   chartToggleComponent?: React.ReactNode;
   onTabChange?: (tab: string) => void;
   initialTab?: string;
-  hideTitle?: boolean; // Add this prop to control title visibility
 }
 
 const CombinedMetricsChart = ({ 
@@ -30,8 +29,7 @@ const CombinedMetricsChart = ({
   title = "Campaign Performance", 
   chartToggleComponent,
   onTabChange,
-  initialTab = "display",
-  hideTitle = false // Add default value
+  initialTab = "display" 
 }: CombinedMetricsChartProps) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -55,22 +53,50 @@ const CombinedMetricsChart = ({
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     console.log(`CombinedMetricsChart: Tab changed to ${value}`);
+    
+    // Notify parent component about tab change
     if (onTabChange) {
       onTabChange(value);
     }
   };
 
-  // Determine if we're dealing with day-of-week data
-  const isDayOfWeekData = data && data.length > 0 && data[0].hasOwnProperty("DAY_OF_WEEK");
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[400px] flex items-center justify-center">
+          No data available
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Process data to ensure we have all required fields
+  const processedData = data
+    .filter(item => item && (item.DATE || item.DAY_OF_WEEK)) // Allow both DATE and DAY_OF_WEEK as valid keys
+    .map(item => ({
+      date: item.DATE || item.DAY_OF_WEEK, // Use DAY_OF_WEEK if DATE is not available
+      IMPRESSIONS: Number(item.IMPRESSIONS || 0),
+      CLICKS: Number(item.CLICKS || 0),
+      TRANSACTIONS: Number(item.TRANSACTIONS || 0),
+      REVENUE: Number(item.REVENUE || 0),
+    }));
+
+  // Check if we're dealing with day of week data
+  const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
   
-  console.log(`CombinedMetricsChart: Is day of week data: ${isDayOfWeekData}`);
-  
-  // Sort data by day of week if needed
-  const dayOrder = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  
-  const sortedData = isDayOfWeekData
-    ? [...data].sort((a, b) => dayOrder.indexOf(a.DAY_OF_WEEK) - dayOrder.indexOf(b.DAY_OF_WEEK))
-    : data;
+  // Only sort if we're dealing with dates, not days of week
+  const sortedData = !isDayOfWeekData && processedData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
+    ? processedData.sort((a, b) => {
+        try {
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        } catch (e) {
+          return 0;
+        }
+      })
+    : processedData; // For day of week, maintain original order
 
   console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}, isDayOfWeekData: ${isDayOfWeekData}`);
 
@@ -79,170 +105,149 @@ const CombinedMetricsChart = ({
 
   return (
     <Card className="w-full">
-      {/* Only show CardHeader if hideTitle is false */}
-      {!hideTitle && (
-        <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader>
+        <div className="flex justify-between items-center">
           <CardTitle>{title}</CardTitle>
-          {chartToggleComponent}
-        </CardHeader>
-      )}
-
-      {/* If hideTitle is true, but we still want to show the toggle component, place it in a custom header */}
-      {hideTitle && chartToggleComponent && (
-        <div className="px-6 py-4 flex justify-end">
-          {chartToggleComponent}
+          <div className="flex items-center space-x-2">
+            {chartToggleComponent && (
+              <div>{chartToggleComponent}</div>
+            )}
+          </div>
         </div>
-      )}
-
+      </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="display">Display</TabsTrigger>
-            <TabsTrigger value="attribution">Attribution</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="display">
-            <div className="h-[400px]">
-              {sortedData && sortedData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sortedData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis 
-                      dataKey={isDayOfWeekData ? "DAY_OF_WEEK" : "DATE"} 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={isDayOfWeekData ? undefined : (value) => {
-                        const date = new Date(value);
-                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                      }}
-                    />
-                    <YAxis 
-                      yAxisId="left"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatImpressions}
-                      domain={['auto', 'auto']}
-                      label={{ value: 'Impressions', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px', fill: '#64748B' } }}
-                    />
-                    <YAxis 
-                      yAxisId="right"
-                      orientation="right"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatClicks}
-                      domain={['auto', 'auto']}
-                      label={{ value: 'Clicks', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fontSize: '12px', fill: '#64748B' } }}
-                    />
-                    <Tooltip 
-                      formatter={(value, name) => {
-                        if (name === 'Impressions') return formatImpressions(value as number);
-                        if (name === 'Clicks') return formatClicks(value as number);
-                        return value;
-                      }}
-                      labelFormatter={(label) => {
-                        if (isDayOfWeekData) return label;
-                        try {
-                          const date = new Date(label);
-                          return date.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-                        } catch (e) {
-                          return label;
-                        }
-                      }}
-                    />
-                    <Bar 
-                      yAxisId="left" 
-                      dataKey="IMPRESSIONS" 
-                      name="Impressions" 
-                      fill="#93C5FD" 
-                      barSize={barSize}
-                    />
-                    <Line 
-                      yAxisId="right" 
-                      type="monotone" 
-                      dataKey="CLICKS" 
-                      name="Clicks" 
-                      stroke="#3B82F6" 
-                      dot={false} 
-                      strokeWidth={2}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  No data available for the selected filters
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="attribution">
-            <div className="h-[400px]">
-              {sortedData && sortedData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={sortedData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis 
-                      dataKey={isDayOfWeekData ? "DAY_OF_WEEK" : "DATE"}
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={isDayOfWeekData ? undefined : (value) => {
-                        const date = new Date(value);
-                        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                      }}
-                    />
-                    <YAxis 
-                      yAxisId="left"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatTransactions}
-                      domain={['auto', 'auto']}
-                      label={{ value: 'Transactions', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px', fill: '#64748B' } }}
-                    />
-                    <YAxis 
-                      yAxisId="right"
-                      orientation="right"
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatRevenue}
-                      domain={['auto', 'auto']}
-                      label={{ value: 'Revenue', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fontSize: '12px', fill: '#64748B' } }}
-                    />
-                    <Tooltip 
-                      formatter={(value, name) => {
-                        if (name === 'Transactions') return formatTransactions(value as number);
-                        if (name === 'Revenue') return formatRevenue(value as number);
-                        return value;
-                      }}
-                      labelFormatter={(label) => {
-                        if (isDayOfWeekData) return label;
-                        try {
-                          const date = new Date(label);
-                          return date.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-                        } catch (e) {
-                          return label;
-                        }
-                      }}
-                    />
-                    <Bar 
-                      yAxisId="left" 
-                      dataKey="TRANSACTIONS" 
-                      name="Transactions" 
-                      fill="#A5B4FC" 
-                      barSize={barSize}
-                    />
-                    <Line 
-                      yAxisId="right" 
-                      type="monotone" 
-                      dataKey="REVENUE" 
-                      name="Revenue" 
-                      stroke="#6D28D9" 
-                      dot={false} 
-                      strokeWidth={2}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  No data available for the selected filters
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+        <div className="h-[400px]">
+          {activeTab === "display" ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={sortedData}>
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  tickFormatter={formatImpressions}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={formatClicks}
+                  tick={{ fontSize: 10 }}
+                />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === "IMPRESSIONS") return [formatImpressions(value as number), "Impressions"];
+                    if (name === "CLICKS") return [formatClicks(value as number), "Clicks"];
+                    return [value, name];
+                  }}
+                  contentStyle={{ 
+                    backgroundColor: "rgba(255, 255, 255, 0.95)", 
+                    border: "1px solid #eee",
+                    borderRadius: "4px",
+                    padding: "8px 12px",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
+                  }}
+                />
+                <Legend />
+                <Bar
+                  dataKey="IMPRESSIONS"
+                  fill="#4ade80"
+                  yAxisId="left"
+                  name="Impressions"
+                  barSize={barSize}
+                  opacity={0.8}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="CLICKS"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  yAxisId="right"
+                  name="Clicks"
+                  dot={{ r: 1 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={sortedData}>
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  tickFormatter={formatTransactions}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={formatRevenue}
+                  tick={{ fontSize: 10 }}
+                />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <Tooltip 
+                  formatter={(value, name) => {
+                    if (name === "TRANSACTIONS") return [formatTransactions(value as number), "Transactions"];
+                    if (name === "REVENUE") return [formatRevenue(value as number), "Revenue"];
+                    return [value, name];
+                  }}
+                  contentStyle={{ 
+                    backgroundColor: "rgba(255, 255, 255, 0.95)", 
+                    border: "1px solid #eee",
+                    borderRadius: "4px",
+                    padding: "8px 12px",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="TRANSACTIONS"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  yAxisId="left"
+                  name="Transactions"
+                  dot={false}
+                />
+                <Bar
+                  dataKey="REVENUE"
+                  fill="#8b5cf6"
+                  yAxisId="right"
+                  name="Revenue"
+                  barSize={barSize}
+                  opacity={0.8}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        
+        {/* Modal for expanded view (hidden as per requirement) */}
+        <SparkChartModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          title={activeTab === "display" ? "Display Metrics Over Time" : "Attribution Metrics Over Time"}
+          data={sortedData}
+          dataKey={activeTab === "display" ? "CLICKS" : "TRANSACTIONS"}
+          color={activeTab === "display" ? "#f59e0b" : "#ef4444"}
+          gradientId={activeTab === "display" ? "impressions-clicks" : "transactions-revenue"}
+          chartType="composed"
+          showBar={true}
+          barDataKey={activeTab === "display" ? "IMPRESSIONS" : "REVENUE"}
+          barColor={activeTab === "display" ? "#4ade80" : "#8b5cf6"}
+          valueFormatter={activeTab === "display" 
+            ? (value) => formatClicks(value)
+            : (value) => formatTransactions(value)
+          }
+          barValueFormatter={activeTab === "display" 
+            ? (value) => formatImpressions(value)
+            : (value) => formatRevenue(value)
+          }
+        />
       </CardContent>
     </Card>
   );
