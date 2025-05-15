@@ -22,6 +22,7 @@ import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import CombinedMetricsChart from "./CombinedMetricsChart";
 
 interface DashboardProps {
   data: any[];
@@ -1054,6 +1055,20 @@ const Dashboard = ({
     }
   };
 
+  // Prepare combined data for CombinedMetricsChart component
+  const combinedChartData = useMemo(() => {
+    // Use either metrics or revenue data based on active tab
+    return activeTab === "display" ? processedMetricsData : processedRevenueData;
+  }, [activeTab, processedMetricsData, processedRevenueData]);
+
+  // Handler for CombinedMetricsChart tab changes
+  const handleCombinedChartTabChange = (tab: string) => {
+    console.log(`Dashboard: Combined chart tab changed to ${tab}`);
+    if (onChartTabChange) {
+      onChartTabChange(tab);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Only show date range info when NOT using global filters */}
@@ -1104,246 +1119,122 @@ const Dashboard = ({
         </div>
       )}
 
-      {/* Only render the Display Metrics Over Time chart if not hidden */}
-      {!hideCharts.includes("metricsChart") && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Display Metrics Over Time</h3>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-4 mr-4">
-                {/* Add the chart toggle component here */}
-                {chartToggleComponent}
-                <span className="text-sm font-medium">View:</span>
-                <ToggleGroup 
-                  type="single" 
-                  value={metricsViewMode} 
-                  onValueChange={handleMetricsViewModeChange}
-                >
-                  <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
-                    By Date
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
-                    By Day of Week
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-              {/* Only show filter UI when NOT using global filters */}
-              {!useGlobalFilters && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium mr-1">Filter by:</span>
-                  <div className="flex items-center gap-2">
-                    {agencyOptions.length > 0 && (
-                      <MultiSelect
-                        options={agencyOptions}
-                        selected={localSelectedMetricsAgencies}
-                        onChange={handleMetricsAgenciesChange}
-                        placeholder="Agency"
-                        className="w-[200px]"
-                      />
-                    )}
-                    
-                    {advertiserOptions.length > 0 && (
-                      <MultiSelect
-                        options={filteredMetricsAdvertiserOptions}
-                        selected={localSelectedMetricsAdvertisers}
-                        onChange={handleMetricsAdvertisersChange}
-                        placeholder="Advertiser"
-                        className="w-[200px]"
-                      />
-                    )}
-                    
-                    {onMetricsCampaignsChange && campaignOptions.length > 0 && (
-                      <MultiSelect
-                        options={filteredMetricsCampaignOptions}
-                        selected={selectedMetricsCampaigns}
-                        onChange={onMetricsCampaignsChange}
-                        placeholder="Campaign"
-                        className="w-[200px]"
-                        popoverClassName="w-[400px]"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="h-[400px]">
-            {processedMetricsData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={processedMetricsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey={metricsViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                    style={axisStyle}
-                    tickFormatter={metricsViewMode === "date" ? formatDate : undefined}
-                  />
-                  <YAxis 
-                    yAxisId="left"
-                    orientation="left"
-                    stroke="#4ade80"
-                    label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                    tickFormatter={formatNumber}
-                    style={axisStyle}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    stroke="#f59e0b"
-                    label={{ value: 'Clicks', angle: 90, position: 'insideRight', ...labelStyle }}
-                    tickFormatter={formatNumber}
-                    style={axisStyle}
-                  />
-                  <Tooltip 
-                    formatter={(value: number, name: string) => [formatNumber(value), name]}
-                    contentStyle={{ fontSize: '0.75rem' }}
-                    labelFormatter={metricsViewMode === "date" ? formatDate : undefined}
-                  />
-                  <Bar
-                    yAxisId="left"
-                    dataKey="IMPRESSIONS"
-                    fill="#4ade80"
-                    opacity={0.8}
-                    name="Impressions"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="CLICKS"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    dot={false}
-                    name="Clicks"
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">No data available for the selected filters</p>
-              </div>
-            )}
-          </div>
-        </Card>
+      {/* Replaced separate charts with CombinedMetricsChart */}
+      {!hideCharts.includes("metricsChart") && !hideCharts.includes("revenueChart") && (
+        <CombinedMetricsChart 
+          data={combinedChartData}
+          title="Metrics Over Time"
+          chartToggleComponent={chartToggleComponent}
+          onTabChange={handleCombinedChartTabChange}
+          initialTab={activeTab}
+        />
       )}
 
-      {/* Only render the Attribution Revenue Over Time chart if not hidden */}
-      {!hideCharts.includes("revenueChart") && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Attribution Revenue Over Time</h3>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-4 mr-4">
-                {/* Add the chart toggle component here too for consistency */}
-                {chartToggleComponent}
-                <span className="text-sm font-medium">View:</span>
-                <ToggleGroup 
-                  type="single" 
-                  value={revenueViewMode} 
-                  onValueChange={handleRevenueViewModeChange}
-                >
-                  <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
-                    By Date
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
-                    By Day of Week
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-              {/* Only show filter UI when NOT using global filters */}
-              {!useGlobalFilters && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium mr-1">Filter by:</span>
-                  <div className="flex items-center gap-2">
-                    {onRevenueAgenciesChange && agencyOptions.length > 0 && (
-                      <MultiSelect
-                        options={agencyOptions}
-                        selected={selectedRevenueAgencies}
-                        onChange={onRevenueAgenciesChange}
-                        placeholder="Agency"
-                        className="w-[200px]"
-                      />
-                    )}
-                    
-                    {onRevenueAdvertisersChange && filteredRevenueAdvertiserOptions.length > 0 && (
-                      <MultiSelect
-                        options={filteredRevenueAdvertiserOptions}
-                        selected={selectedRevenueAdvertisers}
-                        onChange={onRevenueAdvertisersChange}
-                        placeholder="Advertiser"
-                        className="w-[200px]"
-                      />
-                    )}
-                    
-                    {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
-                      <MultiSelect
-                        options={filteredRevenueCampaignOptions}
-                        selected={selectedRevenueCampaigns}
-                        onChange={onRevenueCampaignsChange}
-                        placeholder="Campaign"
-                        className="w-[200px]"
-                        popoverClassName="w-[400px]"
-                      />
-                    )}
-                  </div>
-                </div>
-              )}
+      {/* Filter controls that were previously in the chart cards */}
+      {!useGlobalFilters && (
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-shrink-0">
+              <span className="text-sm font-medium">Filter by:</span>
             </div>
-          </div>
-          <div className="h-[400px]">
-            {processedRevenueData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={processedRevenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey={revenueViewMode === "date" ? "DATE" : "DAY_OF_WEEK"} 
-                    style={axisStyle}
-                    tickFormatter={revenueViewMode === "date" ? formatDate : undefined}
+            
+            {activeTab === "display" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {agencyOptions.length > 0 && (
+                  <MultiSelect
+                    options={agencyOptions}
+                    selected={selectedMetricsAgencies}
+                    onChange={onMetricsAgenciesChange}
+                    placeholder="Agency"
+                    className="w-[200px]"
                   />
-                  <YAxis 
-                    yAxisId="left"
-                    orientation="left"
-                    stroke="#9b87f5" // Purple for revenue bars
-                    label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', ...labelStyle }}
-                    tickFormatter={formatRevenue}
-                    style={axisStyle}
+                )}
+                
+                {advertiserOptions.length > 0 && (
+                  <MultiSelect
+                    options={filteredMetricsAdvertiserOptions}
+                    selected={selectedMetricsAdvertisers}
+                    onChange={onMetricsAdvertisersChange}
+                    placeholder="Advertiser"
+                    className="w-[200px]"
                   />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    stroke="#ef4444" // Changed back to red for the transactions line
-                    label={{ value: 'Transactions', angle: 90, position: 'insideRight', ...labelStyle }}
-                    tickFormatter={formatTransactions}
-                    style={axisStyle}
+                )}
+                
+                {onMetricsCampaignsChange && campaignOptions.length > 0 && (
+                  <MultiSelect
+                    options={filteredMetricsCampaignOptions}
+                    selected={selectedMetricsCampaigns}
+                    onChange={onMetricsCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    popoverClassName="w-[400px]"
                   />
-                  <Tooltip 
-                    formatter={(value: number, name: string) => {
-                      if (name === "Revenue") return [formatRevenue(value), name];
-                      if (name === "Transactions") return [formatTransactions(value), name];
-                      return [formatNumber(value), name];
-                    }}
-                    contentStyle={{ fontSize: '0.75rem' }}
-                    labelFormatter={revenueViewMode === "date" ? formatDate : undefined}
-                  />
-                  <Bar
-                    yAxisId="left"
-                    dataKey="REVENUE"
-                    fill="#9b87f5" // Purple for revenue bars
-                    opacity={0.8}
-                    name="Revenue"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="TRANSACTIONS"
-                    stroke="#ef4444" // Changed back to red for the transactions line
-                    strokeWidth={2}
-                    dot={false}
-                    name="Transactions"
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                )}
+                
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-sm font-medium">View:</span>
+                  <ToggleGroup 
+                    type="single" 
+                    value={metricsViewMode} 
+                    onValueChange={handleMetricsViewModeChange}
+                  >
+                    <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                      By Date
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                      By Day of Week
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">No revenue data available for the selected filters</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {onRevenueAgenciesChange && agencyOptions.length > 0 && (
+                  <MultiSelect
+                    options={agencyOptions}
+                    selected={selectedRevenueAgencies}
+                    onChange={onRevenueAgenciesChange}
+                    placeholder="Agency"
+                    className="w-[200px]"
+                  />
+                )}
+                
+                {onRevenueAdvertisersChange && filteredRevenueAdvertiserOptions.length > 0 && (
+                  <MultiSelect
+                    options={filteredRevenueAdvertiserOptions}
+                    selected={selectedRevenueAdvertisers}
+                    onChange={onRevenueAdvertisersChange}
+                    placeholder="Advertiser"
+                    className="w-[200px]"
+                  />
+                )}
+                
+                {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
+                  <MultiSelect
+                    options={filteredRevenueCampaignOptions}
+                    selected={selectedRevenueCampaigns}
+                    onChange={onRevenueCampaignsChange}
+                    placeholder="Campaign"
+                    className="w-[200px]"
+                    popoverClassName="w-[400px]"
+                  />
+                )}
+                
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-sm font-medium">View:</span>
+                  <ToggleGroup 
+                    type="single" 
+                    value={revenueViewMode} 
+                    onValueChange={handleRevenueViewModeChange}
+                  >
+                    <ToggleGroupItem value="date" aria-label="By Date" className="text-sm">
+                      By Date
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="dayOfWeek" aria-label="By Day of Week" className="text-sm">
+                      By Day of Week
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
               </div>
             )}
           </div>

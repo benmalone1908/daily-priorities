@@ -45,6 +45,7 @@ const CombinedMetricsChart = ({
   // Effect to sync with initialTab prop changes
   useEffect(() => {
     if (initialTab !== activeTab) {
+      console.log(`CombinedMetricsChart: Syncing tab from props: ${initialTab}`);
       setActiveTab(initialTab);
     }
   }, [initialTab]);
