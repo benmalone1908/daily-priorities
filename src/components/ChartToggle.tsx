@@ -8,7 +8,7 @@ interface ChartToggleProps {
 
 export function ChartToggle({ isAttributionChart, setIsAttributionChart }: ChartToggleProps) {
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-2 mr-4">
       <span className={`text-sm font-medium ${!isAttributionChart ? "text-primary" : "text-muted-foreground"}`}>
         Display Metrics
       </span>

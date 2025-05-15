@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -17,12 +18,14 @@ interface DateRangePickerProps {
   className?: string;
   displayDateRangeSummary?: boolean;
   dateRangeSummaryText?: string | null;
+  chartToggle?: React.ReactNode;
 }
 
 export default function DateRangePicker({
   dateRange,
   onDateRangeChange,
   className,
+  chartToggle,
 }: DateRangePickerProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -78,6 +81,9 @@ export default function DateRangePicker({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center gap-2">
+        {/* Chart Toggle */}
+        {chartToggle}
+        
         {/* Start Date Picker */}
         <Popover open={startOpen} onOpenChange={setStartOpen}>
           <PopoverTrigger asChild>

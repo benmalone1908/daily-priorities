@@ -658,14 +658,8 @@ const DashboardContent = ({
           
           {/* Chart section with toggle instead of tabs */}
           <div className="mt-6 mb-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-2">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg font-semibold">Campaign Performance</h3>
-                <ChartToggle 
-                  isAttributionChart={isAttributionChart} 
-                  setIsAttributionChart={setIsAttributionChart} 
-                />
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Campaign Performance</h3>
             </div>
             
             <DashboardWrapper 
@@ -691,6 +685,13 @@ const DashboardContent = ({
               useGlobalFilters={true}
               // Hide the appropriate chart based on toggle state instead of tab selection
               hideCharts={isAttributionChart ? ["metricsChart"] : ["revenueChart"]}
+              // Pass the ChartToggle component to be rendered inside the chart area
+              chartToggleComponent={
+                <ChartToggle 
+                  isAttributionChart={isAttributionChart} 
+                  setIsAttributionChart={setIsAttributionChart} 
+                />
+              }
             />
           </div>
         </TabsContent>
