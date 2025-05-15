@@ -635,23 +635,21 @@ const DashboardContent = ({
         </div>
       </div>
       
-      {/* Global filters section with reduced spacing */}
-      <div className="py-[3px]">
-        <GlobalFilters
-          agencyOptions={agencyOptions}
-          advertiserOptions={advertiserOptions}
-          campaignOptions={campaignOptions}
-          selectedAgencies={selectedAgencies}
-          selectedAdvertisers={selectedAdvertisers}
-          selectedCampaigns={selectedCampaigns}
-          onAgenciesChange={handleAgenciesChange}
-          onAdvertisersChange={handleAdvertisersChange}
-          onCampaignsChange={handleCampaignsChange}
-        />
-      </div>
+      {/* Global filters section - now without wrapper padding */}
+      <GlobalFilters
+        agencyOptions={agencyOptions}
+        advertiserOptions={advertiserOptions}
+        campaignOptions={campaignOptions}
+        selectedAgencies={selectedAgencies}
+        selectedAdvertisers={selectedAdvertisers}
+        selectedCampaigns={selectedCampaigns}
+        onAgenciesChange={handleAgenciesChange}
+        onAdvertisersChange={handleAdvertisersChange}
+        onCampaignsChange={handleCampaignsChange}
+      />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsContent value="dashboard">
+        <TabsContent value="dashboard" className="mt-0">
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
             metricsData={globalFilteredData}
@@ -675,7 +673,7 @@ const DashboardContent = ({
             useGlobalFilters={true}
           />
         </TabsContent>
-        <TabsContent value="sparks">
+        <TabsContent value="sparks" className="mt-0">
           <AggregatedSparkCharts 
             data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
           />

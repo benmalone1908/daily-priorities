@@ -29,7 +29,7 @@ const GlobalFilters = ({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="my-[5px] bg-muted/30 rounded-md">
+    <div className="py-[5px] bg-muted/30 rounded-md">
       <div 
         className="flex items-center justify-end p-3 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
