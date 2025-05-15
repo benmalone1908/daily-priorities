@@ -76,8 +76,8 @@ const DashboardProxy = (props: DashboardProxyProps) => {
       advertiserToCampaignsMap={props.advertiserToCampaignsMap}
       selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
-      // We don't actually need to pass useGlobalFilters to Dashboard since it's used in our proxy
-      // flow only, not in the Dashboard component itself
+      // Pass useGlobalFilters to Dashboard component
+      useGlobalFilters={props.useGlobalFilters}
     />
   );
 };

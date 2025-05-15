@@ -613,8 +613,6 @@ const DashboardContent = ({
     return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
   };
 
-  const dateRangeSummary = getDateRangeDisplayText();
-
   return (
     <>
       <div className="border-b animate-fade-in">
@@ -651,11 +649,7 @@ const DashboardContent = ({
         </div>
       </div>
       
-      {dateRangeSummary && (
-        <div className="flex justify-end my-1 text-xs text-muted-foreground">
-          {dateRangeSummary}
-        </div>
-      )}
+      {/* Removed redundant date range summary that was here */}
       
       {/* Global filters that apply to all charts */}
       <GlobalFilters

@@ -47,7 +47,7 @@ interface ModalData {
   data: any[];
 }
 
-const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters }: CampaignSparkChartsProps) => {
+const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: CampaignSparkChartsProps) => {
   const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
@@ -636,6 +636,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters }: CampaignSpar
 
   return (
     <div className="space-y-4">
+      {/* Only show filter UI when NOT using global filters */}
       {!useGlobalFilters && (
         <div className="flex justify-between items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
