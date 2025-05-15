@@ -658,12 +658,14 @@ const DashboardContent = ({
           
           {/* Chart section with toggle instead of tabs */}
           <div className="mt-6 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Campaign Performance</h3>
-              <ChartToggle 
-                isAttributionChart={isAttributionChart} 
-                setIsAttributionChart={setIsAttributionChart} 
-              />
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-2">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold">Campaign Performance</h3>
+                <ChartToggle 
+                  isAttributionChart={isAttributionChart} 
+                  setIsAttributionChart={setIsAttributionChart} 
+                />
+              </div>
             </div>
             
             <DashboardWrapper 
