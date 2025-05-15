@@ -10,6 +10,7 @@ import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
+import { ChartToggle } from "@/components/ChartToggle";
 import { Card } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
@@ -361,7 +362,7 @@ const DashboardContent = ({
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [activeChartTab, setActiveChartTab] = useState("display");
+  const [isAttributionChart, setIsAttributionChart] = useState(false);
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
@@ -655,69 +656,40 @@ const DashboardContent = ({
             data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
           />
           
-          {/* New tabbed interface for existing charts */}
+          {/* Chart section with toggle instead of tabs */}
           <div className="mt-6 mb-4">
-            <h3 className="text-lg font-semibold mb-4">Campaign Performance</h3>
-            <Tabs value={activeChartTab} onValueChange={setActiveChartTab} className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="display">Display Metrics</TabsTrigger>
-                <TabsTrigger value="attribution">Attribution Revenue</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="display" className="mt-0">
-                <DashboardWrapper 
-                  data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
-                  metricsData={globalFilteredData}
-                  revenueData={globalFilteredData}
-                  // Pass empty arrays for individual chart filters since we're using global filters now
-                  selectedMetricsCampaigns={[]}
-                  selectedRevenueCampaigns={[]}
-                  selectedRevenueAdvertisers={[]}
-                  selectedRevenueAgencies={[]}
-                  onMetricsCampaignsChange={() => {}}
-                  onRevenueCampaignsChange={() => {}}
-                  onRevenueAdvertisersChange={() => {}}
-                  onRevenueAgenciesChange={() => {}}
-                  selectedWeeklyCampaigns={[]}
-                  onWeeklyCampaignsChange={() => {}}
-                  selectedMetricsAdvertisers={[]}
-                  selectedMetricsAgencies={[]}
-                  onMetricsAdvertisersChange={() => {}}
-                  onMetricsAgenciesChange={() => {}}
-                  // Flag to indicate we're using global filters
-                  useGlobalFilters={true}
-                  // Updated: Use the correct chart name to hide in display tab
-                  hideCharts={["revenueChart"]}
-                />
-              </TabsContent>
-              
-              <TabsContent value="attribution" className="mt-0">
-                <DashboardWrapper 
-                  data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
-                  metricsData={globalFilteredData}
-                  revenueData={globalFilteredData}
-                  // Pass empty arrays for individual chart filters since we're using global filters now
-                  selectedMetricsCampaigns={[]}
-                  selectedRevenueCampaigns={[]}
-                  selectedRevenueAdvertisers={[]}
-                  selectedRevenueAgencies={[]}
-                  onMetricsCampaignsChange={() => {}}
-                  onRevenueCampaignsChange={() => {}}
-                  onRevenueAdvertisersChange={() => {}}
-                  onRevenueAgenciesChange={() => {}}
-                  selectedWeeklyCampaigns={[]}
-                  onWeeklyCampaignsChange={() => {}}
-                  selectedMetricsAdvertisers={[]}
-                  selectedMetricsAgencies={[]}
-                  onMetricsAdvertisersChange={() => {}}
-                  onMetricsAgenciesChange={() => {}}
-                  // Flag to indicate we're using global filters
-                  useGlobalFilters={true}
-                  // Updated: Use the correct chart name to hide in attribution tab
-                  hideCharts={["metricsChart"]}
-                />
-              </TabsContent>
-            </Tabs>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Campaign Performance</h3>
+              <ChartToggle 
+                isAttributionChart={isAttributionChart} 
+                setIsAttributionChart={setIsAttributionChart} 
+              />
+            </div>
+            
+            <DashboardWrapper 
+              data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
+              metricsData={globalFilteredData}
+              revenueData={globalFilteredData}
+              // Pass empty arrays for individual chart filters since we're using global filters now
+              selectedMetricsCampaigns={[]}
+              selectedRevenueCampaigns={[]}
+              selectedRevenueAdvertisers={[]}
+              selectedRevenueAgencies={[]}
+              onMetricsCampaignsChange={() => {}}
+              onRevenueCampaignsChange={() => {}}
+              onRevenueAdvertisersChange={() => {}}
+              onRevenueAgenciesChange={() => {}}
+              selectedWeeklyCampaigns={[]}
+              onWeeklyCampaignsChange={() => {}}
+              selectedMetricsAdvertisers={[]}
+              selectedMetricsAgencies={[]}
+              onMetricsAdvertisersChange={() => {}}
+              onMetricsAgenciesChange={() => {}}
+              // Flag to indicate we're using global filters
+              useGlobalFilters={true}
+              // Hide the appropriate chart based on toggle state instead of tab selection
+              hideCharts={isAttributionChart ? ["metricsChart"] : ["revenueChart"]}
+            />
           </div>
         </TabsContent>
         
