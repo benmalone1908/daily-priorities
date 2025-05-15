@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import DashboardProxy from './DashboardProxy';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
@@ -271,7 +270,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   debugLogOptions('advertiserOptionsForMultiSelect', advertiserOptionsForMultiSelect);
   debugLogOptions('agencyOptionsForMultiSelect', agencyOptionsForMultiSelect);
 
-  // Pass all props to Dashboard, including the useGlobalFilters flag
+  // Pass all props to Dashboard, including the useGlobalFilters flag and hideCharts
   return (
     <DashboardProxy
       data={props.data}
@@ -302,8 +301,10 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       selectedMetricsAgencies={props.selectedMetricsAgencies}
       onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
       onMetricsAgenciesChange={props.onMetricsAgenciesChange}
-      // Add the flag for global filters
+      // Pass the flag for global filters
       useGlobalFilters={props.useGlobalFilters}
+      // Pass the hideCharts prop to DashboardProxy
+      hideCharts={props.hideCharts}
     />
   );
 };
