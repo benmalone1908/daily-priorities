@@ -47,7 +47,30 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   // Process data based on view type
   const processedData = useMemo(() => {
     if (view === "daily") {
-      return filteredData;
+      // In daily view, calculate CTR and ROAS for each row based on that day's metrics
+      return filteredData.map(row => {
+        const impressions = Number(row.IMPRESSIONS) || 0;
+        const clicks = Number(row.CLICKS) || 0;
+        const revenue = Number(row.REVENUE) || 0;
+        const spend = Number(row.SPEND) || 0;
+        
+        // Calculate CTR for this day
+        const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+        
+        // Calculate ROAS for this day
+        const roas = spend > 0 ? revenue / spend : 0;
+        
+        return {
+          ...row,
+          IMPRESSIONS: impressions,
+          CLICKS: clicks,
+          REVENUE: revenue,
+          SPEND: spend,
+          CTR: ctr,
+          ROAS: roas,
+          TRANSACTIONS: Number(row.TRANSACTIONS) || 0
+        };
+      });
     } else {
       // Aggregate view - group by campaign
       const campaignGroups: Record<string, any> = {};
