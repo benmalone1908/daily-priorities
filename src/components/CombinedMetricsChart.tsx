@@ -203,9 +203,6 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
           dataKey={activeTab === "display" ? "CLICKS" : "TRANSACTIONS"}
           color={activeTab === "display" ? "#f59e0b" : "#8b5cf6"}
           gradientId={activeTab === "display" ? "impressions-clicks" : "transactions-revenue"}
-          secondaryDataKey={activeTab === "display" ? "IMPRESSIONS" : undefined}
-          secondaryColor={activeTab === "display" ? "#4ade80" : undefined}
-          secondaryGradientId={activeTab === "display" ? "impressions" : undefined}
           chartType="composed"
           showBar={true}
           barDataKey={activeTab === "display" ? "IMPRESSIONS" : "REVENUE"}
