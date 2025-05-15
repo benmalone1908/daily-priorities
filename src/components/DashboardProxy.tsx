@@ -130,6 +130,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         activeTab={activeTab}
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
+        hideChartTitle={true} // Add this prop to hide the redundant "Campaign Performance" title
       />
     </div>
   );
