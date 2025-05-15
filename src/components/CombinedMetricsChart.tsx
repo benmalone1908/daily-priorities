@@ -84,8 +84,11 @@ const CombinedMetricsChart = ({
       REVENUE: Number(item.REVENUE || 0),
     }));
 
+  // Check if we're dealing with day of week data
+  const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
+  
   // Only sort if we're dealing with dates, not days of week
-  const sortedData = processedData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
+  const sortedData = !isDayOfWeekData && processedData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
     ? processedData.sort((a, b) => {
         try {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -95,7 +98,10 @@ const CombinedMetricsChart = ({
       })
     : processedData; // For day of week, maintain original order
 
-  console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}`);
+  console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}, isDayOfWeekData: ${isDayOfWeekData}`);
+
+  // Calculate bar size based on data type
+  const barSize = isDayOfWeekData ? 60 : 20; // Wider bars for day of week data
 
   return (
     <Card className="w-full">
@@ -150,7 +156,7 @@ const CombinedMetricsChart = ({
                   fill="#4ade80"
                   yAxisId="left"
                   name="Impressions"
-                  barSize={20}
+                  barSize={barSize}
                   opacity={0.8}
                 />
                 <Line
@@ -212,7 +218,7 @@ const CombinedMetricsChart = ({
                   fill="#8b5cf6"
                   yAxisId="right"
                   name="Revenue"
-                  barSize={20}
+                  barSize={barSize}
                   opacity={0.8}
                 />
               </ComposedChart>
