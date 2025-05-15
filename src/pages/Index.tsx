@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -609,7 +610,7 @@ const DashboardContent = ({
       </div>
       
       {dateRangeSummary && (
-        <div className="flex justify-end my-2 text-xs text-muted-foreground">
+        <div className="flex justify-end my-1 text-xs text-muted-foreground">
           {dateRangeSummary}
         </div>
       )}
