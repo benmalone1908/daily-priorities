@@ -64,6 +64,8 @@ interface DashboardProps {
   activeTab?: string;
   // Add onChartTabChange prop
   onChartTabChange?: (tab: string) => void;
+  // Add viewByDate prop to fix the current TypeScript error
+  viewByDate?: boolean;
 }
 
 interface WeeklyData {
@@ -254,7 +256,9 @@ const Dashboard = ({
   // Add activeTab to the destructured props with a default value
   activeTab = "display",
   // Add onChartTabChange to the destructured props
-  onChartTabChange
+  onChartTabChange,
+  // Add viewByDate to the destructured props with a default value
+  viewByDate = true
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
