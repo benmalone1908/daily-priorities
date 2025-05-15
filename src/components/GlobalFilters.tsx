@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { MultiSelect } from "./MultiSelect";
-import { FilterIcon } from "lucide-react";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface GlobalFiltersProps {
@@ -30,20 +29,15 @@ const GlobalFilters = ({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="mt-4 mb-6 bg-muted/30 rounded-md">
+    <div className="my-[10px] bg-muted/30 rounded-md">
       <div 
-        className="flex items-center justify-between p-3 cursor-pointer"
+        className="flex items-center justify-end p-3 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-2">
-          <FilterIcon className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">Filters</h3>
-        </div>
         <div className="text-sm text-muted-foreground">
           {selectedAgencies.length > 0 && `${selectedAgencies.length} agencies • `}
           {selectedAdvertisers.length > 0 && `${selectedAdvertisers.length} advertisers • `}
           {selectedCampaigns.length > 0 && `${selectedCampaigns.length} campaigns`}
-          {/* Removed "No filters applied" message */}
         </div>
       </div>
       
