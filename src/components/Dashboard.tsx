@@ -1,4 +1,3 @@
-
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -1251,22 +1250,23 @@ const Dashboard = ({
                   <YAxis 
                     yAxisId="left"
                     orientation="left"
-                    stroke="#4ade80"
-                    label={{ value: 'Impressions', angle: -90, position: 'insideLeft', ...labelStyle }}
-                    tickFormatter={formatNumber}
+                    stroke="#9b87f5" // Changed from green to purple
+                    label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', ...labelStyle }} // Changed from Impressions to Revenue ($)
+                    tickFormatter={formatRevenue} // Changed from formatNumber to formatRevenue
                     style={axisStyle}
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    stroke="#ef4444"
-                    label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', ...labelStyle }}
-                    tickFormatter={formatRevenue}
+                    stroke="#64748b" // Changed from red to a neutral slate color
+                    label={{ value: 'Transactions', angle: 90, position: 'insideRight', ...labelStyle }} // Changed from Revenue ($) to Transactions
+                    tickFormatter={formatTransactions} // Changed from formatRevenue to formatTransactions
                     style={axisStyle}
                   />
                   <Tooltip 
                     formatter={(value: number, name: string) => {
                       if (name === "Revenue") return [formatRevenue(value), name];
+                      if (name === "Transactions") return [formatTransactions(value), name];
                       return [formatNumber(value), name];
                     }}
                     contentStyle={{ fontSize: '0.75rem' }}
@@ -1274,19 +1274,19 @@ const Dashboard = ({
                   />
                   <Bar
                     yAxisId="left"
-                    dataKey="IMPRESSIONS"
-                    fill="#4ade80"
+                    dataKey="REVENUE" // Changed from IMPRESSIONS to REVENUE
+                    fill="#9b87f5" // Changed from green to purple
                     opacity={0.8}
-                    name="Impressions"
+                    name="Revenue" // Changed from Impressions to Revenue
                   />
                   <Line
                     yAxisId="right"
                     type="monotone"
-                    dataKey="REVENUE"
-                    stroke="#ef4444"
+                    dataKey="TRANSACTIONS" // Changed from REVENUE to TRANSACTIONS
+                    stroke="#64748b" // Changed from red to a neutral slate color
                     strokeWidth={2}
                     dot={false}
-                    name="Revenue"
+                    name="Transactions" // Changed from Revenue to Transactions
                   />
                 </ComposedChart>
               </ResponsiveContainer>
