@@ -1250,17 +1250,17 @@ const Dashboard = ({
                   <YAxis 
                     yAxisId="left"
                     orientation="left"
-                    stroke="#9b87f5" // Changed from green to purple
-                    label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', ...labelStyle }} // Changed from Impressions to Revenue ($)
-                    tickFormatter={formatRevenue} // Changed from formatNumber to formatRevenue
+                    stroke="#9b87f5" // Purple for revenue bars
+                    label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft', ...labelStyle }}
+                    tickFormatter={formatRevenue}
                     style={axisStyle}
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    stroke="#64748b" // Changed from red to a neutral slate color
-                    label={{ value: 'Transactions', angle: 90, position: 'insideRight', ...labelStyle }} // Changed from Revenue ($) to Transactions
-                    tickFormatter={formatTransactions} // Changed from formatRevenue to formatTransactions
+                    stroke="#ef4444" // Changed back to red for the transactions line
+                    label={{ value: 'Transactions', angle: 90, position: 'insideRight', ...labelStyle }}
+                    tickFormatter={formatTransactions}
                     style={axisStyle}
                   />
                   <Tooltip 
@@ -1274,19 +1274,19 @@ const Dashboard = ({
                   />
                   <Bar
                     yAxisId="left"
-                    dataKey="REVENUE" // Changed from IMPRESSIONS to REVENUE
-                    fill="#9b87f5" // Changed from green to purple
+                    dataKey="REVENUE"
+                    fill="#9b87f5" // Purple for revenue bars
                     opacity={0.8}
-                    name="Revenue" // Changed from Impressions to Revenue
+                    name="Revenue"
                   />
                   <Line
                     yAxisId="right"
                     type="monotone"
-                    dataKey="TRANSACTIONS" // Changed from REVENUE to TRANSACTIONS
-                    stroke="#64748b" // Changed from red to a neutral slate color
+                    dataKey="TRANSACTIONS"
+                    stroke="#ef4444" // Changed back to red for the transactions line
                     strokeWidth={2}
                     dot={false}
-                    name="Transactions" // Changed from Revenue to Transactions
+                    name="Transactions"
                   />
                 </ComposedChart>
               </ResponsiveContainer>
