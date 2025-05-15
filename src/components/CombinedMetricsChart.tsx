@@ -6,7 +6,6 @@ import {
   ResponsiveContainer, 
   ComposedChart, 
   Line, 
-  Area, 
   Bar, 
   XAxis, 
   YAxis, 
@@ -97,12 +96,6 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
           <TabsContent value="display" className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={processedData}>
-                <defs>
-                  <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
                 <XAxis dataKey="date" />
                 <YAxis 
                   yAxisId="left"
@@ -129,13 +122,13 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
                   }}
                 />
                 <Legend />
-                <Area
-                  type="monotone"
+                <Bar
                   dataKey="IMPRESSIONS"
-                  stroke="#4ade80"
-                  fill="url(#colorImpressions)"
+                  fill="#4ade80"
                   yAxisId="left"
                   name="Impressions"
+                  barSize={20}
+                  opacity={0.8}
                 />
                 <Line
                   type="monotone"
@@ -144,6 +137,7 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
                   strokeWidth={2}
                   yAxisId="right"
                   name="Clicks"
+                  dot={{ r: 1 }}
                 />
               </ComposedChart>
             </ResponsiveContainer>
@@ -185,12 +179,14 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
                   strokeWidth={2}
                   yAxisId="left"
                   name="Transactions"
+                  dot={{ r: 1 }}
                 />
                 <Bar
                   dataKey="REVENUE"
                   fill="#ef4444"
                   yAxisId="right"
                   name="Revenue"
+                  barSize={20}
                   opacity={0.8}
                 />
               </ComposedChart>
@@ -211,14 +207,17 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
           secondaryColor={activeTab === "display" ? "#4ade80" : undefined}
           secondaryGradientId={activeTab === "display" ? "impressions" : undefined}
           chartType="composed"
-          showBar={activeTab === "attribution"}
-          barDataKey={activeTab === "attribution" ? "REVENUE" : undefined}
-          barColor="#ef4444"
+          showBar={true}
+          barDataKey={activeTab === "display" ? "IMPRESSIONS" : "REVENUE"}
+          barColor={activeTab === "display" ? "#4ade80" : "#ef4444"}
           valueFormatter={activeTab === "display" 
             ? (value) => formatClicks(value)
             : (value) => formatTransactions(value)
           }
-          barValueFormatter={formatRevenue}
+          barValueFormatter={activeTab === "display" 
+            ? (value) => formatImpressions(value)
+            : (value) => formatRevenue(value)
+          }
         />
       </CardContent>
     </Card>

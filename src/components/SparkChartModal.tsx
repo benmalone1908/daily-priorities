@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -326,11 +325,11 @@ const SparkChartModal = ({
           <YAxis 
             yAxisId="left"
             tick={{ fontSize: 12 }}
-            tickFormatter={effectiveFormatter}
+            tickFormatter={showBar && barDataKey === dataKey ? barValueFormatter : valueFormatter}
             domain={yAxisDomain}
             allowDecimals={true}
           />
-          {showBar && barDataKey && (
+          {showBar && barDataKey && barDataKey !== dataKey && (
             <YAxis 
               yAxisId="right"
               orientation="right"
@@ -344,7 +343,7 @@ const SparkChartModal = ({
           <Tooltip 
             formatter={(value: any, name: string) => {
               if (name === dataKey.toUpperCase()) {
-                return [effectiveFormatter(value), dataKey];
+                return [valueFormatter(value), dataKey];
               } else if (name === secondaryDataKey?.toUpperCase()) {
                 return [secondaryValueFormatter(value), secondaryDataKey];
               } else if (name === barDataKey?.toUpperCase()) {
@@ -367,17 +366,17 @@ const SparkChartModal = ({
             dataKey={dataKey.toUpperCase()}
             stroke={color}
             strokeWidth={2}
-            dot={false}
-            yAxisId="left"
+            dot={{ r: 1 }}
+            yAxisId={showBar && barDataKey === dataKey ? "left" : barDataKey ? "left" : "right"}
             isAnimationActive={false}
           />
-          {secondaryDataKey && (
+          {secondaryDataKey && secondaryDataKey !== barDataKey && (
             <Line
               type="monotone"
               dataKey={secondaryDataKey.toUpperCase()}
               stroke={secondaryColor}
               strokeWidth={2}
-              dot={false}
+              dot={{ r: 1 }}
               yAxisId="left"
               isAnimationActive={false}
             />
@@ -386,7 +385,7 @@ const SparkChartModal = ({
             <Bar
               dataKey={barDataKey.toUpperCase()}
               fill={barColor}
-              yAxisId="right"
+              yAxisId={barDataKey === dataKey ? "left" : "right"}
               isAnimationActive={false}
               barSize={20}
               opacity={0.8}
