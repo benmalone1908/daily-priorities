@@ -1,4 +1,3 @@
-
 import Dashboard from "./Dashboard";
 
 // Define props interface to match Dashboard component
@@ -40,53 +39,57 @@ interface DashboardProxyProps {
 
 // Wrapper component for passing props to Dashboard
 const DashboardProxy = (props: DashboardProxyProps) => {
-  // This proxy component is needed to pass props to Dashboard
-  // since we can't modify Dashboard.tsx directly
   return (
-    <Dashboard
-      data={props.data}
-      metricsData={props.metricsData}
-      revenueData={props.revenueData}
-      selectedMetricsCampaigns={props.selectedMetricsCampaigns}
-      selectedRevenueCampaigns={props.selectedRevenueCampaigns}
-      selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
-      selectedRevenueAgencies={props.selectedRevenueAgencies}
-      selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
-      selectedMetricsAgencies={props.selectedMetricsAgencies}
-      onMetricsCampaignsChange={(selected) => {
-        console.log("DashboardProxy: Metrics campaigns changed:", selected);
-        props.onMetricsCampaignsChange(selected);
-      }}
-      onRevenueCampaignsChange={props.onRevenueCampaignsChange}
-      onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
-      onRevenueAgenciesChange={props.onRevenueAgenciesChange}
-      onMetricsAdvertisersChange={(selected) => {
-        console.log("DashboardProxy: Metrics advertisers changed:", selected);
-        props.onMetricsAdvertisersChange(selected);
-      }}
-      onMetricsAgenciesChange={(selected) => {
-        console.log("DashboardProxy: Metrics agencies changed:", selected);
-        props.onMetricsAgenciesChange(selected);
-      }}
-      sortedCampaignOptions={props.sortedCampaignOptions}
-      sortedAdvertiserOptions={props.sortedAdvertiserOptions}
-      sortedAgencyOptions={props.sortedAgencyOptions}
-      formattedCampaignOptions={props.formattedCampaignOptions}
-      formattedAdvertiserOptions={props.formattedAdvertiserOptions}
-      formattedAgencyOptions={props.formattedAgencyOptions}
-      aggregatedMetricsData={props.aggregatedMetricsData}
-      agencyToAdvertisersMap={props.agencyToAdvertisersMap}
-      agencyToCampaignsMap={props.agencyToCampaignsMap}
-      advertiserToCampaignsMap={props.advertiserToCampaignsMap}
-      selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
-      onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
-      // Pass useGlobalFilters to Dashboard component
-      useGlobalFilters={props.useGlobalFilters}
-      // Pass hideCharts prop to Dashboard component
-      hideCharts={props.hideCharts}
-      // Pass chartToggleComponent prop to Dashboard component
-      chartToggleComponent={props.chartToggleComponent}
-    />
+    <div className="relative">
+      {/* Place chart toggle outside of Dashboard component to keep it persistent */}
+      <div className="flex justify-end mb-4">
+        {props.chartToggleComponent}
+      </div>
+      
+      <Dashboard
+        data={props.data}
+        metricsData={props.metricsData}
+        revenueData={props.revenueData}
+        selectedMetricsCampaigns={props.selectedMetricsCampaigns}
+        selectedRevenueCampaigns={props.selectedRevenueCampaigns}
+        selectedRevenueAdvertisers={props.selectedRevenueAdvertisers}
+        selectedRevenueAgencies={props.selectedRevenueAgencies}
+        selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
+        selectedMetricsAgencies={props.selectedMetricsAgencies}
+        onMetricsCampaignsChange={(selected) => {
+          console.log("DashboardProxy: Metrics campaigns changed:", selected);
+          props.onMetricsCampaignsChange(selected);
+        }}
+        onRevenueCampaignsChange={props.onRevenueCampaignsChange}
+        onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
+        onRevenueAgenciesChange={props.onRevenueAgenciesChange}
+        onMetricsAdvertisersChange={(selected) => {
+          console.log("DashboardProxy: Metrics advertisers changed:", selected);
+          props.onMetricsAdvertisersChange(selected);
+        }}
+        onMetricsAgenciesChange={(selected) => {
+          console.log("DashboardProxy: Metrics agencies changed:", selected);
+          props.onMetricsAgenciesChange(selected);
+        }}
+        sortedCampaignOptions={props.sortedCampaignOptions}
+        sortedAdvertiserOptions={props.sortedAdvertiserOptions}
+        sortedAgencyOptions={props.sortedAgencyOptions}
+        formattedCampaignOptions={props.formattedCampaignOptions}
+        formattedAdvertiserOptions={props.formattedAdvertiserOptions}
+        formattedAgencyOptions={props.formattedAgencyOptions}
+        aggregatedMetricsData={props.aggregatedMetricsData}
+        agencyToAdvertisersMap={props.agencyToAdvertisersMap}
+        agencyToCampaignsMap={props.agencyToCampaignsMap}
+        advertiserToCampaignsMap={props.advertiserToCampaignsMap}
+        selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
+        onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
+        useGlobalFilters={props.useGlobalFilters}
+        hideCharts={props.hideCharts}
+        // We're now rendering the chartToggleComponent outside of Dashboard
+        // but we still need to pass it to maintain the prop signature
+        chartToggleComponent={null}
+      />
+    </div>
   );
 };
 
