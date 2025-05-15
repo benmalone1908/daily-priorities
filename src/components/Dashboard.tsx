@@ -53,6 +53,8 @@ interface DashboardProps {
   advertiserToCampaignsMap?: Record<string, Set<string>>;
   selectedWeeklyCampaigns?: string[]; // Updated to array for multiple selections
   onWeeklyCampaignsChange?: (selected: string[]) => void; // Updated handler for array of selections
+  // Add the useGlobalFilters prop to fix the TypeScript error
+  useGlobalFilters?: boolean;
 }
 
 interface WeeklyData {
@@ -234,7 +236,9 @@ const Dashboard = ({
   agencyToCampaignsMap = {},
   advertiserToCampaignsMap = {},
   selectedWeeklyCampaigns = [], // Changed from selectedWeeklyCampaign to array with default empty array
-  onWeeklyCampaignsChange // Changed to match array handler type
+  onWeeklyCampaignsChange, // Changed to match array handler type
+  // Add useGlobalFilters to the destructured props with a default value of false
+  useGlobalFilters = false
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1072,39 +1076,44 @@ const Dashboard = ({
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-            <span className="text-sm font-medium mr-1">Filter by:</span>
-            <div className="flex items-center gap-2">
-              {agencyOptions.length > 0 && (
-                <MultiSelect
-                  options={agencyOptions}
-                  selected={localSelectedMetricsAgencies}
-                  onChange={handleMetricsAgenciesChange}
-                  placeholder="Agency"
-                  className="w-[200px]"
-                />
-              )}
-              
-              {advertiserOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredMetricsAdvertiserOptions}
-                  selected={localSelectedMetricsAdvertisers}
-                  onChange={handleMetricsAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-              )}
-              
-              {onMetricsCampaignsChange && campaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredMetricsCampaignOptions}
-                  selected={selectedMetricsCampaigns}
-                  onChange={onMetricsCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  popoverClassName="w-[400px]"
-                />
-              )}
-            </div>
+            {/* Only show filter UI when NOT using global filters */}
+            {!useGlobalFilters && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium mr-1">Filter by:</span>
+                <div className="flex items-center gap-2">
+                  {agencyOptions.length > 0 && (
+                    <MultiSelect
+                      options={agencyOptions}
+                      selected={localSelectedMetricsAgencies}
+                      onChange={handleMetricsAgenciesChange}
+                      placeholder="Agency"
+                      className="w-[200px]"
+                    />
+                  )}
+                  
+                  {advertiserOptions.length > 0 && (
+                    <MultiSelect
+                      options={filteredMetricsAdvertiserOptions}
+                      selected={localSelectedMetricsAdvertisers}
+                      onChange={handleMetricsAdvertisersChange}
+                      placeholder="Advertiser"
+                      className="w-[200px]"
+                    />
+                  )}
+                  
+                  {onMetricsCampaignsChange && campaignOptions.length > 0 && (
+                    <MultiSelect
+                      options={filteredMetricsCampaignOptions}
+                      selected={selectedMetricsCampaigns}
+                      onChange={onMetricsCampaignsChange}
+                      placeholder="Campaign"
+                      className="w-[200px]"
+                      popoverClassName="w-[400px]"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="h-[400px]">
@@ -1179,39 +1188,44 @@ const Dashboard = ({
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
-            <span className="text-sm font-medium mr-1">Filter by:</span>
-            <div className="flex items-center gap-2">
-              {onRevenueAgenciesChange && agencyOptions.length > 0 && (
-                <MultiSelect
-                  options={agencyOptions}
-                  selected={selectedRevenueAgencies}
-                  onChange={onRevenueAgenciesChange}
-                  placeholder="Agency"
-                  className="w-[200px]"
-                />
-              )}
-              
-              {onRevenueAdvertisersChange && filteredRevenueAdvertiserOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredRevenueAdvertiserOptions}
-                  selected={selectedRevenueAdvertisers}
-                  onChange={onRevenueAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-              )}
-              
-              {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
-                <MultiSelect
-                  options={filteredRevenueCampaignOptions}
-                  selected={selectedRevenueCampaigns}
-                  onChange={onRevenueCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  popoverClassName="w-[400px]"
-                />
-              )}
-            </div>
+            {/* Only show filter UI when NOT using global filters */}
+            {!useGlobalFilters && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium mr-1">Filter by:</span>
+                <div className="flex items-center gap-2">
+                  {onRevenueAgenciesChange && agencyOptions.length > 0 && (
+                    <MultiSelect
+                      options={agencyOptions}
+                      selected={selectedRevenueAgencies}
+                      onChange={onRevenueAgenciesChange}
+                      placeholder="Agency"
+                      className="w-[200px]"
+                    />
+                  )}
+                  
+                  {onRevenueAdvertisersChange && filteredRevenueAdvertiserOptions.length > 0 && (
+                    <MultiSelect
+                      options={filteredRevenueAdvertiserOptions}
+                      selected={selectedRevenueAdvertisers}
+                      onChange={onRevenueAdvertisersChange}
+                      placeholder="Advertiser"
+                      className="w-[200px]"
+                    />
+                  )}
+                  
+                  {onRevenueCampaignsChange && filteredRevenueCampaignOptions.length > 0 && (
+                    <MultiSelect
+                      options={filteredRevenueCampaignOptions}
+                      selected={selectedRevenueCampaigns}
+                      onChange={onRevenueCampaignsChange}
+                      placeholder="Campaign"
+                      className="w-[200px]"
+                      popoverClassName="w-[400px]"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="h-[400px]">
@@ -1307,33 +1321,38 @@ const Dashboard = ({
                   </SelectContent>
                 </Select>
               </div>
-              <span className="text-sm font-medium mr-1">Filter by:</span>
-              <div className="flex items-center gap-2">
-                <MultiSelect
-                  options={agencyOptions}
-                  selected={selectedWeeklyAgencies}
-                  onChange={handleWeeklyAgenciesChange}
-                  placeholder="Agency"
-                  className="w-[200px]"
-                />
-                
-                <MultiSelect
-                  options={filteredWeeklyAdvertiserOptions}
-                  selected={selectedWeeklyAdvertisers}
-                  onChange={handleWeeklyAdvertisersChange}
-                  placeholder="Advertiser"
-                  className="w-[200px]"
-                />
-                
-                <MultiSelect
-                  options={filteredWeeklyCampaignOptions}
-                  selected={selectedWeeklyCampaigns}
-                  onChange={onWeeklyCampaignsChange}
-                  placeholder="Campaign"
-                  className="w-[200px]"
-                  popoverClassName="w-[400px]"
-                />
-              </div>
+              {/* Only show filter UI when NOT using global filters */}
+              {!useGlobalFilters && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium mr-1">Filter by:</span>
+                  <div className="flex items-center gap-2">
+                    <MultiSelect
+                      options={agencyOptions}
+                      selected={selectedWeeklyAgencies}
+                      onChange={handleWeeklyAgenciesChange}
+                      placeholder="Agency"
+                      className="w-[200px]"
+                    />
+                    
+                    <MultiSelect
+                      options={filteredWeeklyAdvertiserOptions}
+                      selected={selectedWeeklyAdvertisers}
+                      onChange={handleWeeklyAdvertisersChange}
+                      placeholder="Advertiser"
+                      className="w-[200px]"
+                    />
+                    
+                    <MultiSelect
+                      options={filteredWeeklyCampaignOptions}
+                      selected={selectedWeeklyCampaigns}
+                      onChange={onWeeklyCampaignsChange}
+                      placeholder="Campaign"
+                      className="w-[200px]"
+                      popoverClassName="w-[400px]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
