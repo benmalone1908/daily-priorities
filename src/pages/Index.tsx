@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -16,6 +15,7 @@ import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, 
 import { getColorClasses } from "@/utils/anomalyColors";
 import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
 import SparkChartModal from "@/components/SparkChartModal";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 type MetricType = 
   | "impressions" 
@@ -570,6 +570,8 @@ const DashboardContent = ({
     return `Showing data for: ${fromStr} to ${toStr} (${recordCount} records)`;
   };
 
+  const dateRangeSummary = getDateRangeDisplayText();
+
   return (
     <>
       <div className="border-b animate-fade-in">
@@ -600,12 +602,17 @@ const DashboardContent = ({
             <DateRangePicker 
               dateRange={dateRange}
               onDateRangeChange={onDateRangeChange}
-              displayDateRangeSummary={!!dateRange?.from}
-              dateRangeSummaryText={getDateRangeDisplayText()}
+              displayDateRangeSummary={false}
             />
           </div>
         </div>
       </div>
+      
+      {dateRangeSummary && (
+        <div className="flex justify-end my-2 text-xs text-muted-foreground">
+          {dateRangeSummary}
+        </div>
+      )}
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard">

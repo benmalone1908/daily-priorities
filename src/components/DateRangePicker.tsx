@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -24,8 +23,6 @@ export default function DateRangePicker({
   dateRange,
   onDateRangeChange,
   className,
-  displayDateRangeSummary = false,
-  dateRangeSummaryText = null,
 }: DateRangePickerProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -158,13 +155,6 @@ export default function DateRangePicker({
           Reset
         </Button>
       </div>
-      
-      {/* Date Range Summary - moved as a separate element with improved styling */}
-      {displayDateRangeSummary && dateRangeSummaryText && (
-        <p className="text-xs text-muted-foreground mt-1">
-          {dateRangeSummaryText}
-        </p>
-      )}
     </div>
   );
 }
