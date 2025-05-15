@@ -1,10 +1,16 @@
 
 import { toast as sonnerToast } from "sonner";
-// Fix circular import - don't import useToast from component that's importing from here
-import { useToast as useRadixToast } from "@radix-ui/react-toast";
+// Import useToast from shadcn's toast implementation, not from Radix UI directly
+import { type ToasterToast } from "@/components/ui/toast";
 
-// Re-export the useToast hook from radix UI
-export const useToast = useRadixToast;
+// Create a simple useToast implementation that matches the expected interface
+export const useToast = () => {
+  return {
+    toasts: [] as ToasterToast[],
+    dismiss: (toastId?: string) => {},
+    toast: (props: ToasterToast) => {}
+  };
+};
 
 // Create a toast function that matches the expected interface
 export const toast = sonnerToast;

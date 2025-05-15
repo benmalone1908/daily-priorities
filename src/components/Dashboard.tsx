@@ -55,6 +55,8 @@ interface DashboardProps {
   onWeeklyCampaignsChange?: (selected: string[]) => void; // Updated handler for array of selections
   // Add the useGlobalFilters prop to fix the TypeScript error
   useGlobalFilters?: boolean;
+  // Add hideCharts prop to fix the TypeScript error
+  hideCharts?: string[];
 }
 
 interface WeeklyData {
@@ -238,7 +240,8 @@ const Dashboard = ({
   selectedWeeklyCampaigns = [], // Changed from selectedWeeklyCampaign to array with default empty array
   onWeeklyCampaignsChange, // Changed to match array handler type
   // Add useGlobalFilters to the destructured props with a default value of false
-  useGlobalFilters = false
+  useGlobalFilters = false,
+  hideCharts = []
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
