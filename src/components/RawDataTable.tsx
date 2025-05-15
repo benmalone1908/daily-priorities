@@ -25,7 +25,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { normalizeDate, formatNumber } from "@/lib/utils";
+import { normalizeDate } from "@/lib/utils";
 
 interface RawDataTableProps {
   data: any[];
@@ -183,11 +183,11 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           
           // Format values appropriately
           if (column === 'CTR') {
-            return typeof value === 'number' ? `${value.toFixed(2)}%` : '0%';
+            return typeof value === 'number' ? `${value.toFixed(3)}%` : '0.000%';
           } else if (column === 'ROAS') {
-            return typeof value === 'number' ? value.toFixed(2) : '0';
+            return typeof value === 'number' ? `${value.toFixed(1)}x` : '0.0x';
           } else if (column === 'REVENUE' || column === 'SPEND') {
-            return typeof value === 'number' ? `$${value.toFixed(2)}` : '$0';
+            return typeof value === 'number' ? `$${value.toFixed(2)}` : '$0.00';
           } else if (typeof value === 'number') {
             return value.toString();
           } else if (typeof value === 'string' && value.includes(',')) {
@@ -226,16 +226,16 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       case 'DATE':
         return value || 'N/A';
       case 'CTR':
-        return `${typeof value === 'number' ? value.toFixed(2) : '0'}%`;
+        return `${typeof value === 'number' ? value.toFixed(3) : '0.000'}%`;
       case 'ROAS':
-        return typeof value === 'number' ? value.toFixed(2) : '0';
+        return `${typeof value === 'number' ? value.toFixed(1) : '0.0'}x`;
       case 'REVENUE':
       case 'SPEND':
-        return `$${typeof value === 'number' ? value.toFixed(2) : '0'}`;
+        return `$${typeof value === 'number' ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}`;
       case 'IMPRESSIONS':
       case 'CLICKS':
       case 'TRANSACTIONS':
-        return typeof value === 'number' ? formatNumber(value) : '0';
+        return typeof value === 'number' ? value.toLocaleString('en-US') : '0';
       default:
         return value || '';
     }
