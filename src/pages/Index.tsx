@@ -5,7 +5,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
@@ -17,6 +17,7 @@ import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, Do
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
+import RawDataTable from "@/components/RawDataTable";
 
 type MetricType = 
   | "impressions" 
@@ -600,19 +601,16 @@ const DashboardContent = ({
     <>
       <div className="border-b animate-fade-in">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <img 
-              src="/lovable-uploads/7653cd45-6cfe-4e1c-89a4-cb182393e54b.png" 
-              alt="Display Campaign Monitor" 
-              className="h-[75px] w-auto"
-            />
+          <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
           </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <CampaignStatusToggle />
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex items-center">
+              <CampaignStatusToggle />
+            </div>
             <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="dashboard">
                   <LayoutDashboard className="mr-2" size={16} />
                   Dashboard
@@ -620,6 +618,10 @@ const DashboardContent = ({
                 <TabsTrigger value="sparks">
                   <ChartLine className="mr-2" size={16} />
                   Trends
+                </TabsTrigger>
+                <TabsTrigger value="raw-data">
+                  <FileText className="mr-2" size={16} />
+                  Raw Data
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -632,7 +634,7 @@ const DashboardContent = ({
         </div>
       </div>
       
-      {/* Global filters section - now without wrapper padding */}
+      {/* Global filters section */}
       <GlobalFilters
         agencyOptions={agencyOptions}
         advertiserOptions={advertiserOptions}
@@ -645,11 +647,9 @@ const DashboardContent = ({
         onCampaignsChange={handleCampaignsChange}
       />
       
-      {/* Removed the AggregatedSparkCharts from here */}
-      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard" className="mt-0">
-          {/* Moved AggregatedSparkCharts to Dashboard tab */}
+          {/* Dashboard tab content */}
           <AggregatedSparkCharts 
             data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
           />
@@ -678,12 +678,25 @@ const DashboardContent = ({
             hideCharts={["metricsChart", "revenueChart"]}
           />
         </TabsContent>
+        
         <TabsContent value="sparks" className="mt-0">
+          {/* Trends tab content */}
           <CampaignSparkCharts 
             data={globalFilteredData} 
             dateRange={dateRange}
             useGlobalFilters={true}
           />
+        </TabsContent>
+        
+        <TabsContent value="raw-data" className="mt-0">
+          {/* Raw Data tab content */}
+          <div className="mb-4 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Campaign Data</h3>
+            <RawDataTable 
+              data={globalFilteredData}
+              useGlobalFilters={true}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </>
