@@ -1,4 +1,8 @@
+
+import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
+import CombinedMetricsChart from "./CombinedMetricsChart";
+import { ChartToggle } from "./ChartToggle";
 
 // Define props interface to match Dashboard component
 interface DashboardProxyProps {
@@ -39,13 +43,30 @@ interface DashboardProxyProps {
 
 // Wrapper component for passing props to Dashboard
 const DashboardProxy = (props: DashboardProxyProps) => {
+  const [isAttributionChart, setIsAttributionChart] = useState(false);
+  const [activeTab, setActiveTab] = useState("display");
+
+  // Sync the toggle with the active tab
+  useEffect(() => {
+    setIsAttributionChart(activeTab === "attribution");
+  }, [activeTab]);
+
+  // Handle toggle changes
+  const handleToggleChange = (value: boolean) => {
+    setIsAttributionChart(value);
+    setActiveTab(value ? "attribution" : "display");
+  };
+
+  // Create our own chart toggle component with the proper state
+  const chartToggle = (
+    <ChartToggle 
+      isAttributionChart={isAttributionChart} 
+      setIsAttributionChart={handleToggleChange} 
+    />
+  );
+  
   return (
     <div className="relative">
-      {/* Place chart toggle outside of Dashboard component to keep it persistent */}
-      <div className="flex justify-end mb-4">
-        {props.chartToggleComponent}
-      </div>
-      
       <Dashboard
         data={props.data}
         metricsData={props.metricsData}
@@ -85,9 +106,10 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
         useGlobalFilters={props.useGlobalFilters}
         hideCharts={props.hideCharts}
-        // We're now rendering the chartToggleComponent outside of Dashboard
-        // but we still need to pass it to maintain the prop signature
-        chartToggleComponent={null}
+        // Pass our chart toggle and current tab to Dashboard
+        chartToggleComponent={chartToggle}
+        activeChartTab={activeTab}
+        onChartTabChange={setActiveTab}
       />
     </div>
   );

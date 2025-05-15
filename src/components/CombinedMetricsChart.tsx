@@ -16,14 +16,24 @@ import {
 import { Maximize } from "lucide-react";
 import SparkChartModal from "./SparkChartModal";
 import { formatNumber } from "@/lib/utils";
+import { ChartToggle } from "./ChartToggle";
 
 interface CombinedMetricsChartProps {
   data: any[];
   title?: string;
+  chartToggleComponent?: React.ReactNode;
+  onTabChange?: (tab: string) => void;
+  initialTab?: string;
 }
 
-const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMetricsChartProps) => {
-  const [activeTab, setActiveTab] = useState<string>("display");
+const CombinedMetricsChart = ({ 
+  data, 
+  title = "Metrics Over Time", 
+  chartToggleComponent,
+  onTabChange,
+  initialTab = "display" 
+}: CombinedMetricsChartProps) => {
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   
   // Format functions for different metrics
@@ -31,6 +41,13 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
   const formatClicks = (value: number) => formatNumber(value);
   const formatTransactions = (value: number) => formatNumber(value);
   const formatRevenue = (value: number) => `$${formatNumber(value)}`;
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (onTabChange) {
+      onTabChange(value);
+    }
+  };
 
   if (!data || data.length === 0) {
     return (
@@ -71,21 +88,26 @@ const CombinedMetricsChart = ({ data, title = "Metrics Over Time" }: CombinedMet
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex justify-between">
-          <span>{title}</span>
-          <span 
-            className="cursor-pointer text-gray-500 hover:text-gray-700"
-            onClick={handleOpenModal}
-          >
-            <Maximize className="h-5 w-5" />
-          </span>
-        </CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle>{title}</CardTitle>
+          <div className="flex items-center space-x-2">
+            {chartToggleComponent && (
+              <div className="mr-4">{chartToggleComponent}</div>
+            )}
+            <span 
+              className="cursor-pointer text-gray-500 hover:text-gray-700"
+              onClick={handleOpenModal}
+            >
+              <Maximize className="h-5 w-5" />
+            </span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs
           defaultValue="display"
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2 mb-4">

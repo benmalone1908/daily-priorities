@@ -1,6 +1,5 @@
 
 import { Switch } from "@/components/ui/switch";
-import { ToggleLeft, ToggleRight } from "lucide-react";
 
 interface ChartToggleProps {
   isAttributionChart: boolean;
@@ -9,17 +8,17 @@ interface ChartToggleProps {
 
 export function ChartToggle({ isAttributionChart, setIsAttributionChart }: ChartToggleProps) {
   return (
-    <div className="flex items-center space-x-2 mb-1">
-      <span className={`text-sm font-medium ${!isAttributionChart ? "text-primary" : "text-muted-foreground"}`}>
-        Display Metrics
+    <div className="flex items-center space-x-2">
+      <span className={`text-xs font-medium ${!isAttributionChart ? "text-primary" : "text-muted-foreground"}`}>
+        Display
       </span>
       <Switch
         checked={isAttributionChart}
         onCheckedChange={setIsAttributionChart}
         className="data-[state=checked]:bg-primary"
       />
-      <span className={`text-sm font-medium ${isAttributionChart ? "text-primary" : "text-muted-foreground"}`}>
-        Attribution Revenue
+      <span className={`text-xs font-medium ${isAttributionChart ? "text-primary" : "text-muted-foreground"}`}>
+        Attribution
       </span>
     </div>
   );
