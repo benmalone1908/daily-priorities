@@ -47,7 +47,7 @@ interface ModalData {
   data: any[];
 }
 
-const CampaignSparkCharts = ({ data, dateRange }: CampaignSparkChartsProps) => {
+const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters }: CampaignSparkChartsProps) => {
   const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);

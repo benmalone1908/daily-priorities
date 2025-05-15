@@ -30,7 +30,8 @@ interface DashboardProxyProps {
   advertiserToCampaignsMap: Record<string, Set<string>>;
   selectedWeeklyCampaigns: string[];
   onWeeklyCampaignsChange: (selected: string[]) => void;
-  // Remove the useGlobalFilters prop since it doesn't exist in Dashboard component
+  // Add useGlobalFilters prop to match what's being passed in DashboardWrapper
+  useGlobalFilters?: boolean;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -75,7 +76,8 @@ const DashboardProxy = (props: DashboardProxyProps) => {
       advertiserToCampaignsMap={props.advertiserToCampaignsMap}
       selectedWeeklyCampaigns={props.selectedWeeklyCampaigns}
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
-      // Remove the useGlobalFilters prop from being passed to Dashboard
+      // We don't actually need to pass useGlobalFilters to Dashboard since it's used in our proxy
+      // flow only, not in the Dashboard component itself
     />
   );
 };
