@@ -1119,8 +1119,8 @@ const Dashboard = ({
         </div>
       )}
 
-      {/* Replaced separate charts with CombinedMetricsChart */}
-      {!hideCharts.includes("metricsChart") && !hideCharts.includes("revenueChart") && (
+      {/* FIXED: Changed from AND (&&) to OR (||) logic for chart visibility */}
+      {!(hideCharts.includes("metricsChart") && hideCharts.includes("revenueChart")) && (
         <CombinedMetricsChart 
           data={combinedChartData}
           title="Metrics Over Time"
