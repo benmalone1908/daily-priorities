@@ -255,6 +255,9 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   
   return (
     <div className="mb-8 animate-fade-in">
+      <div className="flex items-center mb-4">
+        &nbsp;
+      </div>
       {/* Updated to use two rows of three charts */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {renderMetricCard(
