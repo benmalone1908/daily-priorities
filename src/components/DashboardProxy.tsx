@@ -54,13 +54,6 @@ const DashboardProxy = (props: DashboardProxyProps) => {
     setActiveTab(newTab);
   };
 
-  // Handle tab changes from the Dashboard component and sync with toggle
-  const handleTabChange = (tab: string) => {
-    console.log(`DashboardProxy: Tab changed to ${tab}, setting isAttributionChart to ${tab === "attribution"}`);
-    setActiveTab(tab);
-    setIsAttributionChart(tab === "attribution");
-  };
-
   // Create our own chart toggle component with the proper state
   const chartToggle = (
     <ChartToggle 
@@ -103,7 +96,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         hideCharts={props.hideCharts}
         chartToggleComponent={chartToggle}
         activeTab={activeTab}
-        onChartTabChange={handleTabChange}
+        onChartTabChange={() => {}} // We're not using tabs anymore, so this is empty
       />
     </div>
   );

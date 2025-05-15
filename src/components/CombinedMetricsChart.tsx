@@ -13,9 +13,8 @@ import {
   Tooltip, 
   Legend 
 } from "recharts";
-import { Eye } from "lucide-react";
-import SparkChartModal from "./SparkChartModal";
 import { formatNumber } from "@/lib/utils";
+import SparkChartModal from "./SparkChartModal";
 
 interface CombinedMetricsChartProps {
   data: any[];
@@ -27,7 +26,7 @@ interface CombinedMetricsChartProps {
 
 const CombinedMetricsChart = ({ 
   data, 
-  title = "Metrics Over Time", 
+  title = "Campaign Performance", 
   chartToggleComponent,
   onTabChange,
   initialTab = "display" 
@@ -67,7 +66,7 @@ const CombinedMetricsChart = ({
         <CardHeader>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
+        <CardContent className="h-[400px] flex items-center justify-center">
           No data available
         </CardContent>
       </Card>
@@ -94,11 +93,6 @@ const CombinedMetricsChart = ({
 
   console.log(`CombinedMetricsChart: Processed data length: ${processedData.length}`);
 
-  // Handle modal opening with appropriate data
-  const handleOpenModal = () => {
-    setModalOpen(true);
-  };
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -106,41 +100,30 @@ const CombinedMetricsChart = ({
           <CardTitle>{title}</CardTitle>
           <div className="flex items-center space-x-2">
             {chartToggleComponent && (
-              <div className="mr-4">{chartToggleComponent}</div>
+              <div>{chartToggleComponent}</div>
             )}
-            <span 
-              className="cursor-pointer text-gray-500 hover:text-gray-700"
-              onClick={handleOpenModal}
-            >
-              <Eye className="h-5 w-5" />
-            </span>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs
-          defaultValue="display"
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="display">Display Metrics</TabsTrigger>
-            <TabsTrigger value="attribution">Attribution Metrics</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="display" className="h-[300px]">
+        <div className="h-[400px]">
+          {activeTab === "display" ? (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={processedData}>
-                <XAxis dataKey="date" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }}
+                />
                 <YAxis 
                   yAxisId="left"
                   tickFormatter={formatImpressions}
+                  tick={{ fontSize: 10 }}
                 />
                 <YAxis 
                   yAxisId="right"
                   orientation="right"
                   tickFormatter={formatClicks}
+                  tick={{ fontSize: 10 }}
                 />
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <Tooltip 
@@ -177,20 +160,23 @@ const CombinedMetricsChart = ({
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </TabsContent>
-          
-          <TabsContent value="attribution" className="h-[300px]">
+          ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={processedData}>
-                <XAxis dataKey="date" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10 }}
+                />
                 <YAxis 
                   yAxisId="left"
                   tickFormatter={formatTransactions}
+                  tick={{ fontSize: 10 }}
                 />
                 <YAxis 
                   yAxisId="right"
                   orientation="right"
                   tickFormatter={formatRevenue}
+                  tick={{ fontSize: 10 }}
                 />
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <Tooltip 
@@ -211,15 +197,15 @@ const CombinedMetricsChart = ({
                 <Line
                   type="monotone"
                   dataKey="TRANSACTIONS"
-                  stroke="#8b5cf6"
+                  stroke="#ef4444"
                   strokeWidth={2}
                   yAxisId="left"
                   name="Transactions"
-                  dot={{ r: 1 }}
+                  dot={false}
                 />
                 <Bar
                   dataKey="REVENUE"
-                  fill="#ef4444"
+                  fill="#8b5cf6"
                   yAxisId="right"
                   name="Revenue"
                   barSize={20}
@@ -227,22 +213,22 @@ const CombinedMetricsChart = ({
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
         
-        {/* Modal for expanded view */}
+        {/* Modal for expanded view (hidden as per requirement) */}
         <SparkChartModal
           open={modalOpen}
           onOpenChange={setModalOpen}
           title={activeTab === "display" ? "Display Metrics Over Time" : "Attribution Metrics Over Time"}
           data={processedData}
           dataKey={activeTab === "display" ? "CLICKS" : "TRANSACTIONS"}
-          color={activeTab === "display" ? "#f59e0b" : "#8b5cf6"}
+          color={activeTab === "display" ? "#f59e0b" : "#ef4444"}
           gradientId={activeTab === "display" ? "impressions-clicks" : "transactions-revenue"}
           chartType="composed"
           showBar={true}
           barDataKey={activeTab === "display" ? "IMPRESSIONS" : "REVENUE"}
-          barColor={activeTab === "display" ? "#4ade80" : "#ef4444"}
+          barColor={activeTab === "display" ? "#4ade80" : "#8b5cf6"}
           valueFormatter={activeTab === "display" 
             ? (value) => formatClicks(value)
             : (value) => formatTransactions(value)
