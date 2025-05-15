@@ -60,7 +60,10 @@ const DashboardProxy = (props: DashboardProxyProps) => {
   // Create a DateView component for the date/day toggle
   const DateViewToggle = () => (
     <div className="mr-4">
-      <Tabs value={viewByDate ? "date" : "day"} onValueChange={(val) => setViewByDate(val === "date")}>
+      <Tabs value={viewByDate ? "date" : "day"} onValueChange={(val) => {
+        console.log(`DashboardProxy: Date view changed to ${val}, setting viewByDate to ${val === "date"}`);
+        setViewByDate(val === "date");
+      }}>
         <TabsList className="h-8">
           <TabsTrigger value="date" className="text-xs px-2">
             <Calendar className="h-3.5 w-3.5 mr-1" />

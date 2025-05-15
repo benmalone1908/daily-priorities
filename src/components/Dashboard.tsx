@@ -1061,7 +1061,7 @@ const Dashboard = ({
 
   // Prepare combined data for CombinedMetricsChart component
   const combinedChartData = useMemo(() => {
-    // Use either metrics or revenue data based on active tab
+    // Use either metrics or revenue data based on active tab, respecting the current view modes
     return activeTab === "display" ? processedMetricsData : processedRevenueData;
   }, [activeTab, processedMetricsData, processedRevenueData]);
 
