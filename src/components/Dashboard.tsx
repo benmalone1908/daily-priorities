@@ -270,8 +270,10 @@ const Dashboard = ({
   const [comparisonPeriod, setComparisonPeriod] = useState<ComparisonPeriod>("7");
   const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
   const [showAnomalySection, setShowAnomalySection] = useState<boolean>(false);
-  const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>("date");
-  const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>("date");
+  
+  // Set up metrics and revenue view modes based on parent viewByDate
+  const [metricsViewMode, setMetricsViewMode] = useState<ChartViewMode>(viewByDate ? "date" : "dayOfWeek");
+  const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>(viewByDate ? "date" : "dayOfWeek");
   
   // Add anomalies mock data or empty state
   const [anomalies, setAnomalies] = useState<any>({
@@ -281,6 +283,14 @@ const Dashboard = ({
   });
   
   const renderCountRef = useRef(0);
+  
+  // Add effect to sync local view modes with parent viewByDate prop
+  useEffect(() => {
+    const newViewMode = viewByDate ? "date" : "dayOfWeek";
+    setMetricsViewMode(newViewMode);
+    setRevenueViewMode(newViewMode);
+    console.log(`Dashboard: viewByDate prop changed to ${viewByDate}, setting view modes to ${newViewMode}`);
+  }, [viewByDate]);
   
   useEffect(() => {
     renderCountRef.current += 1;
@@ -1035,13 +1045,15 @@ const Dashboard = ({
   // Add effect to sync internal state with activeTab prop
   useEffect(() => {
     if (activeTab === "attribution") {
-      setRevenueViewMode(revenueViewMode);
+      setMetricsViewMode(viewByDate ? "date" : "dayOfWeek");
+      setRevenueViewMode(viewByDate ? "date" : "dayOfWeek");
     } else {
-      setMetricsViewMode(metricsViewMode);
+      setMetricsViewMode(viewByDate ? "date" : "dayOfWeek");
+      setRevenueViewMode(viewByDate ? "date" : "dayOfWeek");
     }
-  }, [activeTab]);
+  }, [activeTab, viewByDate]);
 
-  // Update the metrics view mode handler to also call onChartTabChange if provided
+  // Update the metrics view mode handler to respect the parent viewByDate
   const handleMetricsViewModeChange = (value: ChartViewMode) => {
     if (!value) return;
     setMetricsViewMode(value);
@@ -1050,7 +1062,7 @@ const Dashboard = ({
     }
   };
 
-  // Update the revenue view mode handler to also call onChartTabChange if provided
+  // Update the revenue view mode handler to respect the parent viewByDate
   const handleRevenueViewModeChange = (value: ChartViewMode) => {
     if (!value) return;
     setRevenueViewMode(value);
@@ -1127,7 +1139,7 @@ const Dashboard = ({
       {!(hideCharts.includes("metricsChart") && hideCharts.includes("revenueChart")) && (
         <CombinedMetricsChart 
           data={combinedChartData}
-          title="Metrics Over Time"
+          title="Campaign Performance" // Changed from "Metrics Over Time" to "Campaign Performance"
           chartToggleComponent={chartToggleComponent}
           onTabChange={handleCombinedChartTabChange}
           initialTab={activeTab}

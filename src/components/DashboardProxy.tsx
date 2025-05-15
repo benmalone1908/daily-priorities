@@ -89,6 +89,11 @@ const DashboardProxy = (props: DashboardProxyProps) => {
     </div>
   );
   
+  // Make sure the view mode changes are applied
+  useEffect(() => {
+    console.log(`DashboardProxy: viewByDate changed to ${viewByDate}`);
+  }, [viewByDate]);
+  
   return (
     <div className="relative">
       <Dashboard
@@ -123,7 +128,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         hideCharts={props.hideCharts}
         chartToggleComponent={chartToggle}
         activeTab={activeTab}
-        onChartTabChange={() => {}} // We're not using tabs anymore, so this is empty
+        onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
       />
     </div>
