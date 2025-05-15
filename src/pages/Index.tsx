@@ -658,10 +658,7 @@ const DashboardContent = ({
           
           {/* Chart section with toggle instead of tabs */}
           <div className="mt-6 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Campaign Performance2</h3>
-            </div>
-            
+                       
             <DashboardWrapper 
               data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
               metricsData={globalFilteredData}
