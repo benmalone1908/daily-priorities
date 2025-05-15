@@ -686,8 +686,8 @@ const DashboardContent = ({
                   onMetricsAgenciesChange={() => {}}
                   // Flag to indicate we're using global filters
                   useGlobalFilters={true}
-                  // Hide the revenue chart in display tab
-                  hideCharts={["revenue"]}
+                  // Updated: Use the correct chart name to hide in display tab
+                  hideCharts={["revenueChart"]}
                 />
               </TabsContent>
               
@@ -713,8 +713,8 @@ const DashboardContent = ({
                   onMetricsAgenciesChange={() => {}}
                   // Flag to indicate we're using global filters
                   useGlobalFilters={true}
-                  // Hide the metrics chart in attribution tab
-                  hideCharts={["metrics"]}
+                  // Updated: Use the correct chart name to hide in attribution tab
+                  hideCharts={["metricsChart"]}
                 />
               </TabsContent>
             </Tabs>
