@@ -46,15 +46,19 @@ const DashboardProxy = (props: DashboardProxyProps) => {
   const [isAttributionChart, setIsAttributionChart] = useState(false);
   const [activeTab, setActiveTab] = useState("display");
 
-  // Sync the toggle with the active tab
-  useEffect(() => {
-    setIsAttributionChart(activeTab === "attribution");
-  }, [activeTab]);
-
-  // Handle toggle changes
+  // Enhanced toggle handler that properly updates both the toggle state and active tab
   const handleToggleChange = (value: boolean) => {
     setIsAttributionChart(value);
-    setActiveTab(value ? "attribution" : "display");
+    const newTab = value ? "attribution" : "display";
+    setActiveTab(newTab);
+    console.log(`Toggle changed to ${value}, setting activeTab to ${newTab}`);
+  };
+
+  // Handle tab changes from the Dashboard component and sync with toggle
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setIsAttributionChart(tab === "attribution");
+    console.log(`Tab changed to ${tab}, setting isAttributionChart to ${tab === "attribution"}`);
   };
 
   // Create our own chart toggle component with the proper state
@@ -108,8 +112,8 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         hideCharts={props.hideCharts}
         // Pass our chart toggle and current tab to Dashboard
         chartToggleComponent={chartToggle}
-        activeTab={activeTab} // Changed from activeChartTab to activeTab to match the Dashboard.tsx interface
-        onChartTabChange={setActiveTab}
+        activeTab={activeTab}
+        onChartTabChange={handleTabChange}
       />
     </div>
   );

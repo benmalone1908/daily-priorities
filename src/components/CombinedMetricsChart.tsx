@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -42,8 +42,18 @@ const CombinedMetricsChart = ({
   const formatTransactions = (value: number) => formatNumber(value);
   const formatRevenue = (value: number) => `$${formatNumber(value)}`;
 
+  // Effect to sync with initialTab prop changes
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    console.log(`CombinedMetricsChart: Tab changed to ${value}`);
+    
+    // Notify parent component about tab change
     if (onTabChange) {
       onTabChange(value);
     }
