@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -648,6 +649,11 @@ const DashboardContent = ({
         onCampaignsChange={handleCampaignsChange}
       />
       
+      {/* Moved AggregatedSparkCharts here so it appears on both tabs */}
+      <AggregatedSparkCharts 
+        data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
+      />
+      
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard" className="mt-0">
           <DashboardWrapper 
@@ -674,9 +680,7 @@ const DashboardContent = ({
           />
         </TabsContent>
         <TabsContent value="sparks" className="mt-0">
-          <AggregatedSparkCharts 
-            data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
-          />
+          {/* Removed AggregatedSparkCharts from here since it's now in the universal header */}
           <CampaignSparkCharts 
             data={globalFilteredData} 
             dateRange={dateRange}
