@@ -1,9 +1,16 @@
 
 import { toast as sonnerToast } from "sonner";
-// Import useToast from shadcn's toast implementation, not from Radix UI directly
-import { type ToasterToast } from "@/components/ui/toast";
 
-// Create a simple useToast implementation that matches the expected interface
+// Define the ToasterToast type directly in this file
+export interface ToasterToast {
+  id?: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  variant?: "default" | "destructive";
+}
+
+// Create a simple useToast implementation
 export const useToast = () => {
   return {
     toasts: [] as ToasterToast[],
