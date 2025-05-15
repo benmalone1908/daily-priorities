@@ -30,19 +30,8 @@ const GlobalFilters = ({
 
   return (
     <div className="py-[5px] bg-muted/30 rounded-md">
-      <div 
-        className="flex items-center justify-end p-3 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="text-sm text-muted-foreground">
-          {selectedAgencies.length > 0 && `${selectedAgencies.length} agencies • `}
-          {selectedAdvertisers.length > 0 && `${selectedAdvertisers.length} advertisers • `}
-          {selectedCampaigns.length > 0 && `${selectedCampaigns.length} campaigns`}
-        </div>
-      </div>
-      
       {isExpanded && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 pt-1 border-t">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
           <div>
             <div className="text-xs text-muted-foreground mb-1">Agency</div>
             <MultiSelect
