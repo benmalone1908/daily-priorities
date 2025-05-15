@@ -635,20 +635,20 @@ const DashboardContent = ({
         </div>
       </div>
       
-      {/* Removed redundant date range summary that was here */}
-      
-      {/* Global filters that apply to all charts */}
-      <GlobalFilters
-        agencyOptions={agencyOptions}
-        advertiserOptions={advertiserOptions}
-        campaignOptions={campaignOptions}
-        selectedAgencies={selectedAgencies}
-        selectedAdvertisers={selectedAdvertisers}
-        selectedCampaigns={selectedCampaigns}
-        onAgenciesChange={handleAgenciesChange}
-        onAdvertisersChange={handleAdvertisersChange}
-        onCampaignsChange={handleCampaignsChange}
-      />
+      {/* Global filters section with specific spacing */}
+      <div className="py-[10px]">
+        <GlobalFilters
+          agencyOptions={agencyOptions}
+          advertiserOptions={advertiserOptions}
+          campaignOptions={campaignOptions}
+          selectedAgencies={selectedAgencies}
+          selectedAdvertisers={selectedAdvertisers}
+          selectedCampaigns={selectedCampaigns}
+          onAgenciesChange={handleAgenciesChange}
+          onAdvertisersChange={handleAdvertisersChange}
+          onCampaignsChange={handleCampaignsChange}
+        />
+      </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard">
@@ -808,7 +808,7 @@ const Index = () => {
 
   return (
     <CampaignFilterProvider>
-      <div className="container py-8 space-y-8">
+      <div className="container py-8">
         {data.length === 0 ? (
           <>
             <div className="space-y-2 text-center animate-fade-in">
