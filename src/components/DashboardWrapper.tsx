@@ -28,6 +28,8 @@ interface DashboardWrapperProps {
   useGlobalFilters?: boolean;
   // Add prop to hide specific charts
   hideCharts?: string[];
+  // Add prop for the chart toggle component
+  chartToggleComponent?: React.ReactNode;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -276,7 +278,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return props.useGlobalFilters ? props.metricsData : props.data;
   }, [props.useGlobalFilters, props.metricsData, props.data]);
 
-  // Pass all props to Dashboard, including the useGlobalFilters flag and hideCharts
+  // Pass all props to Dashboard, including the useGlobalFilters flag, hideCharts, and chartToggleComponent
   return (
     <DashboardProxy
       data={props.data}
@@ -311,6 +313,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       useGlobalFilters={props.useGlobalFilters}
       // Pass the hideCharts prop to DashboardProxy
       hideCharts={props.hideCharts}
+      // Pass the chartToggleComponent prop to DashboardProxy
+      chartToggleComponent={props.chartToggleComponent}
     />
   );
 };
