@@ -48,17 +48,17 @@ const DashboardProxy = (props: DashboardProxyProps) => {
 
   // Enhanced toggle handler that properly updates both the toggle state and active tab
   const handleToggleChange = (value: boolean) => {
+    console.log(`DashboardProxy: Toggle changed to ${value}, setting activeTab to ${value ? "attribution" : "display"}`);
     setIsAttributionChart(value);
     const newTab = value ? "attribution" : "display";
     setActiveTab(newTab);
-    console.log(`Toggle changed to ${value}, setting activeTab to ${newTab}`);
   };
 
   // Handle tab changes from the Dashboard component and sync with toggle
   const handleTabChange = (tab: string) => {
+    console.log(`DashboardProxy: Tab changed to ${tab}, setting isAttributionChart to ${tab === "attribution"}`);
     setActiveTab(tab);
     setIsAttributionChart(tab === "attribution");
-    console.log(`Tab changed to ${tab}, setting isAttributionChart to ${tab === "attribution"}`);
   };
 
   // Create our own chart toggle component with the proper state
@@ -81,21 +81,12 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         selectedRevenueAgencies={props.selectedRevenueAgencies}
         selectedMetricsAdvertisers={props.selectedMetricsAdvertisers}
         selectedMetricsAgencies={props.selectedMetricsAgencies}
-        onMetricsCampaignsChange={(selected) => {
-          console.log("DashboardProxy: Metrics campaigns changed:", selected);
-          props.onMetricsCampaignsChange(selected);
-        }}
+        onMetricsCampaignsChange={props.onMetricsCampaignsChange}
         onRevenueCampaignsChange={props.onRevenueCampaignsChange}
         onRevenueAdvertisersChange={props.onRevenueAdvertisersChange}
         onRevenueAgenciesChange={props.onRevenueAgenciesChange}
-        onMetricsAdvertisersChange={(selected) => {
-          console.log("DashboardProxy: Metrics advertisers changed:", selected);
-          props.onMetricsAdvertisersChange(selected);
-        }}
-        onMetricsAgenciesChange={(selected) => {
-          console.log("DashboardProxy: Metrics agencies changed:", selected);
-          props.onMetricsAgenciesChange(selected);
-        }}
+        onMetricsAdvertisersChange={props.onMetricsAdvertisersChange}
+        onMetricsAgenciesChange={props.onMetricsAgenciesChange}
         sortedCampaignOptions={props.sortedCampaignOptions}
         sortedAdvertiserOptions={props.sortedAdvertiserOptions}
         sortedAgencyOptions={props.sortedAgencyOptions}
@@ -110,7 +101,6 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
         useGlobalFilters={props.useGlobalFilters}
         hideCharts={props.hideCharts}
-        // Pass our chart toggle and current tab to Dashboard
         chartToggleComponent={chartToggle}
         activeTab={activeTab}
         onChartTabChange={handleTabChange}

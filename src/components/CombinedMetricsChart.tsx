@@ -13,10 +13,9 @@ import {
   Tooltip, 
   Legend 
 } from "recharts";
-import { Maximize } from "lucide-react";
+import { Eye } from "lucide-react";
 import SparkChartModal from "./SparkChartModal";
 import { formatNumber } from "@/lib/utils";
-import { ChartToggle } from "./ChartToggle";
 
 interface CombinedMetricsChartProps {
   data: any[];
@@ -35,6 +34,8 @@ const CombinedMetricsChart = ({
 }: CombinedMetricsChartProps) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  
+  console.log(`CombinedMetricsChart: Rendering with data length: ${data?.length}, activeTab: ${activeTab}, initialTab: ${initialTab}`);
   
   // Format functions for different metrics
   const formatImpressions = (value: number) => formatNumber(value);
@@ -91,6 +92,8 @@ const CombinedMetricsChart = ({
       }
     });
 
+  console.log(`CombinedMetricsChart: Processed data length: ${processedData.length}`);
+
   // Handle modal opening with appropriate data
   const handleOpenModal = () => {
     setModalOpen(true);
@@ -109,7 +112,7 @@ const CombinedMetricsChart = ({
               className="cursor-pointer text-gray-500 hover:text-gray-700"
               onClick={handleOpenModal}
             >
-              <Maximize className="h-5 w-5" />
+              <Eye className="h-5 w-5" />
             </span>
           </div>
         </div>
