@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
 import CombinedMetricsChart from "./CombinedMetricsChart";
 import { ChartToggle } from "./ChartToggle";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { CalendarDays, Calendar } from "lucide-react";
 
 // Define props interface to match Dashboard component
 interface DashboardProxyProps {
@@ -45,6 +47,7 @@ interface DashboardProxyProps {
 const DashboardProxy = (props: DashboardProxyProps) => {
   const [isAttributionChart, setIsAttributionChart] = useState(false);
   const [activeTab, setActiveTab] = useState("display");
+  const [viewByDate, setViewByDate] = useState(true);
 
   // Enhanced toggle handler that properly updates both the toggle state and active tab
   const handleToggleChange = (value: boolean) => {
@@ -53,13 +56,34 @@ const DashboardProxy = (props: DashboardProxyProps) => {
     const newTab = value ? "attribution" : "display";
     setActiveTab(newTab);
   };
+  
+  // Create a DateView component for the date/day toggle
+  const DateViewToggle = () => (
+    <div className="mr-4">
+      <Tabs value={viewByDate ? "date" : "day"} onValueChange={(val) => setViewByDate(val === "date")}>
+        <TabsList className="h-8">
+          <TabsTrigger value="date" className="text-xs px-2">
+            <Calendar className="h-3.5 w-3.5 mr-1" />
+            Date
+          </TabsTrigger>
+          <TabsTrigger value="day" className="text-xs px-2">
+            <CalendarDays className="h-3.5 w-3.5 mr-1" />
+            Day of Week
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </div>
+  );
 
   // Create our own chart toggle component with the proper state
   const chartToggle = (
-    <ChartToggle 
-      isAttributionChart={isAttributionChart} 
-      setIsAttributionChart={handleToggleChange} 
-    />
+    <div className="flex items-center">
+      <DateViewToggle />
+      <ChartToggle 
+        isAttributionChart={isAttributionChart} 
+        setIsAttributionChart={handleToggleChange} 
+      />
+    </div>
   );
   
   return (
@@ -97,6 +121,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         chartToggleComponent={chartToggle}
         activeTab={activeTab}
         onChartTabChange={() => {}} // We're not using tabs anymore, so this is empty
+        viewByDate={viewByDate}
       />
     </div>
   );
