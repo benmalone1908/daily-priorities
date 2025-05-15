@@ -635,8 +635,8 @@ const DashboardContent = ({
         </div>
       </div>
       
-      {/* Global filters section with specific spacing */}
-      <div className="py-[10px]">
+      {/* Global filters section with reduced spacing */}
+      <div className="py-[3px]">
         <GlobalFilters
           agencyOptions={agencyOptions}
           advertiserOptions={advertiserOptions}
