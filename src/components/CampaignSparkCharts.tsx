@@ -575,6 +575,68 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters }: CampaignSpar
   if (chartData.length === 0) {
     return (
       <div className="space-y-4">
+        {!useGlobalFilters && (
+          <div className="flex justify-between items-center gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">View by:</span>
+              <Select
+                value={viewMode}
+                onValueChange={(value: ViewMode) => setViewMode(value)}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Select view" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="campaign">Campaign</SelectItem>
+                  <SelectItem value="advertiser">Advertiser</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+              
+              <div className="flex items-center gap-2">
+                <MultiSelect
+                  options={agencyOptions}
+                  selected={selectedAgencies}
+                  onChange={setSelectedAgencies}
+                  placeholder="Agency"
+                  className="w-[180px]"
+                />
+                
+                <MultiSelect
+                  options={advertiserOptions}
+                  selected={selectedAdvertisers}
+                  onChange={setSelectedAdvertisers}
+                  placeholder="Advertiser"
+                  className="w-[180px]"
+                />
+                
+                <MultiSelect
+                  options={campaignOptions}
+                  selected={selectedCampaigns}
+                  onChange={setSelectedCampaigns}
+                  placeholder="Campaign"
+                  className="w-[180px]"
+                  popoverClassName="w-[400px]"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="text-center py-20 bg-muted/30 rounded-lg">
+          <p className="text-muted-foreground">No data available for the selected date range</p>
+          <p className="text-sm text-muted-foreground mt-2">Try adjusting the date filter or campaign selection</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {!useGlobalFilters && (
         <div className="flex justify-between items-center gap-4 mb-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">View by:</span>
@@ -623,65 +685,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters }: CampaignSpar
             </div>
           </div>
         </div>
-        
-        <div className="text-center py-20 bg-muted/30 rounded-lg">
-          <p className="text-muted-foreground">No data available for the selected date range</p>
-          <p className="text-sm text-muted-foreground mt-2">Try adjusting the date filter or campaign selection</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">View by:</span>
-          <Select
-            value={viewMode}
-            onValueChange={(value: ViewMode) => setViewMode(value)}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Select view" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="campaign">Campaign</SelectItem>
-              <SelectItem value="advertiser">Advertiser</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-          
-          <div className="flex items-center gap-2">
-            <MultiSelect
-              options={agencyOptions}
-              selected={selectedAgencies}
-              onChange={setSelectedAgencies}
-              placeholder="Agency"
-              className="w-[180px]"
-            />
-            
-            <MultiSelect
-              options={advertiserOptions}
-              selected={selectedAdvertisers}
-              onChange={setSelectedAdvertisers}
-              placeholder="Advertiser"
-              className="w-[180px]"
-            />
-            
-            <MultiSelect
-              options={campaignOptions}
-              selected={selectedCampaigns}
-              onChange={setSelectedCampaigns}
-              placeholder="Campaign"
-              className="w-[180px]"
-              popoverClassName="w-[400px]"
-            />
-          </div>
-        </div>
-      </div>
+      )}
       
       {chartData.map((item) => {
         const impressionsId = `impressions-${getSafeId(item.name)}`;
