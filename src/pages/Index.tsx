@@ -361,6 +361,7 @@ const DashboardContent = ({
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeChartTab, setActiveChartTab] = useState("display");
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
@@ -653,30 +654,71 @@ const DashboardContent = ({
           <AggregatedSparkCharts 
             data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
           />
-          <DashboardWrapper 
-            data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
-            metricsData={globalFilteredData}
-            revenueData={globalFilteredData}
-            // Pass empty arrays for individual chart filters since we're using global filters now
-            selectedMetricsCampaigns={[]}
-            selectedRevenueCampaigns={[]}
-            selectedRevenueAdvertisers={[]}
-            selectedRevenueAgencies={[]}
-            onMetricsCampaignsChange={() => {}}
-            onRevenueCampaignsChange={() => {}}
-            onRevenueAdvertisersChange={() => {}}
-            onRevenueAgenciesChange={() => {}}
-            selectedWeeklyCampaigns={[]}
-            onWeeklyCampaignsChange={() => {}}
-            selectedMetricsAdvertisers={[]}
-            selectedMetricsAgencies={[]}
-            onMetricsAdvertisersChange={() => {}}
-            onMetricsAgenciesChange={() => {}}
-            // Flag to indicate we're using global filters
-            useGlobalFilters={true}
-            // Explicitly set hideCharts to an empty array to show all original charts
-            hideCharts={[]}
-          />
+          
+          {/* New tabbed interface for existing charts */}
+          <div className="mt-6 mb-4">
+            <h3 className="text-lg font-semibold mb-4">Campaign Performance</h3>
+            <Tabs value={activeChartTab} onValueChange={setActiveChartTab} className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="display">Display Metrics</TabsTrigger>
+                <TabsTrigger value="attribution">Attribution Revenue</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="display" className="mt-0">
+                <DashboardWrapper 
+                  data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
+                  metricsData={globalFilteredData}
+                  revenueData={globalFilteredData}
+                  // Pass empty arrays for individual chart filters since we're using global filters now
+                  selectedMetricsCampaigns={[]}
+                  selectedRevenueCampaigns={[]}
+                  selectedRevenueAdvertisers={[]}
+                  selectedRevenueAgencies={[]}
+                  onMetricsCampaignsChange={() => {}}
+                  onRevenueCampaignsChange={() => {}}
+                  onRevenueAdvertisersChange={() => {}}
+                  onRevenueAgenciesChange={() => {}}
+                  selectedWeeklyCampaigns={[]}
+                  onWeeklyCampaignsChange={() => {}}
+                  selectedMetricsAdvertisers={[]}
+                  selectedMetricsAgencies={[]}
+                  onMetricsAdvertisersChange={() => {}}
+                  onMetricsAgenciesChange={() => {}}
+                  // Flag to indicate we're using global filters
+                  useGlobalFilters={true}
+                  // Hide the revenue chart in display tab
+                  hideCharts={["revenue"]}
+                />
+              </TabsContent>
+              
+              <TabsContent value="attribution" className="mt-0">
+                <DashboardWrapper 
+                  data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
+                  metricsData={globalFilteredData}
+                  revenueData={globalFilteredData}
+                  // Pass empty arrays for individual chart filters since we're using global filters now
+                  selectedMetricsCampaigns={[]}
+                  selectedRevenueCampaigns={[]}
+                  selectedRevenueAdvertisers={[]}
+                  selectedRevenueAgencies={[]}
+                  onMetricsCampaignsChange={() => {}}
+                  onRevenueCampaignsChange={() => {}}
+                  onRevenueAdvertisersChange={() => {}}
+                  onRevenueAgenciesChange={() => {}}
+                  selectedWeeklyCampaigns={[]}
+                  onWeeklyCampaignsChange={() => {}}
+                  selectedMetricsAdvertisers={[]}
+                  selectedMetricsAgencies={[]}
+                  onMetricsAdvertisersChange={() => {}}
+                  onMetricsAgenciesChange={() => {}}
+                  // Flag to indicate we're using global filters
+                  useGlobalFilters={true}
+                  // Hide the metrics chart in attribution tab
+                  hideCharts={["metrics"]}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
         
         <TabsContent value="sparks" className="mt-0">
