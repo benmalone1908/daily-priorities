@@ -1139,7 +1139,7 @@ const Dashboard = ({
       {!(hideCharts.includes("metricsChart") && hideCharts.includes("revenueChart")) && (
         <CombinedMetricsChart 
           data={combinedChartData}
-          title="Campaign Performance" // Changed from "Metrics Over Time" to "Campaign Performance"
+          title="Campaign Performance"
           chartToggleComponent={chartToggleComponent}
           onTabChange={handleCombinedChartTabChange}
           initialTab={activeTab}
@@ -1257,6 +1257,7 @@ const Dashboard = ({
         </Card>
       )}
 
+      {/* Weekly comparison section */}
       <Card className="p-6">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">

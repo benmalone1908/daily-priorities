@@ -75,23 +75,27 @@ const CombinedMetricsChart = ({
 
   // Process data to ensure we have all required fields
   const processedData = data
-    .filter(item => item && item.DATE && item.DATE !== 'Totals')
+    .filter(item => item && (item.DATE || item.DAY_OF_WEEK)) // Allow both DATE and DAY_OF_WEEK as valid keys
     .map(item => ({
-      date: item.DATE,
+      date: item.DATE || item.DAY_OF_WEEK, // Use DAY_OF_WEEK if DATE is not available
       IMPRESSIONS: Number(item.IMPRESSIONS || 0),
       CLICKS: Number(item.CLICKS || 0),
       TRANSACTIONS: Number(item.TRANSACTIONS || 0),
       REVENUE: Number(item.REVENUE || 0),
-    }))
-    .sort((a, b) => {
-      try {
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      } catch (e) {
-        return 0;
-      }
-    });
+    }));
 
-  console.log(`CombinedMetricsChart: Processed data length: ${processedData.length}`);
+  // Only sort if we're dealing with dates, not days of week
+  const sortedData = processedData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
+    ? processedData.sort((a, b) => {
+        try {
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        } catch (e) {
+          return 0;
+        }
+      })
+    : processedData; // For day of week, maintain original order
+
+  console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}`);
 
   return (
     <Card className="w-full">
@@ -109,7 +113,7 @@ const CombinedMetricsChart = ({
         <div className="h-[400px]">
           {activeTab === "display" ? (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={processedData}>
+              <ComposedChart data={sortedData}>
                 <XAxis 
                   dataKey="date" 
                   tick={{ fontSize: 10 }}
@@ -162,7 +166,7 @@ const CombinedMetricsChart = ({
             </ResponsiveContainer>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={processedData}>
+              <ComposedChart data={sortedData}>
                 <XAxis 
                   dataKey="date" 
                   tick={{ fontSize: 10 }}
@@ -221,7 +225,7 @@ const CombinedMetricsChart = ({
           open={modalOpen}
           onOpenChange={setModalOpen}
           title={activeTab === "display" ? "Display Metrics Over Time" : "Attribution Metrics Over Time"}
-          data={processedData}
+          data={sortedData}
           dataKey={activeTab === "display" ? "CLICKS" : "TRANSACTIONS"}
           color={activeTab === "display" ? "#f59e0b" : "#ef4444"}
           gradientId={activeTab === "display" ? "impressions-clicks" : "transactions-revenue"}
