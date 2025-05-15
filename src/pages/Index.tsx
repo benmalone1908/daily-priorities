@@ -674,8 +674,7 @@ const DashboardContent = ({
             onMetricsAgenciesChange={() => {}}
             // Flag to indicate we're using global filters
             useGlobalFilters={true}
-            // Update: Remove the hideCharts property to show all charts including the combined metrics chart
-            // or explicitly set it to an empty array
+            // Explicitly set hideCharts to an empty array to show all original charts
             hideCharts={[]}
           />
         </TabsContent>
