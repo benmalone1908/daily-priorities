@@ -32,6 +32,8 @@ interface DashboardProxyProps {
   onWeeklyCampaignsChange: (selected: string[]) => void;
   // Add useGlobalFilters prop to match what's being passed in DashboardWrapper
   useGlobalFilters?: boolean;
+  // Add prop to hide specific charts
+  hideCharts?: string[];
 }
 
 // Wrapper component for passing props to Dashboard
@@ -78,6 +80,8 @@ const DashboardProxy = (props: DashboardProxyProps) => {
       onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
       // Pass useGlobalFilters to Dashboard component
       useGlobalFilters={props.useGlobalFilters}
+      // Pass hideCharts prop to Dashboard component
+      hideCharts={props.hideCharts}
     />
   );
 };

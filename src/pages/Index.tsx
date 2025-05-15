@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -257,7 +256,8 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
       <div className="flex items-center mb-4">
         <h3 className="text-lg font-semibold">All Campaigns</h3>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Updated to use two rows of three charts */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {renderMetricCard(
           "Impressions", 
           totals.impressions, 
@@ -429,7 +429,6 @@ const DashboardContent = ({
   const filteredData = getFilteredData();
   
   const filteredDataByLiveStatus = useMemo(() => {
-    // ... keep existing code (filteredDataByLiveStatus logic)
     if (!showLiveOnly) return filteredData;
 
     const mostRecentDate = getMostRecentDate();
@@ -465,7 +464,6 @@ const DashboardContent = ({
     return liveData;
   }, [filteredData, showLiveOnly, isTestCampaign]);
 
-  // Get filtered data by global filters
   const getFilteredDataByGlobalFilters = () => {
     let filtered = filteredDataByLiveStatus;
     
@@ -495,7 +493,6 @@ const DashboardContent = ({
   const globalFilteredData = useMemo(() => getFilteredDataByGlobalFilters(), 
     [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAdvertiserName, extractAgencyInfo]);
 
-  // Prepare the filter options
   const agencyOptions = useMemo(() => {
     const agencies = new Set<string>();
     
@@ -582,7 +579,6 @@ const DashboardContent = ({
       }));
   }, [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, extractAdvertiserName, extractAgencyInfo, isTestCampaign]);
 
-  // Handle filter changes
   const handleAgenciesChange = (selected: string[]) => {
     setSelectedAgencies(selected);
     // Clear dependent filters when parent filter changes
@@ -649,13 +645,14 @@ const DashboardContent = ({
         onCampaignsChange={handleCampaignsChange}
       />
       
-      {/* Moved AggregatedSparkCharts here so it appears on both tabs */}
-      <AggregatedSparkCharts 
-        data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
-      />
+      {/* Removed the AggregatedSparkCharts from here */}
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="dashboard" className="mt-0">
+          {/* Moved AggregatedSparkCharts to Dashboard tab */}
+          <AggregatedSparkCharts 
+            data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
+          />
           <DashboardWrapper 
             data={showLiveOnly ? filteredDataByLiveStatus : filteredData}
             metricsData={globalFilteredData}
@@ -677,10 +674,11 @@ const DashboardContent = ({
             onMetricsAgenciesChange={() => {}}
             // Flag to indicate we're using global filters
             useGlobalFilters={true}
+            // Add the hideCharts prop to hide specific charts
+            hideCharts={["metricsChart", "revenueChart"]}
           />
         </TabsContent>
         <TabsContent value="sparks" className="mt-0">
-          {/* Removed AggregatedSparkCharts from here since it's now in the universal header */}
           <CampaignSparkCharts 
             data={globalFilteredData} 
             dateRange={dateRange}
