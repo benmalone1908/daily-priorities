@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -388,7 +389,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           <TableHeader>
             <TableRow className="text-xs">
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[25%]"
+                className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[40%]"
                 onClick={() => handleSort("CAMPAIGN ORDER NAME")}
               >
                 Campaign Name
@@ -399,7 +400,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               {view === "daily" && (
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[9.375%]"
+                  className="cursor-pointer hover:bg-muted/50 py-1 px-1 text-right"
                   onClick={() => handleSort("DATE")}
                 >
                   Date
@@ -410,7 +411,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               )}
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("IMPRESSIONS")}
               >
                 Impressions
@@ -420,7 +421,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("CLICKS")}
               >
                 Clicks
@@ -430,7 +431,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("CTR")}
               >
                 CTR
@@ -440,7 +441,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("TRANSACTIONS")}
               >
                 Transactions
@@ -450,7 +451,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("REVENUE")}
               >
                 Revenue
@@ -460,7 +461,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1"
                 onClick={() => handleSort("SPEND")}
               >
                 Spend
@@ -470,7 +471,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 w-[9.375%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-1 pr-3"
                 onClick={() => handleSort("ROAS")}
               >
                 ROAS
@@ -498,7 +499,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
                   <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "REVENUE")}</TableCell>
                   <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "SPEND")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "ROAS")}</TableCell>
+                  <TableCell className="text-right py-1 px-1 pr-3">{formatColumnValue(row, "ROAS")}</TableCell>
                 </TableRow>
               ))
             ) : (
@@ -543,3 +544,4 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
 };
 
 export default RawDataTable;
+
