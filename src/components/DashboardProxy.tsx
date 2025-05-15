@@ -34,6 +34,8 @@ interface DashboardProxyProps {
   useGlobalFilters?: boolean;
   // Add prop to hide specific charts - we're passing this through to Dashboard
   hideCharts?: string[];
+  // Add prop for chart toggle component that we want to pass to Dashboard
+  chartToggleComponent?: React.ReactNode;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -82,6 +84,8 @@ const DashboardProxy = (props: DashboardProxyProps) => {
       useGlobalFilters={props.useGlobalFilters}
       // Pass hideCharts prop to Dashboard component
       hideCharts={props.hideCharts}
+      // Pass chartToggleComponent prop to Dashboard component
+      chartToggleComponent={props.chartToggleComponent}
     />
   );
 };
