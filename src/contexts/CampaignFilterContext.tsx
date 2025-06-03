@@ -54,6 +54,8 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
   const extractAgencyInfo = (campaignName: string): { agency: string, abbreviation: string } => {
     if (!campaignName) return { agency: "", abbreviation: "" };
     
+    console.log(`Extracting agency from: "${campaignName}"`);
+    
     // Special case for the campaigns with Partner-PRP or PRP-Pend Oreille
     if (campaignName.includes('2001943:Partner-PRP') || campaignName.includes('2001943: PRP-Pend Oreille')) {
       return { agency: 'Propaganda Creative', abbreviation: 'PRP' };
@@ -66,6 +68,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       if (awaitingIOMatch && awaitingIOMatch[1]) {
         const abbreviation = awaitingIOMatch[1].trim();
         const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+        console.log(`Awaiting IO format: "${campaignName}" -> Agency: "${agency}", Abbreviation: "${abbreviation}"`);
         return { agency, abbreviation };
       }
     }
@@ -73,15 +76,18 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     // Special case for campaigns starting with numeric IDs and containing WWX-
     // (e.g., "2001863: WWX-Client Name" or "2001864-WWX-Client Name")
     if (campaignName.match(/^\d+:?\s*WWX-/) || campaignName.includes('-WWX-')) {
+      console.log(`WWX format: "${campaignName}" -> Agency: "Wunderworx", Abbreviation: "WWX"`);
       return { agency: 'Wunderworx', abbreviation: 'WWX' };
     }
     
-    // Handle campaign names with slashes in the IO number
+    // Handle campaign names with slashes in the IO number - FIXED LOGIC
     // Format like "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404"
+    // The key fix: look for the pattern after the colon, not before it
     const slashFormatMatch = campaignName.match(/^\d+\/\d+:\s*([^:]+):/);
     if (slashFormatMatch && slashFormatMatch[1]) {
       const abbreviation = slashFormatMatch[1].trim();
       const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+      console.log(`Slash format: "${campaignName}" -> Agency: "${agency}", Abbreviation: "${abbreviation}"`);
       return { agency, abbreviation };
     }
     
@@ -95,6 +101,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       // Look up the full agency name from the mapping
       const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
       
+      console.log(`Standard format: "${campaignName}" -> Agency: "${agency}", Abbreviation: "${abbreviation}"`);
       return { agency, abbreviation };
     }
     
@@ -103,9 +110,11 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     if (originalAgencyMatch && originalAgencyMatch[1]) {
       const abbreviation = originalAgencyMatch[1].trim();
       const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
+      console.log(`Fallback format: "${campaignName}" -> Agency: "${agency}", Abbreviation: "${abbreviation}"`);
       return { agency, abbreviation };
     }
     
+    console.log(`No match found for: "${campaignName}"`);
     return { agency: "", abbreviation: "" };
   };
 
@@ -173,68 +182,16 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
 
   // Log some test cases for debugging
   useEffect(() => {
-    console.log("Testing advertiser extraction with special cases and multiple agency prefixes:");
-    const testCases = [
-      "2001367: HRB: District Cannabis-241217",
-      "SM: Sol Flower-Tucson Foothills-241030",
-      "SM: Sol Flower-Tempe University-241030",
-      "SM: ABC Company-Campaign Name-123456",
-      "SM: XYZ Inc - With Space - 987654",
-      "2RS: Agency Name-Campaign Details-123",
-      "6D: Digital Marketing-Summer Promo-456",
-      "BLO: Big Agency-Fall Campaign-789",
-      "FLD: Field Agency-Retail Push-101",
-      "HD: Heavy Digital-Brand Awareness-112",
-      "HG: Higher Ground-New Product-131",
-      "HRB: Herbal Co-Seasonal-415",
-      "MJ: Major Media-Product Launch-617",
-      "NLMC: Northern Lights-Holiday Special-718",
-      "NP: North Point-Black Friday-819",
-      "PRP: Purple Rain-Winter Sale-920",
-      "TF: Top Flight-Spring Collection-1021",
-      "TRN: Turn Key-Summer Festival-1122",
-      "W&T: White & Teal-Fashion Week-1223",
-      "WWX: Worldwide Express-Global Campaign-1324",
-      "SM: Something Else",
-      "This doesn't match any pattern"
-    ];
-    
-    testCases.forEach(test => {
-      const result = extractAdvertiserName(test);
-      const agencyInfo = extractAgencyInfo(test);
-      const isTest = isTestCampaign(test);
-      console.log(`Test: "${test}" -> Advertiser: "${result}", Agency: "${agencyInfo.agency}", Abbreviation: "${agencyInfo.abbreviation}", Is Test Campaign: ${isTest}`);
-    });
-    
-    // Test our specific problem cases
-    console.log("\nTesting special problem cases:");
+    console.log("Testing agency extraction with problematic cases:");
     const problemCases = [
-      "2001216/2001505: NLMC: Strawberry Fields-Pueblo North-250411",
+      "2001569/2001963: MJ: Test Client-Campaign Name-250501",
       "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404",
-      "2001943:Partner-PRP-Pend Oreille Spokane DIS-250416",
-      "2001943: PRP-Pend Oreille CTV-250415",
-      "Awaiting IO: MJ: Test Client-Campaign Name-250501",
-      "2001863: WWX-Some Client-250514", // New WWX case with colon
-      "2001864-WWX-Another Client-250514"  // New WWX case with hyphen
+      "2001216/2001505: NLMC: Strawberry Fields-Pueblo North-250411",
     ];
     
     problemCases.forEach(test => {
       const agencyInfo = extractAgencyInfo(test);
       console.log(`Problem case: "${test}" -> Agency: "${agencyInfo.agency}", Abbreviation: "${agencyInfo.abbreviation}"`);
-    });
-    
-    // Test some test/demo/draft cases
-    const testCampaignCases = [
-      "SM: Agency-Test Campaign-123",
-      "2RS: Company-DEMO Campaign-456",
-      "MJ: Client-dRaFt Version-789",
-      "Regular Campaign Name",
-    ];
-    
-    console.log("\nTesting test/demo/draft detection:");
-    testCampaignCases.forEach(test => {
-      const isTest = isTestCampaign(test);
-      console.log(`"${test}" is test campaign: ${isTest}`);
     });
   }, []);
 
