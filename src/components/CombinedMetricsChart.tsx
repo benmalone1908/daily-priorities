@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -100,8 +99,8 @@ const CombinedMetricsChart = ({
 
   console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}, isDayOfWeekData: ${isDayOfWeekData}`);
 
-  // Calculate bar size based on data type - significantly larger for day of week data to fill the chart
-  const barSize = isDayOfWeekData ? 120 : 20; // Much wider bars for day of week data
+  // Calculate bar size based on data type - make bars wider for better visibility
+  const barSize = isDayOfWeekData ? 120 : 60; // Increased from 20 to 60 for regular data
 
   return (
     <Card className="w-full">
