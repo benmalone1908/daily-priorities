@@ -100,7 +100,7 @@ const CombinedMetricsChart = ({
   console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}, isDayOfWeekData: ${isDayOfWeekData}`);
 
   // Calculate bar size based on data type - make bars wider for better visibility
-  const barSize = isDayOfWeekData ? 120 : 60; // Increased from 20 to 60 for regular data
+  const barSize = isDayOfWeekData ? 120 : 80; // Increased from 60 to 80 for regular data
 
   return (
     <Card className="w-full">
