@@ -165,7 +165,7 @@ const CombinedMetricsChart = ({
                   strokeWidth={2}
                   yAxisId="right"
                   name="Clicks"
-                  dot={{ r: 1 }}
+                  dot={false}
                 />
               </ComposedChart>
             </ResponsiveContainer>
