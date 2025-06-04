@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define the agency mapping
@@ -80,10 +79,11 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       return { agency: 'Wunderworx', abbreviation: 'WWX' };
     }
     
-    // Handle campaign names with slashes in the IO number - FIXED LOGIC
+    // Handle campaign names with slashes in the IO number - UPDATED REGEX TO HANDLE SPACES
     // Format like "2001567/2001103: MJ: Mankind Dispensary-Concerts/Gamers-250404"
-    // The key fix: look for the pattern after the colon, not before it
-    const slashFormatMatch = campaignName.match(/^\d+\/\d+:\s*([^:]+):/);
+    // OR "2001569 / 2001963: MJ: Test Client-Campaign Name-250501" (with spaces around slash)
+    // The key fix: look for the pattern after the colon, not before it, and handle optional spaces around slash
+    const slashFormatMatch = campaignName.match(/^\d+\s*\/\s*\d+:\s*([^:]+):/);
     if (slashFormatMatch && slashFormatMatch[1]) {
       const abbreviation = slashFormatMatch[1].trim();
       const agency = AGENCY_MAPPING[abbreviation] || abbreviation;
