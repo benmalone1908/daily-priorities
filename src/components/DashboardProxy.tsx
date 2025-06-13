@@ -5,7 +5,6 @@ import CombinedMetricsChart from "./CombinedMetricsChart";
 import { ChartToggle } from "./ChartToggle";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { CalendarDays, Calendar } from "lucide-react";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 // Define props interface to match Dashboard component
 interface DashboardProxyProps {
@@ -49,19 +48,6 @@ const DashboardProxy = (props: DashboardProxyProps) => {
   const [isAttributionChart, setIsAttributionChart] = useState(false);
   const [activeTab, setActiveTab] = useState("display");
   const [viewByDate, setViewByDate] = useState(true);
-  
-  // Extract context values to pass as props
-  const { 
-    showLiveOnly, 
-    setShowLiveOnly,
-    showAggregatedSparkCharts,
-    setShowAggregatedSparkCharts,
-    showDebugInfo,
-    setShowDebugInfo,
-    extractAdvertiserName,
-    extractAgencyInfo,
-    isTestCampaign
-  } = useCampaignFilter();
 
   // Enhanced toggle handler that properly updates both the toggle state and active tab
   const handleToggleChange = (value: boolean) => {
@@ -145,16 +131,6 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
         hideChartTitle={true} // Add this prop to hide the redundant "Campaign Performance" title
-        // Pass context values as props instead of letting Dashboard call useCampaignFilter
-        showLiveOnly={showLiveOnly}
-        setShowLiveOnly={setShowLiveOnly}
-        showAggregatedSparkCharts={showAggregatedSparkCharts}
-        setShowAggregatedSparkCharts={setShowAggregatedSparkCharts}
-        showDebugInfo={showDebugInfo}
-        setShowDebugInfo={setShowDebugInfo}
-        extractAdvertiserName={extractAdvertiserName}
-        extractAgencyInfo={extractAgencyInfo}
-        isTestCampaign={isTestCampaign}
       />
     </div>
   );
