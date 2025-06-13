@@ -35,11 +35,8 @@ interface DashboardProxyProps {
   advertiserToCampaignsMap: Record<string, Set<string>>;
   selectedWeeklyCampaigns: string[];
   onWeeklyCampaignsChange: (selected: string[]) => void;
-  // Add useGlobalFilters prop to match what's being passed in DashboardWrapper
   useGlobalFilters?: boolean;
-  // Add prop to hide specific charts - we're passing this through to Dashboard
   hideCharts?: string[];
-  // Add prop for chart toggle component that we want to pass to Dashboard
   chartToggleComponent?: React.ReactNode;
 }
 
@@ -130,7 +127,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         activeTab={activeTab}
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
-        hideChartTitle={true} // Add this prop to hide the redundant "Campaign Performance" title
+        hideChartTitle={true}
       />
     </div>
   );
