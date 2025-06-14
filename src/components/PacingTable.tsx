@@ -10,18 +10,41 @@ interface PacingTableProps {
 
 const PacingTable = ({ data }: PacingTableProps) => {
   const processedData = useMemo(() => {
-    return data.map(row => {
+    console.log("Processing pacing data:", data);
+    
+    return data.map((row, index) => {
+      // Debug: log the first few rows to see column names and values
+      if (index < 3) {
+        console.log(`Row ${index + 1} keys:`, Object.keys(row));
+        console.log(`Row ${index + 1} data:`, row);
+      }
+      
       // Get campaign name from various possible column names
       const campaign = row.Campaign || row.CAMPAIGN || row["CAMPAIGN ORDER NAME"] || "";
       
-      // Get pacing metrics
-      const daysIntoFlight = Number(row["Days into Flight"] || row["DAYS INTO FLIGHT"]) || 0;
-      const daysLeft = Number(row["Days Left"] || row["DAYS LEFT"]) || 0;
-      const expectedImps = Number(row["Expected Imps"] || row["EXPECTED IMPS"]) || 0;
-      const actualImps = Number(row["Actual Imps"] || row["ACTUAL IMPS"]) || 0;
-      const impsLeft = Number(row["Imps Left"] || row["IMPS LEFT"]) || 0;
-      const impsYesterday = Number(row["Imps Yesterday"] || row["IMPS YESTERDAY"]) || 0;
-      const dailyAvgLeft = Number(row["Daily Avg Left"] || row["DAILY AVG LEFT"]) || 0;
+      // Get pacing metrics - add more flexible column name matching
+      const daysIntoFlightRaw = row["Days into Flight"] || row["DAYS INTO FLIGHT"] || row["Days Into Flight"] || row["DAYS_INTO_FLIGHT"] || "";
+      const daysLeftRaw = row["Days Left"] || row["DAYS LEFT"] || row["DAYS_LEFT"] || "";
+      const expectedImpsRaw = row["Expected Imps"] || row["EXPECTED IMPS"] || row["EXPECTED_IMPS"] || "";
+      const actualImpsRaw = row["Actual Imps"] || row["ACTUAL IMPS"] || row["ACTUAL_IMPS"] || "";
+      const impsLeftRaw = row["Imps Left"] || row["IMPS LEFT"] || row["IMPS_LEFT"] || "";
+      const impsYesterdayRaw = row["Imps Yesterday"] || row["IMPS YESTERDAY"] || row["IMPS_YESTERDAY"] || "";
+      const dailyAvgLeftRaw = row["Daily Avg Left"] || row["DAILY AVG LEFT"] || row["DAILY_AVG_LEFT"] || "";
+      
+      // Debug: log the raw values for the first few rows
+      if (index < 3) {
+        console.log(`Row ${index + 1} Days into Flight raw:`, daysIntoFlightRaw);
+        console.log(`Row ${index + 1} Days Left raw:`, daysLeftRaw);
+      }
+      
+      // Convert to numbers
+      const daysIntoFlight = Number(daysIntoFlightRaw) || 0;
+      const daysLeft = Number(daysLeftRaw) || 0;
+      const expectedImps = Number(expectedImpsRaw) || 0;
+      const actualImps = Number(actualImpsRaw) || 0;
+      const impsLeft = Number(impsLeftRaw) || 0;
+      const impsYesterday = Number(impsYesterdayRaw) || 0;
+      const dailyAvgLeft = Number(dailyAvgLeftRaw) || 0;
       
       // Calculate delivery rate
       const deliveryRate = expectedImps > 0 ? (actualImps / expectedImps) * 100 : 0;
