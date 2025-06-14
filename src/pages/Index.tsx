@@ -5,13 +5,14 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine, FileText } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText, Target, Plus } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { ChartToggle } from "@/components/ChartToggle";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
@@ -19,6 +20,9 @@ import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
 import RawDataTable from "@/components/RawDataTable";
+import PacingFileUpload from "@/components/PacingFileUpload";
+import PacingTable from "@/components/PacingTable";
+import PacingMetrics from "@/components/PacingMetrics";
 
 type MetricType = 
   | "impressions" 
@@ -350,12 +354,16 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
 
 const DashboardContent = ({ 
   data, 
+  pacingData,
   dateRange, 
-  onDateRangeChange 
+  onDateRangeChange,
+  onPacingDataLoaded
 }: { 
   data: any[]; 
+  pacingData: any[];
   dateRange: DateRange | undefined; 
-  onDateRangeChange: (range: DateRange | undefined) => void; 
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  onPacingDataLoaded: (data: any[]) => void;
 }) => {
   // Global filters state - used across all charts
   const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
@@ -363,6 +371,7 @@ const DashboardContent = ({
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAttributionChart, setIsAttributionChart] = useState(false);
+  const [showPacingUpload, setShowPacingUpload] = useState(false);
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
@@ -518,7 +527,6 @@ const DashboardContent = ({
   const advertiserOptions = useMemo(() => {
     const advertisers = new Set<string>();
     
-    // Apply agency filter first if selected
     let filteredByAgency = filteredDataByLiveStatus;
     if (selectedAgencies.length > 0) {
       filteredByAgency = filteredDataByLiveStatus.filter(row => {
@@ -608,11 +616,22 @@ const DashboardContent = ({
           </div>
           
           <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               <CampaignStatusToggle />
+              {pacingData.length === 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPacingUpload(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Pacing Data
+                </Button>
+              )}
             </div>
             <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="dashboard">
                   <LayoutDashboard className="mr-2" size={16} />
                   Dashboard
@@ -621,6 +640,12 @@ const DashboardContent = ({
                   <ChartLine className="mr-2" size={16} />
                   Trends
                 </TabsTrigger>
+                {pacingData.length > 0 && (
+                  <TabsTrigger value="pacing">
+                    <Target className="mr-2" size={16} />
+                    Pacing
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="raw-data">
                   <FileText className="mr-2" size={16} />
                   Raw Data
@@ -702,6 +727,15 @@ const DashboardContent = ({
           />
         </TabsContent>
         
+        {pacingData.length > 0 && (
+          <TabsContent value="pacing" className="mt-0">
+            <div className="mb-4 animate-fade-in">
+              <PacingMetrics data={pacingData} />
+              <PacingTable data={pacingData} />
+            </div>
+          </TabsContent>
+        )}
+        
         <TabsContent value="raw-data" className="mt-0">
           {/* Raw Data tab content */}
           <div className="mb-4 animate-fade-in">
@@ -713,12 +747,20 @@ const DashboardContent = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Pacing file upload dialog */}
+      <PacingFileUpload
+        isOpen={showPacingUpload}
+        onClose={() => setShowPacingUpload(false)}
+        onDataLoaded={onPacingDataLoaded}
+      />
     </>
   );
 };
 
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
+  const [pacingData, setPacingData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
@@ -833,6 +875,22 @@ const Index = () => {
     }
   };
 
+  const handlePacingDataLoaded = (uploadedPacingData: any[]) => {
+    try {
+      if (!Array.isArray(uploadedPacingData) || uploadedPacingData.length === 0) {
+        toast.error("Invalid pacing data format received");
+        return;
+      }
+
+      console.log(`Loaded ${uploadedPacingData.length} rows of pacing data`);
+      setPacingData(uploadedPacingData);
+      toast.success(`Successfully loaded ${uploadedPacingData.length} campaigns of pacing data`);
+    } catch (error) {
+      console.error("Error processing pacing data:", error);
+      toast.error("Failed to process the pacing data");
+    }
+  };
+
   return (
     <CampaignFilterProvider>
       <div className="container py-8">
@@ -848,14 +906,19 @@ const Index = () => {
             </div>
 
             <div className="max-w-2xl mx-auto">
-              <FileUpload onDataLoaded={handleDataLoaded} />
+              <FileUpload 
+                onDataLoaded={handleDataLoaded} 
+                onPacingDataLoaded={handlePacingDataLoaded}
+              />
             </div>
           </>
         ) : (
           <DashboardContent 
             data={data} 
+            pacingData={pacingData}
             dateRange={dateRange} 
-            onDateRangeChange={setDateRange} 
+            onDateRangeChange={setDateRange}
+            onPacingDataLoaded={handlePacingDataLoaded}
           />
         )}
       </div>

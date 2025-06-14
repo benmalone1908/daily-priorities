@@ -5,13 +5,19 @@ import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { normalizeDate, logDateDetails, parseDateString } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
+import { Button } from "./ui/button";
+import PacingFileUpload from "./PacingFileUpload";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
+  onPacingDataLoaded?: (data: any[]) => void;
 }
 
-const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
+const FileUpload = ({ onDataLoaded, onPacingDataLoaded }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [showPacingPrompt, setShowPacingPrompt] = useState(false);
+  const [showPacingUpload, setShowPacingUpload] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -31,14 +37,12 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               
               console.log("CSV parse results:", results);
               
-              // Ensure headers are provided and properly formatted
               const headers = results.data[0] as string[];
               if (!Array.isArray(headers) || headers.length === 0) {
                 toast.error("Invalid or missing headers in CSV");
                 return;
               }
               
-              // Required headers from the CSV
               const requiredHeaders = [
                 "DATE",
                 "CAMPAIGN ORDER NAME",
@@ -49,7 +53,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 "SPEND"
               ];
 
-              // Convert headers to uppercase for case-insensitive comparison
               const upperHeaders = headers.map(header => String(header).toUpperCase());
               
               const missingHeaders = requiredHeaders.filter(
@@ -61,13 +64,11 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 return;
               }
 
-              // Map header indices for quicker access
               const headerIndexMap = headers.reduce((map, header, index) => {
                 map[header.toUpperCase()] = index;
                 return map;
               }, {} as Record<string, number>);
 
-              // Process the data to ensure numerical values are properly parsed
               const processedData = results.data.slice(1).map((row, rowIndex) => {
                 if (!Array.isArray(row)) {
                   console.warn(`Row ${rowIndex + 1} is not an array:`, row);
@@ -79,7 +80,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                   return null;
                 }
                 
-                // Check if row has any content
                 if (row.every(cell => cell === null || cell === undefined || cell === "")) {
                   console.warn(`Row ${rowIndex + 1} is empty`);
                   return null;
@@ -87,7 +87,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 
                 const processed: Record<string, any> = {};
                 
-                // Process each header
                 headers.forEach((header, index) => {
                   const value = row[index];
                   
@@ -96,24 +95,20 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                       const dateStr = String(value).trim();
                       console.log(`Processing date from CSV row ${rowIndex + 1}: ${dateStr}`);
                       
-                      // Keep original date format
                       processed[header] = dateStr;
                       
-                      // Validate the date can be parsed
                       const parsedDate = parseDateString(dateStr);
                       if (!parsedDate) {
                         console.warn(`Invalid date in row ${rowIndex + 1}: "${dateStr}"`);
                         return null;
                       }
                       
-                      // Log successful date processing
                       console.log(`Successfully processed date in row ${rowIndex + 1}: ${dateStr} -> ${parsedDate.toISOString()}`);
                     } catch (e) {
                       console.error(`Error parsing date in row ${rowIndex + 1}:`, e);
                       return null;
                     }
                   } 
-                  // Convert numerical fields to numbers
                   else if (["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].includes(header.toUpperCase())) {
                     processed[header] = Number(value) || 0;
                   } 
@@ -132,7 +127,6 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
 
               console.log(`Processed ${processedData.length} valid rows`);
               
-              // Log date statistics after processing
               const dates = processedData
                 .map(row => row.DATE)
                 .filter(Boolean)
@@ -143,31 +137,25 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
                 console.log(`Total unique dates: ${new Set(dates).size}`);
               }
               
-              // Count data by date
               const dateCounts: Record<string, number> = {};
               processedData.forEach(row => {
                 const date = row.DATE;
                 dateCounts[date] = (dateCounts[date] || 0) + 1;
               });
               
-              // Log count of rows per date
               console.log("Rows per date:", dateCounts);
               
-              // Focus on most recent date to check for issues
               if (dates.length > 0) {
                 const mostRecentDate = dates[dates.length - 1];
                 console.log(`Most recent date: ${mostRecentDate}, rows: ${dateCounts[mostRecentDate]}`);
                 
-                // Log a sample of rows from the most recent date
                 const recentDateRows = processedData.filter(row => row.DATE === mostRecentDate);
                 console.log(`Sample rows from ${mostRecentDate} (${recentDateRows.length} total):`, 
                   recentDateRows.slice(0, 5));
               }
               
-              // Sort data by date (ascending) for consistency
               processedData.sort((a, b) => {
                 try {
-                  // Use our safe date parsing to ensure consistent comparison
                   const dateA = parseDateString(a.DATE);
                   const dateB = parseDateString(b.DATE);
                   
@@ -185,6 +173,11 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
               
               onDataLoaded(processedData);
               toast.success(`Successfully loaded ${processedData.length} rows from ${file.name}`);
+              
+              // Show pacing prompt after successful upload
+              if (onPacingDataLoaded) {
+                setShowPacingPrompt(true);
+              }
             } catch (err) {
               console.error("Error processing CSV data:", err);
               toast.error("Error processing CSV data. Check console for details.");
@@ -203,7 +196,7 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
         toast.error("Failed to parse CSV file");
       }
     }
-  }, [onDataLoaded]);
+  }, [onDataLoaded, onPacingDataLoaded]);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
@@ -215,32 +208,79 @@ const FileUpload = ({ onDataLoaded }: FileUploadProps) => {
     onDragLeave: () => setIsDragging(false),
   });
 
+  const handlePacingPromptYes = () => {
+    setShowPacingPrompt(false);
+    setShowPacingUpload(true);
+  };
+
+  const handlePacingPromptNo = () => {
+    setShowPacingPrompt(false);
+  };
+
+  const handlePacingDataLoaded = (pacingData: any[]) => {
+    if (onPacingDataLoaded) {
+      onPacingDataLoaded(pacingData);
+    }
+    setShowPacingUpload(false);
+  };
+
   return (
-    <div
-      {...getRootProps()}
-      className={`relative flex flex-col items-center justify-center w-full p-12 transition-all duration-300 border-2 border-dashed rounded-lg cursor-pointer bg-background/50 backdrop-blur-sm ${
-        isDragging
-          ? "border-primary/50 bg-primary/5"
-          : "border-border hover:border-primary/30 hover:bg-accent/5"
-      }`}
-    >
-      <input {...getInputProps()} />
-      <div className="flex flex-col items-center space-y-4 text-center animate-fade-in">
-        <div className="p-4 rounded-full bg-primary/5">
-          <Upload className="w-8 h-8 text-primary/50" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Upload your campaign data</h3>
-          <p className="text-sm text-muted-foreground">
-            Drag and drop your CSV file here, or click to browse
-          </p>
-        </div>
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-          <FileText className="w-4 h-4" />
-          <span>Accepts CSV files only</span>
+    <>
+      <div
+        {...getRootProps()}
+        className={`relative flex flex-col items-center justify-center w-full p-12 transition-all duration-300 border-2 border-dashed rounded-lg cursor-pointer bg-background/50 backdrop-blur-sm ${
+          isDragging
+            ? "border-primary/50 bg-primary/5"
+            : "border-border hover:border-primary/30 hover:bg-accent/5"
+        }`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center space-y-4 text-center animate-fade-in">
+          <div className="p-4 rounded-full bg-primary/5">
+            <Upload className="w-8 h-8 text-primary/50" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Upload your campaign data</h3>
+            <p className="text-sm text-muted-foreground">
+              Drag and drop your CSV file here, or click to browse
+            </p>
+          </div>
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <FileText className="w-4 h-4" />
+            <span>Accepts CSV files only</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Pacing upload prompt dialog */}
+      <Dialog open={showPacingPrompt} onOpenChange={setShowPacingPrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Pacing Data?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Would you like to upload pacing data as well? This will enable campaign pacing analysis with delivery rates and performance tracking.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handlePacingPromptNo}>
+              Skip for now
+            </Button>
+            <Button onClick={handlePacingPromptYes}>
+              Upload Pacing Data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pacing file upload dialog */}
+      <PacingFileUpload
+        isOpen={showPacingUpload}
+        onClose={() => setShowPacingUpload(false)}
+        onDataLoaded={handlePacingDataLoaded}
+      />
+    </>
   );
 };
 
