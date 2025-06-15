@@ -355,12 +355,14 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
 const DashboardContent = ({ 
   data, 
   pacingData,
+  contractTermsData,
   dateRange, 
   onDateRangeChange,
   onPacingDataLoaded
 }: { 
   data: any[]; 
   pacingData: any[];
+  contractTermsData: any[];
   dateRange: DateRange | undefined; 
   onDateRangeChange: (range: DateRange | undefined) => void;
   onPacingDataLoaded: (data: any[]) => void;
@@ -761,6 +763,7 @@ const DashboardContent = ({
 const Index = () => {
   const [data, setData] = useState<any[]>([]);
   const [pacingData, setPacingData] = useState<any[]>([]);
+  const [contractTermsData, setContractTermsData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
@@ -891,6 +894,22 @@ const Index = () => {
     }
   };
 
+  const handleContractTermsLoaded = (uploadedContractTermsData: any[]) => {
+    try {
+      if (!Array.isArray(uploadedContractTermsData) || uploadedContractTermsData.length === 0) {
+        toast.error("Invalid contract terms data format received");
+        return;
+      }
+
+      console.log(`Loaded ${uploadedContractTermsData.length} rows of contract terms data`);
+      setContractTermsData(uploadedContractTermsData);
+      toast.success(`Successfully loaded ${uploadedContractTermsData.length} contract terms`);
+    } catch (error) {
+      console.error("Error processing contract terms data:", error);
+      toast.error("Failed to process the contract terms data");
+    }
+  };
+
   return (
     <CampaignFilterProvider>
       <div className="container py-8">
@@ -905,10 +924,11 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <FileUpload 
                 onDataLoaded={handleDataLoaded} 
                 onPacingDataLoaded={handlePacingDataLoaded}
+                onContractTermsLoaded={handleContractTermsLoaded}
               />
             </div>
           </>
@@ -916,6 +936,7 @@ const Index = () => {
           <DashboardContent 
             data={data} 
             pacingData={pacingData}
+            contractTermsData={contractTermsData}
             dateRange={dateRange} 
             onDateRangeChange={setDateRange}
             onPacingDataLoaded={handlePacingDataLoaded}

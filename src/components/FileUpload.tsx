@@ -1,23 +1,20 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { normalizeDate, logDateDetails, parseDateString } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
-import { Button } from "./ui/button";
-import PacingFileUpload from "./PacingFileUpload";
+import PacingFileUploadSimple from "./PacingFileUploadSimple";
+import ContractTermsFileUpload from "./ContractTermsFileUpload";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
   onPacingDataLoaded?: (data: any[]) => void;
+  onContractTermsLoaded?: (data: any[]) => void;
 }
 
-const FileUpload = ({ onDataLoaded, onPacingDataLoaded }: FileUploadProps) => {
+const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [showPacingPrompt, setShowPacingPrompt] = useState(false);
-  const [showPacingUpload, setShowPacingUpload] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -196,7 +193,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded }: FileUploadProps) => {
         toast.error("Failed to parse CSV file");
       }
     }
-  }, [onDataLoaded, onPacingDataLoaded]);
+  }, [onDataLoaded]);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
@@ -208,79 +205,72 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded }: FileUploadProps) => {
     onDragLeave: () => setIsDragging(false),
   });
 
-  const handlePacingPromptYes = () => {
-    setShowPacingPrompt(false);
-    setShowPacingUpload(true);
-  };
-
-  const handlePacingPromptNo = () => {
-    setShowPacingPrompt(false);
-  };
-
   const handlePacingDataLoaded = (pacingData: any[]) => {
     if (onPacingDataLoaded) {
       onPacingDataLoaded(pacingData);
     }
-    setShowPacingUpload(false);
+  };
+
+  const handleContractTermsLoaded = (contractTermsData: any[]) => {
+    if (onContractTermsLoaded) {
+      onContractTermsLoaded(contractTermsData);
+    }
   };
 
   return (
-    <>
-      <div
-        {...getRootProps()}
-        className={`relative flex flex-col items-center justify-center w-full p-12 transition-all duration-300 border-2 border-dashed rounded-lg cursor-pointer bg-background/50 backdrop-blur-sm ${
-          isDragging
-            ? "border-primary/50 bg-primary/5"
-            : "border-border hover:border-primary/30 hover:bg-accent/5"
-        }`}
-      >
-        <input {...getInputProps()} />
-        <div className="flex flex-col items-center space-y-4 text-center animate-fade-in">
-          <div className="p-4 rounded-full bg-primary/5">
-            <Upload className="w-8 h-8 text-primary/50" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Upload your campaign data</h3>
-            <p className="text-sm text-muted-foreground">
-              Drag and drop your CSV file here, or click to browse
-            </p>
-          </div>
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <FileText className="w-4 h-4" />
-            <span>Accepts CSV files only</span>
+    <div className="space-y-6">
+      {/* Campaign Data Upload - Required */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Campaign Data (Required)</h2>
+        <div
+          {...getRootProps()}
+          className={`relative flex flex-col items-center justify-center w-full p-12 transition-all duration-300 border-2 border-dashed rounded-lg cursor-pointer bg-background/50 backdrop-blur-sm ${
+            isDragging
+              ? "border-primary/50 bg-primary/5"
+              : "border-border hover:border-primary/30 hover:bg-accent/5"
+          }`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center space-y-4 text-center animate-fade-in">
+            <div className="p-4 rounded-full bg-primary/5">
+              <Upload className="w-8 h-8 text-primary/50" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Upload your campaign data</h3>
+              <p className="text-sm text-muted-foreground">
+                Drag and drop your CSV file here, or click to browse
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Required: Date, Campaign Order Name, Impressions, Clicks, Transactions, Revenue, Spend
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <FileText className="w-4 h-4" />
+              <span>Accepts CSV files only</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Pacing upload prompt dialog */}
-      <Dialog open={showPacingPrompt} onOpenChange={setShowPacingPrompt}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Pacing Data?</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              Would you like to upload pacing data as well? This will enable campaign pacing analysis with delivery rates and performance tracking.
-            </p>
+      {/* Optional uploads section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Pacing Data Upload - Optional */}
+        {onPacingDataLoaded && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Pacing Data</h2>
+            <PacingFileUploadSimple onDataLoaded={handlePacingDataLoaded} />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handlePacingPromptNo}>
-              Skip for now
-            </Button>
-            <Button onClick={handlePacingPromptYes}>
-              Upload Pacing Data
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* Pacing file upload dialog */}
-      <PacingFileUpload
-        isOpen={showPacingUpload}
-        onClose={() => setShowPacingUpload(false)}
-        onDataLoaded={handlePacingDataLoaded}
-      />
-    </>
+        {/* Contract Terms Upload - Optional */}
+        {onContractTermsLoaded && (
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Contract Terms</h2>
+            <ContractTermsFileUpload onDataLoaded={handleContractTermsLoaded} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
