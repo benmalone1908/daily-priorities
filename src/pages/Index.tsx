@@ -765,6 +765,7 @@ const Index = () => {
   const [pacingData, setPacingData] = useState<any[]>([]);
   const [contractTermsData, setContractTermsData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   useEffect(() => {
     if (data.length > 0) {
@@ -910,10 +911,18 @@ const Index = () => {
     }
   };
 
+  const handleProcessFiles = () => {
+    if (data.length === 0) {
+      toast.error("Please upload campaign data first");
+      return;
+    }
+    setShowDashboard(true);
+  };
+
   return (
     <CampaignFilterProvider>
       <div className="container py-8">
-        {data.length === 0 ? (
+        {!showDashboard ? (
           <>
             <div className="space-y-2 text-center animate-fade-in">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
@@ -929,6 +938,7 @@ const Index = () => {
                 onDataLoaded={handleDataLoaded} 
                 onPacingDataLoaded={handlePacingDataLoaded}
                 onContractTermsLoaded={handleContractTermsLoaded}
+                onProcessFiles={handleProcessFiles}
               />
             </div>
           </>

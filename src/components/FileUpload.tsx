@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
@@ -6,15 +7,20 @@ import Papa from "papaparse";
 import { normalizeDate, logDateDetails, parseDateString } from "@/lib/utils";
 import PacingFileUploadSimple from "./PacingFileUploadSimple";
 import ContractTermsFileUpload from "./ContractTermsFileUpload";
+import { Button } from "@/components/ui/button";
 
 interface FileUploadProps {
   onDataLoaded: (data: any[]) => void;
   onPacingDataLoaded?: (data: any[]) => void;
   onContractTermsLoaded?: (data: any[]) => void;
+  onProcessFiles: () => void;
 }
 
-const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }: FileUploadProps) => {
+const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, onProcessFiles }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [campaignDataUploaded, setCampaignDataUploaded] = useState(false);
+  const [pacingDataUploaded, setPacingDataUploaded] = useState(false);
+  const [contractTermsUploaded, setContractTermsUploaded] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -169,6 +175,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
               });
               
               onDataLoaded(processedData);
+              setCampaignDataUploaded(true);
               toast.success(`Successfully loaded ${processedData.length} rows from ${file.name}`);
             } catch (err) {
               console.error("Error processing CSV data:", err);
@@ -203,12 +210,14 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
   const handlePacingDataLoaded = (pacingData: any[]) => {
     if (onPacingDataLoaded) {
       onPacingDataLoaded(pacingData);
+      setPacingDataUploaded(true);
     }
   };
 
   const handleContractTermsLoaded = (contractTermsData: any[]) => {
     if (onContractTermsLoaded) {
       onContractTermsLoaded(contractTermsData);
+      setContractTermsUploaded(true);
     }
   };
 
@@ -220,7 +229,9 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
         <div
           {...getRootProps()}
           className={`relative flex flex-col items-center justify-center w-full p-12 transition-all duration-300 border-2 border-dashed rounded-lg cursor-pointer bg-background/50 backdrop-blur-sm ${
-            isDragging
+            campaignDataUploaded 
+              ? "border-green-500/50 bg-green-50/50"
+              : isDragging
               ? "border-primary/50 bg-primary/5"
               : "border-border hover:border-primary/30 hover:bg-accent/5"
           }`}
@@ -228,12 +239,17 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
           <input {...getInputProps()} />
           <div className="flex flex-col items-center space-y-4 text-center animate-fade-in">
             <div className="p-4 rounded-full bg-primary/5">
-              <Upload className="w-8 h-8 text-primary/50" />
+              <Upload className={`w-8 h-8 ${campaignDataUploaded ? 'text-green-500' : 'text-primary/50'}`} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Upload your campaign data</h3>
+              <h3 className="text-lg font-semibold">
+                {campaignDataUploaded ? "Campaign data uploaded ✓" : "Upload your campaign data"}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Drag and drop your CSV file here, or click to browse
+                {campaignDataUploaded 
+                  ? "Click to replace the current file" 
+                  : "Drag and drop your CSV file here, or click to browse"
+                }
               </p>
               <p className="text-xs text-muted-foreground">
                 Required: Date, Campaign Order Name, Impressions, Clicks, Transactions, Revenue, Spend
@@ -252,7 +268,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
         {/* Pacing Data Upload - Optional */}
         {onPacingDataLoaded && (
           <div>
-            <h2 className="text-xl font-semibold mb-4">Pacing Data</h2>
+            <h2 className="text-xl font-semibold mb-4">Pacing Data (Optional)</h2>
             <PacingFileUploadSimple onDataLoaded={handlePacingDataLoaded} />
           </div>
         )}
@@ -260,11 +276,24 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
         {/* Contract Terms Upload - Optional */}
         {onContractTermsLoaded && (
           <div>
-            <h2 className="text-xl font-semibold mb-4">Contract Terms</h2>
+            <h2 className="text-xl font-semibold mb-4">Contract Terms (Optional)</h2>
             <ContractTermsFileUpload onDataLoaded={handleContractTermsLoaded} />
           </div>
         )}
       </div>
+
+      {/* Process Files Button */}
+      {campaignDataUploaded && (
+        <div className="flex justify-center pt-6">
+          <Button 
+            onClick={onProcessFiles}
+            size="lg"
+            className="px-8 py-3 text-lg"
+          >
+            Process Files & View Dashboard
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
