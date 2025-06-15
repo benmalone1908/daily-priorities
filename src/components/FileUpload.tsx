@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
@@ -220,6 +219,8 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
       setContractTermsUploaded(true);
     }
   };
+
+  console.log("Render: campaignDataUploaded =", campaignDataUploaded);
 
   return (
     <div className="space-y-6">
