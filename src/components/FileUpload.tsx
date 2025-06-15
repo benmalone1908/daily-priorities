@@ -170,11 +170,6 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded }:
               
               onDataLoaded(processedData);
               toast.success(`Successfully loaded ${processedData.length} rows from ${file.name}`);
-              
-              // Show pacing prompt after successful upload
-              if (onPacingDataLoaded) {
-                setShowPacingPrompt(true);
-              }
             } catch (err) {
               console.error("Error processing CSV data:", err);
               toast.error("Error processing CSV data. Check console for details.");
