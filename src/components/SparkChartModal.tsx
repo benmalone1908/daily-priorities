@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Dialog,
@@ -446,7 +447,7 @@ const SparkChartModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
