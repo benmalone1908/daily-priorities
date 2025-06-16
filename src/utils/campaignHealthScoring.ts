@@ -436,18 +436,54 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
   if (isTargetCampaign) {
     console.log(`💰 [BUDGET TARGET] ✅ Found matching pacing row:`, campaignPacing);
     console.log(`💰 [BUDGET TARGET] Available fields in this row:`, Object.keys(campaignPacing));
+    
+    // Log all field values to see what we're working with
+    console.log(`💰 [BUDGET TARGET] All field values:`);
+    Object.entries(campaignPacing).forEach(([key, value]) => {
+      console.log(`💰 [BUDGET TARGET]   ${key}: ${value}`);
+    });
   }
   
-  // Try multiple possible budget field names
-  const possibleBudgetFields = ["Budget", "Total Budget", "budget", "BUDGET", "Campaign Budget"];
+  // Expand the search to include ALL fields that might contain budget information
+  const allFields = Object.keys(campaignPacing);
+  const possibleBudgetFields = [
+    "Budget", "Total Budget", "budget", "BUDGET", "Campaign Budget",
+    "Total Spend", "Max Spend", "Spend Limit", "Flight Budget",
+    "Order Value", "Contract Value", "Media Budget", "Total Value"
+  ];
+  
+  // Also search for any field that contains "budget", "spend", "value", or "limit"
+  const budgetRelatedFields = allFields.filter(field => {
+    const lowerField = field.toLowerCase();
+    return lowerField.includes('budget') || 
+           lowerField.includes('spend') || 
+           lowerField.includes('value') || 
+           lowerField.includes('limit') ||
+           lowerField.includes('total');
+  });
+  
+  // Combine explicit fields with discovered fields
+  const fieldsToTry = [...new Set([...possibleBudgetFields, ...budgetRelatedFields])];
+  
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET TARGET] Budget-related fields found:`, budgetRelatedFields);
+    console.log(`💰 [BUDGET TARGET] All fields to try:`, fieldsToTry);
+  }
+  
   let budget = 0;
   
-  for (const field of possibleBudgetFields) {
-    const value = Number(campaignPacing[field]);
-    if (value && value > 0) {
-      budget = value;
+  for (const field of fieldsToTry) {
+    const value = campaignPacing[field];
+    const numValue = Number(value);
+    
+    if (isTargetCampaign) {
+      console.log(`💰 [BUDGET TARGET] Trying field "${field}": raw="${value}", number=${numValue}, valid=${!isNaN(numValue) && numValue > 0}`);
+    }
+    
+    if (!isNaN(numValue) && numValue > 0) {
+      budget = numValue;
       if (isTargetCampaign) {
-        console.log(`💰 [BUDGET TARGET] Found budget in field "${field}": $${budget}`);
+        console.log(`💰 [BUDGET TARGET] ✅ Found budget in field "${field}": $${budget}`);
       }
       break;
     }
@@ -455,8 +491,26 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
   
   if (isTargetCampaign && budget === 0) {
     console.log(`💰 [BUDGET TARGET] ❌ NO BUDGET FOUND in any field!`);
-    console.log(`💰 [BUDGET TARGET] Tried fields:`, possibleBudgetFields);
-    console.log(`💰 [BUDGET TARGET] Row values:`, possibleBudgetFields.map(field => `${field}: ${campaignPacing[field]}`));
+    console.log(`💰 [BUDGET TARGET] Tried ${fieldsToTry.length} fields`);
+    
+    // As a last resort, try to find any numeric value that could be a budget (>= $1000)
+    const potentialBudgets = [];
+    Object.entries(campaignPacing).forEach(([key, value]) => {
+      const numValue = Number(value);
+      if (!isNaN(numValue) && numValue >= 1000 && numValue <= 100000) {
+        potentialBudgets.push({ field: key, value: numValue });
+      }
+    });
+    
+    if (potentialBudgets.length > 0) {
+      console.log(`💰 [BUDGET TARGET] Potential budget values found:`, potentialBudgets);
+      // Use the largest reasonable value as budget
+      const bestCandidate = potentialBudgets.reduce((max, current) => 
+        current.value > max.value ? current : max
+      );
+      budget = bestCandidate.value;
+      console.log(`💰 [BUDGET TARGET] 🎯 Using best candidate: $${budget} from field "${bestCandidate.field}"`);
+    }
   }
   
   const daysLeft = Number(campaignPacing["Days Left"]) || 0;
