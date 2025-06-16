@@ -38,6 +38,7 @@ interface DashboardProxyProps {
   useGlobalFilters?: boolean;
   hideCharts?: string[];
   chartToggleComponent?: React.ReactNode;
+  contractTermsData?: any[];
 }
 
 // Wrapper component for passing props to Dashboard
@@ -128,6 +129,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
         hideChartTitle={true}
+        contractTermsData={props.contractTermsData}
       />
     </div>
   );

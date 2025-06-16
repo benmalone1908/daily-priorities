@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
 import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
@@ -11,18 +10,24 @@ import { AlertTriangle } from "lucide-react";
 interface CampaignHealthTabProps {
   data: any[];
   pacingData?: any[];
+  contractTermsData?: any[];
 }
 
-const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) => {
+const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: CampaignHealthTabProps) => {
   const { isTestCampaign } = useCampaignFilter();
 
-  // Debug logging to see what pacing data we're receiving
+  // Debug logging to see what data we're receiving
   console.log("CampaignHealthTab: Received pacing data length:", pacingData.length);
+  console.log("CampaignHealthTab: Received contract terms data length:", contractTermsData.length);
   if (pacingData.length > 0) {
     console.log("CampaignHealthTab: Sample pacing data:", pacingData[0]);
     console.log("CampaignHealthTab: Available pacing campaigns:", 
       pacingData.map(row => row["Campaign"]).filter(Boolean).slice(0, 5)
     );
+  }
+  if (contractTermsData.length > 0) {
+    console.log("CampaignHealthTab: Sample contract terms data:", contractTermsData[0]);
+    console.log("CampaignHealthTab: Contract terms fields:", Object.keys(contractTermsData[0] || {}));
   }
 
   const { healthData, missingPacingCampaigns } = useMemo(() => {
@@ -35,6 +40,7 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
 
     console.log("CampaignHealthTab: Processing campaigns:", campaigns.slice(0, 3));
     console.log("CampaignHealthTab: Passing pacing data length:", pacingData.length);
+    console.log("CampaignHealthTab: Passing contract terms data length:", contractTermsData.length);
 
     // Get campaigns present in pacing data
     const pacingCampaigns = new Set(
@@ -44,16 +50,16 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
     // Find campaigns missing from pacing data
     const missingFromPacing = campaigns.filter(campaign => !pacingCampaigns.has(campaign));
 
-    // Calculate health score for each campaign
+    // Calculate health score for each campaign, now passing contractTermsData
     const healthScores = campaigns
-      .map(campaignName => calculateCampaignHealth(data, campaignName, pacingData))
+      .map(campaignName => calculateCampaignHealth(data, campaignName, pacingData, contractTermsData))
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
 
     return {
       healthData: healthScores,
       missingPacingCampaigns: missingFromPacing
     };
-  }, [data, pacingData, isTestCampaign]);
+  }, [data, pacingData, contractTermsData, isTestCampaign]);
 
   const summaryStats = useMemo(() => {
     if (healthData.length === 0) return { total: 0, healthy: 0, warning: 0, critical: 0, avgScore: 0 };

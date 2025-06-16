@@ -30,6 +30,8 @@ interface DashboardWrapperProps {
   hideCharts?: string[];
   // Add prop for the chart toggle component
   chartToggleComponent?: React.ReactNode;
+  // Add contractTermsData prop
+  contractTermsData?: any[];
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -278,7 +280,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
     return props.useGlobalFilters ? props.metricsData : props.data;
   }, [props.useGlobalFilters, props.metricsData, props.data]);
 
-  // Pass all props to Dashboard, including the useGlobalFilters flag, hideCharts, and chartToggleComponent
+  // Pass all props to Dashboard, including contractTermsData
   return (
     <DashboardProxy
       data={props.data}
@@ -315,6 +317,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       hideCharts={props.hideCharts}
       // Pass the chartToggleComponent prop to DashboardProxy
       chartToggleComponent={props.chartToggleComponent}
+      // Pass contractTermsData through
+      contractTermsData={props.contractTermsData}
     />
   );
 };
