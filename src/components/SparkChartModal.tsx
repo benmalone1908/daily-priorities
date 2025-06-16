@@ -1,24 +1,6 @@
 
-import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Line,
-  ComposedChart,
-  Bar,
-} from "recharts";
-import { formatNumber } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 interface SparkChartModalProps {
   open: boolean;
@@ -28,17 +10,7 @@ interface SparkChartModalProps {
   dataKey: string;
   color: string;
   gradientId: string;
-  secondaryDataKey?: string;
-  secondaryColor?: string;
-  secondaryGradientId?: string;
-  chartType?: 'area' | 'composed';
-  showBar?: boolean;
-  barDataKey?: string;
-  barColor?: string;
-  valueFormatter?: (value: number) => string;
-  labelFormatter?: (label: string) => string;
-  secondaryValueFormatter?: (value: number) => string;
-  barValueFormatter?: (value: number) => string;
+  valueFormatter: (value: any) => string;
 }
 
 const SparkChartModal = ({
@@ -49,411 +21,82 @@ const SparkChartModal = ({
   dataKey,
   color,
   gradientId,
-  secondaryDataKey,
-  secondaryColor = "#8b5cf6",
-  secondaryGradientId,
-  chartType = 'area',
-  showBar = false,
-  barDataKey,
-  barColor = "#ef4444",
-  valueFormatter = (value) => formatNumber(value, { abbreviate: false }),
-  labelFormatter = (label) => label,
-  secondaryValueFormatter = (value) => formatNumber(value, { abbreviate: false }),
-  barValueFormatter = (value) => formatNumber(value, { abbreviate: false }),
+  valueFormatter
 }: SparkChartModalProps) => {
-  // Case-insensitive key matching for metrics
-  const lowerDataKey = dataKey.toLowerCase();
-  
-  // For percentage metrics (like CTR and ROAS), detect by both key and title
-  const isPercentageMetric = lowerDataKey === "ctr" || 
-                            title.toLowerCase().includes("ctr") || 
-                            title.toLowerCase().includes("click-through");
-  
-  const isRoasMetric = lowerDataKey === "roas" || 
-                      title.toLowerCase().includes("roas") || 
-                      title.toLowerCase().includes("return on");
-  
-  // Detailed logging for debugging
-  console.log(`SparkChartModal rendering for: "${title}"`);
-  console.log(`dataKey: "${dataKey}" | isPercentage: ${isPercentageMetric} | isRoas: ${isRoasMetric}`);
-  console.log("Data length:", data?.length || 0);
-  if (data?.length > 0) {
-    console.log("Sample data point:", JSON.stringify(data[0], null, 2));
-  }
-  
-  // Safety check for data
-  if (!data || data.length === 0) {
-    console.log("No data available for chart!");
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-          </DialogHeader>
-          <div className="h-[400px] flex items-center justify-center">
-            No data available to display
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-  
-  // Create processed data array with calculated CTR and ROAS if needed
-  const processedData = data.map(item => {
-    if (!item) return null;
-    
-    const newItem = { ...item };
-    
-    // For CTR, calculate or use existing value
-    if (isPercentageMetric) {
-      // Try to find CTR in different case variations
-      let ctrValue = item.CTR ?? item.ctr ?? item.Ctr;
-      
-      // If CTR not found but we have impressions and clicks, calculate it
-      if (ctrValue === undefined) {
-        const impressions = Number(item.IMPRESSIONS || item.impressions || 0);
-        const clicks = Number(item.CLICKS || item.clicks || 0);
-        if (impressions > 0) {
-          ctrValue = (clicks / impressions) * 100; // As percentage
-        } else {
-          ctrValue = 0;
-        }
-      }
-      
-      // Ensure it's a valid number
-      ctrValue = Number(ctrValue);
-      if (isNaN(ctrValue)) ctrValue = 0;
-      
-      // Add both uppercase and lowercase versions
-      newItem.CTR = ctrValue;
-      newItem.ctr = ctrValue;
-    }
-    
-    // For ROAS, calculate or use existing value
-    if (isRoasMetric) {
-      // Try to find ROAS in different case variations
-      let roasValue = item.ROAS ?? item.roas ?? item.Roas;
-      
-      // If ROAS not found but we have revenue and spend info, calculate it
-      if (roasValue === undefined) {
-        const revenue = Number(item.REVENUE || item.revenue || 0);
-        // Use provided spend directly instead of estimating
-        const spend = Number(item.SPEND || item.spend || 0);
-        
-        if (spend > 0) {
-          roasValue = revenue / spend;
-        } else {
-          roasValue = 0;
-        }
-      }
-      
-      // Ensure it's a valid number
-      roasValue = Number(roasValue);
-      if (isNaN(roasValue)) roasValue = 0;
-      
-      // Add both uppercase and lowercase versions
-      newItem.ROAS = roasValue;
-      newItem.roas = roasValue;
-    }
-    
-    return newItem;
-  }).filter(Boolean);
-  
-  console.log("Processed data for chart:", processedData.slice(0, 2));
-  
-  // Process values with detailed logging
-  const values = processedData.map((item, index) => {
-    // Create a consistent dataKey that matches our processed data
-    const effectiveKey = isPercentageMetric ? (isPercentageMetric ? "CTR" : dataKey.toUpperCase()) :
-                        isRoasMetric ? "ROAS" : dataKey.toUpperCase();
-    
-    const rawValue = item[effectiveKey];
-    const value = parseFloat(rawValue);
-    console.log(`Data point ${index}: key="${effectiveKey}", raw=${rawValue}, parsed=${value}`);
-    return isNaN(value) ? 0 : value;
-  });
-  
-  console.log("All processed values:", values.slice(0, 5), "...");
-  
-  // Calculate domain with safety checks
-  let minValue = 0;
-  let maxValue = 0;
-  
-  if (values.length > 0) {
-    minValue = Math.min(...values);
-    maxValue = Math.max(...values);
-  }
-  
-  console.log(`Min value: ${minValue}, Max value: ${maxValue}`);
-  
-  // Process secondary values if specified
-  let secondaryValues: number[] = [];
-  if (secondaryDataKey) {
-    secondaryValues = processedData.map((item) => {
-      const rawValue = item[secondaryDataKey.toUpperCase()];
-      return parseFloat(rawValue) || 0;
-    });
-    
-    if (secondaryValues.length > 0) {
-      const secondaryMin = Math.min(...secondaryValues);
-      const secondaryMax = Math.max(...secondaryValues);
-      
-      // Update min/max to accommodate both data series
-      minValue = Math.min(minValue, secondaryMin);
-      maxValue = Math.max(maxValue, secondaryMax);
-    }
-  }
-  
-  // Process bar values if specified
-  let barValues: number[] = [];
-  if (showBar && barDataKey) {
-    barValues = processedData.map((item) => {
-      const rawValue = item[barDataKey.toUpperCase()];
-      return parseFloat(rawValue) || 0;
-    });
-    
-    // We don't adjust the Y axis for bar values as they'll use the secondary Y axis
-  }
-  
-  // Determine Y-axis domain with special handling for percentages
-  let yAxisDomain: [number, number] = [0, 0];
-  
-  if (isPercentageMetric) {
-    console.log("Using percentage scaling for Y-axis");
-    
-    // For CTR (typically very small numbers like 0.01 = 1%)
-    if (maxValue <= 0.0001) {
-      // No meaningful data, show a small range
-      yAxisDomain = [0, 0.001]; // 0% to 0.1%
-    } else if (maxValue < 0.1) {
-      // Small percentages, scale appropriately
-      yAxisDomain = [0, Math.max(maxValue * 2, 0.01)];
-    } else {
-      // Normal percentage range
-      yAxisDomain = [0, Math.max(maxValue * 1.2, 0.5)];
-    }
-  } else if (isRoasMetric) {
-    console.log("Using ROAS scaling for Y-axis");
-    
-    // For ROAS, we want to start at 0 but give enough headroom
-    if (maxValue <= 0.0001) {
-      yAxisDomain = [0, 2]; // Default range if no data
-    } else {
-      yAxisDomain = [0, Math.max(maxValue * 1.5, 2)];
-    }
-  } else {
-    console.log("Using standard metric scaling for Y-axis");
-    // For standard metrics like impressions, clicks
-    yAxisDomain = [
-      Math.max(0, minValue * 0.9), // Don't go below zero
-      Math.max(10, maxValue * 1.1)  // Ensure minimum visibility and add 10% at top
-    ];
-  }
-  
-  console.log(`Final Y-axis domain: [${yAxisDomain[0]}, ${yAxisDomain[1]}]`);
-  
-  // Create appropriate formatters for different metric types
-  const effectiveFormatter = (value: number): string => {
-    if (isPercentageMetric) {
-      return `${(value * 100).toFixed(2)}%`;
-    } else if (isRoasMetric) {
-      return `${value.toFixed(2)}x`;
-    } else {
-      return valueFormatter(value);
-    }
-  };
-
-  // Determine secondary y-axis domain if we have bar data
-  let yAxis2Domain: [number, number] = [0, 0];
-  if (showBar && barValues.length > 0) {
-    const barMax = Math.max(...barValues);
-    yAxis2Domain = [0, Math.max(10, barMax * 1.1)];
-  }
-
-  // Create a case-insensitive accessor function for the Area component
-  const dataKeyAccessor = (item: any) => {
-    if (!item) return 0;
-    
-    // For percentage metrics, use the consistent keys we created
-    if (isPercentageMetric) {
-      return parseFloat(item.CTR) || 0;
-    } else if (isRoasMetric) {
-      return parseFloat(item.ROAS) || 0;
-    }
-    
-    // Otherwise try all case variations
-    // Try original case
-    let value = item[dataKey];
-    
-    // Try lowercase if original not found
-    if (value === undefined) {
-      value = item[dataKey.toLowerCase()];
-    }
-    
-    // Try uppercase if still not found
-    if (value === undefined) {
-      value = item[dataKey.toUpperCase()];
-    }
-    
-    return parseFloat(value) || 0;
-  };
-
-  // Render the appropriate chart based on the chartType prop
-  const renderChart = () => {
-    if (chartType === 'composed') {
-      return (
-        <ComposedChart 
-          data={processedData} 
-          margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
-        >
-          <defs>
-            <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.8} />
-              <stop offset="95%" stopColor={color} stopOpacity={0.1} />
-            </linearGradient>
-            {secondaryDataKey && secondaryGradientId && (
-              <linearGradient id={`modal-${secondaryGradientId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={secondaryColor} stopOpacity={0.8} />
-                <stop offset="95%" stopColor={secondaryColor} stopOpacity={0.1} />
-              </linearGradient>
-            )}
-          </defs>
-          <XAxis 
-            dataKey="date" 
-            tick={{ fontSize: 12 }} 
-            tickMargin={10}
-          />
-          <YAxis 
-            yAxisId="left"
-            tick={{ fontSize: 12 }}
-            tickFormatter={showBar && barDataKey === dataKey ? barValueFormatter : valueFormatter}
-            domain={yAxisDomain}
-            allowDecimals={true}
-          />
-          {showBar && barDataKey && barDataKey !== dataKey && (
-            <YAxis 
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 12 }}
-              tickFormatter={barValueFormatter}
-              domain={yAxis2Domain}
-              allowDecimals={true}
-            />
-          )}
-          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-          <Tooltip 
-            formatter={(value: any, name: string) => {
-              if (name === dataKey.toUpperCase()) {
-                return [valueFormatter(value), dataKey];
-              } else if (name === secondaryDataKey?.toUpperCase()) {
-                return [secondaryValueFormatter(value), secondaryDataKey];
-              } else if (name === barDataKey?.toUpperCase()) {
-                return [barValueFormatter(value), barDataKey];
-              }
-              return [value, name];
-            }}
-            labelFormatter={labelFormatter}
-            contentStyle={{ 
-              backgroundColor: "rgba(255, 255, 255, 0.95)", 
-              border: "1px solid #eee",
-              borderRadius: "4px",
-              padding: "8px 12px",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
-            }}
-            isAnimationActive={false}
-          />
-          <Line
-            type="monotone"
-            dataKey={dataKey.toUpperCase()}
-            stroke={color}
-            strokeWidth={2}
-            dot={{ r: 1 }}
-            yAxisId={showBar && barDataKey === dataKey ? "left" : barDataKey ? "left" : "right"}
-            isAnimationActive={false}
-          />
-          {secondaryDataKey && secondaryDataKey !== barDataKey && (
-            <Line
-              type="monotone"
-              dataKey={secondaryDataKey.toUpperCase()}
-              stroke={secondaryColor}
-              strokeWidth={2}
-              dot={{ r: 1 }}
-              yAxisId="left"
-              isAnimationActive={false}
-            />
-          )}
-          {showBar && barDataKey && (
-            <Bar
-              dataKey={barDataKey.toUpperCase()}
-              fill={barColor}
-              yAxisId={barDataKey === dataKey ? "left" : "right"}
-              isAnimationActive={false}
-              barSize={20}
-              opacity={0.8}
-            />
-          )}
-        </ComposedChart>
-      );
-    } else {
-      // Default to area chart
-      return (
-        <AreaChart 
-          data={processedData} 
-          margin={{ top: 10, right: 30, left: 10, bottom: 30 }}
-        >
-          <defs>
-            <linearGradient id={`modal-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.8} />
-              <stop offset="95%" stopColor={color} stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <XAxis 
-            dataKey="date" 
-            tick={{ fontSize: 12 }} 
-            tickMargin={10}
-          />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            tickFormatter={effectiveFormatter}
-            domain={yAxisDomain}
-            allowDecimals={true}
-          />
-          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-          <Tooltip 
-            formatter={(value: any) => [effectiveFormatter(value), title]}
-            labelFormatter={labelFormatter}
-            contentStyle={{ 
-              backgroundColor: "rgba(255, 255, 255, 0.95)", 
-              border: "1px solid #eee",
-              borderRadius: "4px",
-              padding: "8px 12px",
-              boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
-            }}
-            isAnimationActive={false}
-          />
-          <Area
-            type="monotone"
-            dataKey={dataKeyAccessor}
-            stroke={color}
-            strokeWidth={2}
-            fill={`url(#modal-${gradientId})`}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      );
-    }
+  const formatTooltipValue = (value: any) => {
+    if (value === null || value === undefined) return "N/A";
+    return valueFormatter(value);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px]">
+      <DialogContent className="max-w-[900px] w-full max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="h-[400px] w-full mt-4">
+        
+        <div className="w-full h-[400px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
-            {renderChart()}
+            <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={color} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={color} stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => {
+                  try {
+                    return new Date(value).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric' 
+                    });
+                  } catch {
+                    return value;
+                  }
+                }}
+              />
+              <YAxis 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => {
+                  if (typeof value === 'number') {
+                    if (value >= 1000000) {
+                      return `${(value / 1000000).toFixed(1)}M`;
+                    } else if (value >= 1000) {
+                      return `${(value / 1000).toFixed(1)}K`;
+                    }
+                    return value.toLocaleString();
+                  }
+                  return value;
+                }}
+              />
+              <Tooltip 
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="bg-white p-3 border rounded shadow-lg">
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-sm" style={{ color: payload[0].color }}>
+                          {`${title}: ${formatTooltipValue(payload[0].value)}`}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey={dataKey} 
+                stroke={color} 
+                fillOpacity={1}
+                fill={`url(#${gradientId})`}
+                strokeWidth={2}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </DialogContent>

@@ -5,7 +5,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine, FileText, Target, Plus } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
@@ -23,6 +23,7 @@ import RawDataTable from "@/components/RawDataTable";
 import PacingFileUpload from "@/components/PacingFileUpload";
 import PacingTable from "@/components/PacingTable";
 import PacingMetrics from "@/components/PacingMetrics";
+import CampaignHealthTab from "@/components/CampaignHealthTab";
 
 type MetricType = 
   | "impressions" 
@@ -633,7 +634,7 @@ const DashboardContent = ({
               )}
             </div>
             <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
                 <TabsTrigger value="dashboard">
                   <LayoutDashboard className="mr-2" size={16} />
                   Dashboard
@@ -641,6 +642,10 @@ const DashboardContent = ({
                 <TabsTrigger value="sparks">
                   <ChartLine className="mr-2" size={16} />
                   Trends
+                </TabsTrigger>
+                <TabsTrigger value="health">
+                  <Activity className="mr-2" size={16} />
+                  Health
                 </TabsTrigger>
                 {pacingData.length > 0 && (
                   <TabsTrigger value="pacing">
@@ -726,6 +731,13 @@ const DashboardContent = ({
             data={globalFilteredData} 
             dateRange={dateRange}
             useGlobalFilters={true}
+          />
+        </TabsContent>
+        
+        <TabsContent value="health" className="mt-0">
+          {/* Campaign Health tab content */}
+          <CampaignHealthTab 
+            data={globalFilteredData}
           />
         </TabsContent>
         
