@@ -1,4 +1,3 @@
-
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -391,8 +390,22 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
     console.log(`💰 [BUDGET TARGET] Looking for budget data for: ${campaignName}`);
     console.log(`💰 [BUDGET TARGET] Pacing data length: ${pacingData.length}`);
     if (pacingData.length > 0) {
-      console.log(`💰 [BUDGET TARGET] Available campaigns in pacing data:`, 
-        pacingData.map(row => `"${row["Campaign"]}"`).slice(0, 3));
+      console.log(`💰 [BUDGET TARGET] Sample pacing row fields:`, Object.keys(pacingData[0]));
+      console.log(`💰 [BUDGET TARGET] Sample campaign name from pacing:`, pacingData[0]["Campaign"]);
+      
+      // Show all available campaigns for debugging
+      const allCampaigns = pacingData.map(row => row["Campaign"]).filter(Boolean);
+      console.log(`💰 [BUDGET TARGET] All ${allCampaigns.length} campaigns in pacing data:`, allCampaigns);
+      
+      // Check if our target campaign exists in the list
+      const exactMatch = allCampaigns.find(camp => camp === campaignName);
+      console.log(`💰 [BUDGET TARGET] Exact match found:`, exactMatch ? "YES" : "NO");
+      
+      // Check for partial matches
+      const partialMatches = allCampaigns.filter(camp => 
+        camp.includes("2001987") || camp.includes("Union Chill") || camp.includes("Garden Greens")
+      );
+      console.log(`💰 [BUDGET TARGET] Partial matches:`, partialMatches);
     }
   }
   
@@ -402,24 +415,54 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
     const normalizedCampaignName = String(campaignName || "").trim();
     const match = normalizedRowCampaign === normalizedCampaignName;
     
-    if (isTargetCampaign && match) {
-      console.log(`💰 [BUDGET TARGET] Found matching pacing row:`, row);
+    if (isTargetCampaign && rowCampaign && rowCampaign.includes("2001987")) {
+      console.log(`💰 [BUDGET TARGET] Checking potential match:`);
+      console.log(`💰 [BUDGET TARGET]   Pacing: "${normalizedRowCampaign}"`);
+      console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
+      console.log(`💰 [BUDGET TARGET]   Match: ${match}`);
     }
     
     return match;
   });
   
   if (!campaignPacing) {
-    if (isTargetCampaign) console.log(`💰 [BUDGET TARGET] No pacing data found for campaign`);
+    if (isTargetCampaign) {
+      console.log(`💰 [BUDGET TARGET] ❌ NO PACING DATA FOUND for campaign`);
+      console.log(`💰 [BUDGET TARGET] This is why budget = $0!`);
+    }
     return { budget: 0, daysLeft: 0 };
   }
   
-  // Extract budget and days left from pacing data
-  const budget = Number(campaignPacing["Budget"]) || Number(campaignPacing["Total Budget"]) || 0;
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET TARGET] ✅ Found matching pacing row:`, campaignPacing);
+    console.log(`💰 [BUDGET TARGET] Available fields in this row:`, Object.keys(campaignPacing));
+  }
+  
+  // Try multiple possible budget field names
+  const possibleBudgetFields = ["Budget", "Total Budget", "budget", "BUDGET", "Campaign Budget"];
+  let budget = 0;
+  
+  for (const field of possibleBudgetFields) {
+    const value = Number(campaignPacing[field]);
+    if (value && value > 0) {
+      budget = value;
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET TARGET] Found budget in field "${field}": $${budget}`);
+      }
+      break;
+    }
+  }
+  
+  if (isTargetCampaign && budget === 0) {
+    console.log(`💰 [BUDGET TARGET] ❌ NO BUDGET FOUND in any field!`);
+    console.log(`💰 [BUDGET TARGET] Tried fields:`, possibleBudgetFields);
+    console.log(`💰 [BUDGET TARGET] Row values:`, possibleBudgetFields.map(field => `${field}: ${campaignPacing[field]}`));
+  }
+  
   const daysLeft = Number(campaignPacing["Days Left"]) || 0;
   
   if (isTargetCampaign) {
-    console.log(`💰 [BUDGET TARGET] Extracted budget: $${budget}, days left: ${daysLeft}`);
+    console.log(`💰 [BUDGET TARGET] Final result: budget=$${budget}, daysLeft=${daysLeft}`);
   }
   
   return { budget, daysLeft };
@@ -630,4 +673,3 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     burnRatePercentage: Math.round(burnRatePercentage * 10) / 10
   };
 }
-
