@@ -19,6 +19,9 @@ export interface CampaignHealthData {
   ctr: number;
   roas: number;
   completionPercentage: number;
+  deliveryPacing: number;
+  burnRate: number;
+  overspend: number;
 }
 
 export interface BurnRateData {
