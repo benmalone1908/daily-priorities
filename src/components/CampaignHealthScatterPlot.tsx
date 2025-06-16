@@ -85,8 +85,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
           />
           
           <Scatter 
-            dataKey="y" 
-            fill={(entry: any) => entry.fill}
+            dataKey="y"
           />
         </ScatterChart>
       </ChartContainer>
