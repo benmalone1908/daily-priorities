@@ -150,26 +150,84 @@ export function calculateCTRScore(ctr: number, benchmark: number = CTR_BENCHMARK
   return 0;
 }
 
-export function calculateOverspendScore(spend: number, budget: number, burnRate: BurnRateData, daysLeft: number): number {
-  if (!budget || budget === 0) return 0; // No budget data available
+function calculateSpendBurnRate(data: any[], campaignName: string): { dailySpendRate: number; confidence: string } {
+  // Filter data for this campaign and sort by date
+  const campaignData = data
+    .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
+    .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
   
-  // Use best available burn rate for spend projection
+  if (campaignData.length === 0) {
+    return { dailySpendRate: 0, confidence: 'no-data' };
+  }
+  
+  // Get most recent data points for spend rate calculation
+  const recent = campaignData.slice(-7); // Last 7 days
+  
   let dailySpendRate = 0;
-  switch (burnRate.confidence) {
+  let confidence = 'no-data';
+  
+  if (recent.length >= 7) {
+    // Use 7-day average if available
+    dailySpendRate = recent.reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 7;
+    confidence = '7-day';
+  } else if (recent.length >= 3) {
+    // Use 3-day average if available
+    dailySpendRate = recent.slice(-3).reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 3;
+    confidence = '3-day';
+  } else if (recent.length >= 1) {
+    // Use most recent day if available
+    dailySpendRate = Number(recent[recent.length - 1].SPEND) || 0;
+    confidence = '1-day';
+  }
+  
+  return { dailySpendRate, confidence };
+}
+
+export function calculateOverspendScore(
+  currentSpend: number, 
+  budget: number, 
+  dailySpendRate: number, 
+  daysLeft: number,
+  confidence: string
+): number {
+  if (!budget || budget === 0 || daysLeft < 0) return 0; // No budget data or campaign ended
+  
+  // Calculate projected total spend
+  const projectedTotalSpend = currentSpend + (dailySpendRate * daysLeft);
+  const projectedOverspend = Math.max(0, projectedTotalSpend - budget);
+  const overspendPercentage = budget > 0 ? (projectedOverspend / budget) * 100 : 0;
+  
+  // Adjust confidence based on data quality
+  let confidenceMultiplier = 1;
+  switch (confidence) {
     case '7-day':
+      confidenceMultiplier = 1;
+      break;
     case '3-day':
+      confidenceMultiplier = 0.8;
+      break;
     case '1-day':
-      // Assume spend rate proportional to impression rate (simplified)
-      dailySpendRate = spend / 30; // Rough daily spend estimate
+      confidenceMultiplier = 0.6;
       break;
     default:
       return 0;
   }
   
-  const projectedSpend = spend + (dailySpendRate * daysLeft);
+  // Score based on projected overspend percentage
+  let baseScore = 0;
+  if (overspendPercentage === 0) {
+    baseScore = 10; // On track, no overspend
+  } else if (overspendPercentage <= 5) {
+    baseScore = 8; // Minor overspend risk
+  } else if (overspendPercentage <= 10) {
+    baseScore = 6; // Moderate overspend risk
+  } else if (overspendPercentage <= 20) {
+    baseScore = 3; // High overspend risk
+  } else {
+    baseScore = 0; // Very high overspend risk
+  }
   
-  if (projectedSpend <= budget) return 5; // On track
-  return 0; // Overspend risk
+  return Math.round(baseScore * confidenceMultiplier * 10) / 10;
 }
 
 function calculateCompletionPercentage(pacingData: any[], campaignName: string): number {
@@ -225,6 +283,25 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
   console.log(`Campaign "${campaignName}" completion: ${completionPercentage.toFixed(1)}%`);
   
   return completionPercentage;
+}
+
+function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget: number; daysLeft: number } {
+  const campaignPacing = pacingData.find(row => {
+    const rowCampaign = row["Campaign"];
+    const normalizedRowCampaign = String(rowCampaign || "").trim();
+    const normalizedCampaignName = String(campaignName || "").trim();
+    return normalizedRowCampaign === normalizedCampaignName;
+  });
+  
+  if (!campaignPacing) {
+    return { budget: 0, daysLeft: 0 };
+  }
+  
+  // Extract budget and days left from pacing data
+  const budget = Number(campaignPacing["Budget"]) || Number(campaignPacing["Total Budget"]) || 0;
+  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
+  
+  return { budget, daysLeft };
 }
 
 export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
@@ -295,7 +372,18 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
   const burnRateScore = calculateBurnRateScore(burnRateData, requiredDailyImpressions);
   
-  const overspendScore = 5; // Simplified - assume on track for now
+  // Get budget and days left from pacing data
+  const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName);
+  
+  // Calculate spend burn rate for overspend projection
+  const { dailySpendRate, confidence: spendConfidence } = calculateSpendBurnRate(data, campaignName);
+  
+  // Calculate actual overspend score using proper projection
+  const overspendScore = calculateOverspendScore(totals.spend, budget, dailySpendRate, daysLeft, spendConfidence);
+  
+  // Calculate projected overspend amount
+  const projectedTotalSpend = totals.spend + (dailySpendRate * Math.max(0, daysLeft));
+  const overspendAmount = Math.max(0, projectedTotalSpend - budget);
   
   // Calculate final health score with weights
   const healthScore = 
@@ -314,17 +402,17 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const deliveryPacing = pace || 0;
   const burnRateValue = burnRateData.sevenDayRate || burnRateData.threeDayRate || burnRateData.oneDayRate || 0;
   const burnRatePercentage = requiredDailyImpressions > 0 ? (burnRateValue / requiredDailyImpressions) * 100 : 0;
-  const overspend = Math.max(0, totals.spend - (totals.spend * 0.9)); // Simplified overspend calculation
   
   return {
     campaignName,
-    budget: undefined, // Will be enhanced when budget data is available
+    budget: budget > 0 ? budget : undefined,
     spend: totals.spend,
     impressions: totals.impressions,
     clicks: totals.clicks,
     revenue: totals.revenue,
     transactions: totals.transactions,
     expectedImpressions,
+    daysLeft: daysLeft > 0 ? daysLeft : undefined,
     roasScore,
     deliveryPacingScore,
     burnRateScore,
@@ -338,7 +426,7 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
     deliveryPacing: Math.round(deliveryPacing * 10) / 10,
     burnRate: Math.round(burnRateValue),
-    overspend: Math.round(overspend * 100) / 100,
+    overspend: Math.round(overspendAmount * 100) / 100, // Now shows projected overspend amount
     burnRateData,
     requiredDailyImpressions: Math.round(requiredDailyImpressions),
     burnRatePercentage: Math.round(burnRatePercentage * 10) / 10
