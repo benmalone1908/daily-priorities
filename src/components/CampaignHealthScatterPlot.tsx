@@ -26,8 +26,9 @@ interface ModalState {
   yMax: number;
 }
 
-interface PersistentTooltipState {
+interface TooltipState {
   visible: boolean;
+  pinned: boolean;
   data: CampaignHealthData | null;
   x: number;
   y: number;
@@ -50,8 +51,9 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     yMax: 0
   });
 
-  const [persistentTooltip, setPersistentTooltip] = useState<PersistentTooltipState>({
+  const [tooltipState, setTooltipState] = useState<TooltipState>({
     visible: false,
+    pinned: false,
     data: null,
     x: 0,
     y: 0
@@ -135,27 +137,57 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
   };
 
   const handleScatterClick = (data: any, event: any) => {
-    // Recharts passes the event differently - check for the actual event object
-    const actualEvent = event?.activePayload?.[0]?.payload ? event : { nativeEvent: event };
-    
-    if (actualEvent?.nativeEvent) {
-      actualEvent.nativeEvent.stopPropagation?.();
-    }
+    event?.stopPropagation?.();
     
     const campaign = healthData.find(c => c.campaignName === data.name);
-    if (campaign && actualEvent?.nativeEvent) {
-      setPersistentTooltip({
+    if (campaign && event) {
+      const clientX = event.clientX || event.nativeEvent?.clientX || 100;
+      const clientY = event.clientY || event.nativeEvent?.clientY || 100;
+      
+      setTooltipState({
         visible: true,
+        pinned: true,
         data: campaign,
-        x: actualEvent.nativeEvent.clientX || 100,
-        y: actualEvent.nativeEvent.clientY || 100
+        x: clientX,
+        y: clientY
       });
     }
   };
 
-  const closePersistentTooltip = () => {
-    setPersistentTooltip({
+  const handleTooltipMouseEnter = (data: any, event: any) => {
+    if (!tooltipState.pinned) {
+      const campaign = healthData.find(c => c.campaignName === data.name);
+      if (campaign && event) {
+        const clientX = event.clientX || event.nativeEvent?.clientX || 100;
+        const clientY = event.clientY || event.nativeEvent?.clientY || 100;
+        
+        setTooltipState({
+          visible: true,
+          pinned: false,
+          data: campaign,
+          x: clientX,
+          y: clientY
+        });
+      }
+    }
+  };
+
+  const handleTooltipMouseLeave = () => {
+    if (!tooltipState.pinned) {
+      setTooltipState({
+        visible: false,
+        pinned: false,
+        data: null,
+        x: 0,
+        y: 0
+      });
+    }
+  };
+
+  const closeTooltip = () => {
+    setTooltipState({
       visible: false,
+      pinned: false,
       data: null,
       x: 0,
       y: 0
@@ -321,116 +353,79 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             />
             
             <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  const data = payload[0].payload;
-                  const campaign = data.campaignData;
-                  return (
-                    <div className="bg-white p-4 border rounded shadow-lg max-w-xs">
-                      <p className="font-medium text-sm mb-2">{data.name}</p>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span>Overall Health:</span>
-                          <span className="font-medium">{campaign.healthScore}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>ROAS:</span>
-                          <span className="font-medium">{campaign.roas.toFixed(1)}x (Score: {campaign.roasScore})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Delivery Pacing:</span>
-                          <span className="font-medium">{campaign.deliveryPacing.toFixed(1)}% (Score: {campaign.deliveryPacingScore})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Burn Rate:</span>
-                          <span className="font-medium">{campaign.burnRate.toFixed(0)} (Score: {campaign.burnRateScore})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>CTR:</span>
-                          <span className="font-medium">{campaign.ctr.toFixed(3)}% (Score: {campaign.ctrScore})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Overspend:</span>
-                          <span className="font-medium">${campaign.overspend.toFixed(2)} (Score: {campaign.overspendScore})</span>
-                        </div>
-                        <div className="border-t pt-1 mt-1">
-                          <div className="flex justify-between">
-                            <span>Completion:</span>
-                            <span className="font-medium">{data.x.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-xs text-blue-600 mt-2">
-                        Click to pin this info
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
+              content={() => null} // Disable default tooltip since we're using custom
             />
             
             <Scatter 
               dataKey="y"
               onClick={handleScatterClick}
+              onMouseEnter={handleTooltipMouseEnter}
+              onMouseLeave={handleTooltipMouseLeave}
               className="cursor-pointer"
             />
           </ScatterChart>
         </ChartContainer>
       </div>
       
-      {/* Persistent Tooltip */}
-      {persistentTooltip.visible && persistentTooltip.data && (
+      {/* Custom Tooltip */}
+      {tooltipState.visible && tooltipState.data && (
         <div 
           className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
           style={{ 
-            left: Math.min(persistentTooltip.x, window.innerWidth - 250),
-            top: Math.max(10, persistentTooltip.y - 150)
+            left: Math.min(tooltipState.x, window.innerWidth - 250),
+            top: Math.max(10, tooltipState.y - 150)
           }}
         >
           <div className="flex justify-between items-start mb-2">
-            <p className="font-medium text-sm">{persistentTooltip.data.campaignName}</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={closePersistentTooltip}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+            <p className="font-medium text-sm">{tooltipState.data.campaignName}</p>
+            {tooltipState.pinned && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeTooltip}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
           </div>
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
               <span>Overall Health:</span>
-              <span className="font-medium">{persistentTooltip.data.healthScore}</span>
+              <span className="font-medium">{tooltipState.data.healthScore}</span>
             </div>
             <div className="flex justify-between">
               <span>ROAS:</span>
-              <span className="font-medium">{persistentTooltip.data.roas.toFixed(1)}x (Score: {persistentTooltip.data.roasScore})</span>
+              <span className="font-medium">{tooltipState.data.roas.toFixed(1)}x (Score: {tooltipState.data.roasScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Delivery Pacing:</span>
-              <span className="font-medium">{persistentTooltip.data.deliveryPacing.toFixed(1)}% (Score: {persistentTooltip.data.deliveryPacingScore})</span>
+              <span className="font-medium">{tooltipState.data.deliveryPacing.toFixed(1)}% (Score: {tooltipState.data.deliveryPacingScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Burn Rate:</span>
-              <span className="font-medium">{persistentTooltip.data.burnRate.toFixed(0)} (Score: {persistentTooltip.data.burnRateScore})</span>
+              <span className="font-medium">{tooltipState.data.burnRate.toFixed(0)} (Score: {tooltipState.data.burnRateScore})</span>
             </div>
             <div className="flex justify-between">
               <span>CTR:</span>
-              <span className="font-medium">{persistentTooltip.data.ctr.toFixed(3)}% (Score: {persistentTooltip.data.ctrScore})</span>
+              <span className="font-medium">{tooltipState.data.ctr.toFixed(3)}% (Score: {tooltipState.data.ctrScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Overspend:</span>
-              <span className="font-medium">${persistentTooltip.data.overspend.toFixed(2)} (Score: {persistentTooltip.data.overspendScore})</span>
+              <span className="font-medium">${tooltipState.data.overspend.toFixed(2)} (Score: {tooltipState.data.overspendScore})</span>
             </div>
             <div className="border-t pt-1 mt-1">
               <div className="flex justify-between">
                 <span>Completion:</span>
-                <span className="font-medium">{persistentTooltip.data.completionPercentage.toFixed(1)}%</span>
+                <span className="font-medium">{tooltipState.data.completionPercentage.toFixed(1)}%</span>
               </div>
             </div>
           </div>
+          {!tooltipState.pinned && (
+            <p className="text-xs text-blue-600 mt-2">
+              Click to pin this info
+            </p>
+          )}
         </div>
       )}
       
