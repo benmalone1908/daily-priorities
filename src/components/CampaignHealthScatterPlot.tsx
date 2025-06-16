@@ -3,7 +3,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Responsive
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { Button } from "./ui/button";
-import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import QuadrantZoomModal from "./QuadrantZoomModal";
 
 interface CampaignHealthScatterPlotProps {
@@ -26,6 +26,13 @@ interface ModalState {
   yMax: number;
 }
 
+interface PersistentTooltipState {
+  visible: boolean;
+  data: CampaignHealthData | null;
+  x: number;
+  y: number;
+}
+
 const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProps) => {
   const [zoomState, setZoomState] = useState<ZoomState>({
     xMin: 0,
@@ -43,12 +50,20 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     yMax: 0
   });
 
+  const [persistentTooltip, setPersistentTooltip] = useState<PersistentTooltipState>({
+    visible: false,
+    data: null,
+    x: 0,
+    y: 0
+  });
+
   const chartData = useMemo(() => {
     return healthData.map(campaign => ({
       x: campaign.completionPercentage,
       y: campaign.healthScore,
       name: campaign.campaignName,
-      fill: getHealthColor(campaign.healthScore)
+      fill: getHealthColor(campaign.healthScore),
+      campaignData: campaign // Store full campaign data for tooltips
     }));
   }, [healthData]);
 
@@ -117,6 +132,27 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         level: Math.max(0, zoomState.level - 1)
       });
     }
+  };
+
+  const handleScatterClick = (data: any, event: any) => {
+    const campaign = healthData.find(c => c.campaignName === data.name);
+    if (campaign && event) {
+      setPersistentTooltip({
+        visible: true,
+        data: campaign,
+        x: event.clientX,
+        y: event.clientY
+      });
+    }
+  };
+
+  const closePersistentTooltip = () => {
+    setPersistentTooltip({
+      visible: false,
+      data: null,
+      x: 0,
+      y: 0
+    });
   };
 
   // Generate clickable ReferenceArea components for quadrants
@@ -281,17 +317,44 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
+                  const campaign = data.campaignData;
                   return (
-                    <div className="bg-white p-3 border rounded shadow-lg">
-                      <p className="font-medium text-sm">{data.name}</p>
-                      <p className="text-sm text-gray-600">
-                        Health Score: <span className="font-medium">{data.y}</span>
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Completion: <span className="font-medium">{data.x.toFixed(1)}%</span>
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Click quadrant to view details
+                    <div className="bg-white p-4 border rounded shadow-lg max-w-xs">
+                      <p className="font-medium text-sm mb-2">{data.name}</p>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span>Overall Health:</span>
+                          <span className="font-medium">{campaign.healthScore}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>ROAS Score:</span>
+                          <span className="font-medium">{campaign.roasScore}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Delivery Pacing:</span>
+                          <span className="font-medium">{campaign.deliveryPacingScore}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Burn Rate:</span>
+                          <span className="font-medium">{campaign.burnRateScore}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>CTR Score:</span>
+                          <span className="font-medium">{campaign.ctrScore}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Overspend:</span>
+                          <span className="font-medium">{campaign.overspendScore}</span>
+                        </div>
+                        <div className="border-t pt-1 mt-1">
+                          <div className="flex justify-between">
+                            <span>Completion:</span>
+                            <span className="font-medium">{data.x.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">
+                        Click to pin this info
                       </p>
                     </div>
                   );
@@ -302,10 +365,67 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             
             <Scatter 
               dataKey="y"
+              onClick={handleScatterClick}
+              className="cursor-pointer"
             />
           </ScatterChart>
         </ChartContainer>
       </div>
+      
+      {/* Persistent Tooltip */}
+      {persistentTooltip.visible && persistentTooltip.data && (
+        <div 
+          className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
+          style={{ 
+            left: Math.min(persistentTooltip.x, window.innerWidth - 250),
+            top: Math.max(10, persistentTooltip.y - 150)
+          }}
+        >
+          <div className="flex justify-between items-start mb-2">
+            <p className="font-medium text-sm">{persistentTooltip.data.campaignName}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closePersistentTooltip}
+              className="h-6 w-6 p-0"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span>Overall Health:</span>
+              <span className="font-medium">{persistentTooltip.data.healthScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>ROAS Score:</span>
+              <span className="font-medium">{persistentTooltip.data.roasScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Delivery Pacing:</span>
+              <span className="font-medium">{persistentTooltip.data.deliveryPacingScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Burn Rate:</span>
+              <span className="font-medium">{persistentTooltip.data.burnRateScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>CTR Score:</span>
+              <span className="font-medium">{persistentTooltip.data.ctrScore}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Overspend:</span>
+              <span className="font-medium">{persistentTooltip.data.overspendScore}</span>
+            </div>
+            <div className="border-t pt-1 mt-1">
+              <div className="flex justify-between">
+                <span>Completion:</span>
+                <span className="font-medium">{persistentTooltip.data.completionPercentage.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {zoomState.level === 0 && (
         <div className="mt-2 text-center">

@@ -1,9 +1,10 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip } from "./ui/chart";
-import { useMemo } from "react";
+import { Button } from "./ui/button";
+import { X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 interface QuadrantZoomModalProps {
   open: boolean;
@@ -15,6 +16,13 @@ interface QuadrantZoomModalProps {
   yMax: number;
 }
 
+interface PersistentTooltipState {
+  visible: boolean;
+  data: CampaignHealthData | null;
+  x: number;
+  y: number;
+}
+
 const QuadrantZoomModal = ({
   open,
   onOpenChange,
@@ -24,6 +32,13 @@ const QuadrantZoomModal = ({
   yMin,
   yMax
 }: QuadrantZoomModalProps) => {
+  const [persistentTooltip, setPersistentTooltip] = useState<PersistentTooltipState>({
+    visible: false,
+    data: null,
+    x: 0,
+    y: 0
+  });
+
   const filteredData = useMemo(() => {
     return healthData
       .filter(campaign => 
@@ -36,7 +51,8 @@ const QuadrantZoomModal = ({
         x: campaign.completionPercentage,
         y: campaign.healthScore,
         name: campaign.campaignName,
-        fill: getHealthColor(campaign.healthScore)
+        fill: getHealthColor(campaign.healthScore),
+        campaignData: campaign
       }));
   }, [healthData, xMin, xMax, yMin, yMax]);
 
@@ -92,6 +108,27 @@ const QuadrantZoomModal = ({
     return ticks;
   }, [yMin, yMax]);
 
+  const handleScatterClick = (data: any, event: any) => {
+    const campaign = healthData.find(c => c.campaignName === data.name);
+    if (campaign && event) {
+      setPersistentTooltip({
+        visible: true,
+        data: campaign,
+        x: event.clientX,
+        y: event.clientY
+      });
+    }
+  };
+
+  const closePersistentTooltip = () => {
+    setPersistentTooltip({
+      visible: false,
+      data: null,
+      x: 0,
+      y: 0
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[800px] w-full max-h-[80vh] overflow-auto">
@@ -106,7 +143,7 @@ const QuadrantZoomModal = ({
             Showing {filteredData.length} campaign(s) in this quadrant
           </div>
           
-          <div className="w-full h-[400px]">
+          <div className="w-full h-[400px] relative">
             <ChartContainer config={chartConfig}>
               <ScatterChart
                 data={filteredData}
@@ -145,14 +182,44 @@ const QuadrantZoomModal = ({
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
+                      const campaign = data.campaignData;
                       return (
-                        <div className="bg-white p-3 border rounded shadow-lg">
-                          <p className="font-medium text-sm">{data.name}</p>
-                          <p className="text-sm text-gray-600">
-                            Health Score: <span className="font-medium">{data.y}</span>
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Completion: <span className="font-medium">{data.x.toFixed(1)}%</span>
+                        <div className="bg-white p-4 border rounded shadow-lg max-w-xs">
+                          <p className="font-medium text-sm mb-2">{data.name}</p>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span>Overall Health:</span>
+                              <span className="font-medium">{campaign.healthScore}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>ROAS Score:</span>
+                              <span className="font-medium">{campaign.roasScore}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Delivery Pacing:</span>
+                              <span className="font-medium">{campaign.deliveryPacingScore}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Burn Rate:</span>
+                              <span className="font-medium">{campaign.burnRateScore}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>CTR Score:</span>
+                              <span className="font-medium">{campaign.ctrScore}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Overspend:</span>
+                              <span className="font-medium">{campaign.overspendScore}</span>
+                            </div>
+                            <div className="border-t pt-1 mt-1">
+                              <div className="flex justify-between">
+                                <span>Completion:</span>
+                                <span className="font-medium">{data.x.toFixed(1)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-blue-600 mt-2">
+                            Click to pin this info
                           </p>
                         </div>
                       );
@@ -163,9 +230,66 @@ const QuadrantZoomModal = ({
                 
                 <Scatter 
                   dataKey="y"
+                  onClick={handleScatterClick}
+                  className="cursor-pointer"
                 />
               </ScatterChart>
             </ChartContainer>
+
+            {/* Persistent Tooltip */}
+            {persistentTooltip.visible && persistentTooltip.data && (
+              <div 
+                className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
+                style={{ 
+                  left: Math.min(persistentTooltip.x, window.innerWidth - 250),
+                  top: Math.max(10, persistentTooltip.y - 150)
+                }}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <p className="font-medium text-sm">{persistentTooltip.data.campaignName}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closePersistentTooltip}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Overall Health:</span>
+                    <span className="font-medium">{persistentTooltip.data.healthScore}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>ROAS Score:</span>
+                    <span className="font-medium">{persistentTooltip.data.roasScore}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Delivery Pacing:</span>
+                    <span className="font-medium">{persistentTooltip.data.deliveryPacingScore}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Burn Rate:</span>
+                    <span className="font-medium">{persistentTooltip.data.burnRateScore}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>CTR Score:</span>
+                    <span className="font-medium">{persistentTooltip.data.ctrScore}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Overspend:</span>
+                    <span className="font-medium">{persistentTooltip.data.overspendScore}</span>
+                  </div>
+                  <div className="border-t pt-1 mt-1">
+                    <div className="flex justify-between">
+                      <span>Completion:</span>
+                      <span className="font-medium">{persistentTooltip.data.completionPercentage.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {filteredData.length > 0 && (
