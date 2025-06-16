@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
 import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
@@ -47,8 +48,10 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
       pacingData.map(row => row["Campaign"]).filter(Boolean)
     );
 
-    // Find campaigns missing from pacing data
-    const missingFromPacing = campaigns.filter(campaign => !pacingCampaigns.has(campaign));
+    // Find campaigns missing from pacing data - only if pacing data was uploaded
+    const missingFromPacing = pacingData.length > 0 
+      ? campaigns.filter(campaign => !pacingCampaigns.has(campaign))
+      : [];
 
     // Calculate health score for each campaign, now passing contractTermsData
     const healthScores = campaigns
@@ -80,8 +83,8 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
 
   return (
     <div className="space-y-6">
-      {/* Missing Pacing Data Alert */}
-      {missingPacingCampaigns.length > 0 && (
+      {/* Missing Pacing Data Alert - only show if pacing data was uploaded */}
+      {pacingData.length > 0 && missingPacingCampaigns.length > 0 && (
         <Alert className="border-yellow-200 bg-yellow-50">
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
