@@ -1,5 +1,6 @@
+
 import { useMemo, useState } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { Button } from "./ui/button";
@@ -102,9 +103,9 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     }
   };
 
-  // Generate quadrant overlays for current zoom level
-  const generateQuadrantOverlays = () => {
-    const overlays = [];
+  // Generate clickable ReferenceArea components for quadrants
+  const generateQuadrantAreas = () => {
+    const areas = [];
     
     if (zoomState.level === 0) {
       // Use actual axis increments: 20% for x-axis, 2 points for y-axis
@@ -118,22 +119,16 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
           const yStart = yIncrements[j];
           const yEnd = yIncrements[j + 1];
 
-          // Calculate percentage positions for SVG overlay
-          const xPos = (xStart / 100) * 100;
-          const yPos = (1 - yEnd / 10) * 100;
-          const width = ((xEnd - xStart) / 100) * 100;
-          const height = ((yEnd - yStart) / 10) * 100;
-
-          overlays.push(
-            <rect
+          areas.push(
+            <ReferenceArea
               key={`quadrant-${i}-${j}`}
-              x={`${xPos}%`}
-              y={`${yPos}%`}
-              width={`${width}%`}
-              height={`${height}%`}
+              x1={xStart}
+              x2={xEnd}
+              y1={yStart}
+              y2={yEnd}
               fill="transparent"
               stroke="rgba(59, 130, 246, 0.2)"
-              strokeWidth="1"
+              strokeWidth={1}
               className="cursor-pointer hover:fill-blue-50 hover:fill-opacity-20 transition-all"
               onClick={() => handleQuadrantClick(xStart, xEnd, yStart, yEnd)}
             />
@@ -152,21 +147,16 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
           const yStart = zoomState.yMin + j * yStep;
           const yEnd = zoomState.yMin + (j + 1) * yStep;
 
-          const xPos = (xStart / 100) * 100;
-          const yPos = (1 - yEnd / 10) * 100;
-          const width = (xStep / 100) * 100;
-          const height = (yStep / 10) * 100;
-
-          overlays.push(
-            <rect
+          areas.push(
+            <ReferenceArea
               key={`quadrant-${i}-${j}`}
-              x={`${xPos}%`}
-              y={`${yPos}%`}
-              width={`${width}%`}
-              height={`${height}%`}
+              x1={xStart}
+              x2={xEnd}
+              y1={yStart}
+              y2={yEnd}
               fill="transparent"
               stroke="rgba(59, 130, 246, 0.2)"
-              strokeWidth="1"
+              strokeWidth={1}
               className="cursor-pointer hover:fill-blue-50 hover:fill-opacity-20 transition-all"
               onClick={() => handleQuadrantClick(xStart, xEnd, yStart, yEnd)}
             />
@@ -174,7 +164,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         }
       }
     }
-    return overlays;
+    return areas;
   };
 
   if (healthData.length === 0) {
@@ -249,6 +239,9 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             <ReferenceLine y={7} stroke="#22c55e" strokeDasharray="5 5" opacity={0.5} />
             <ReferenceLine y={4} stroke="#f59e0b" strokeDasharray="5 5" opacity={0.5} />
             
+            {/* Clickable Quadrant Areas */}
+            {generateQuadrantAreas()}
+            
             <XAxis 
               type="number" 
               dataKey="x" 
@@ -298,15 +291,6 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             />
           </ScatterChart>
         </ChartContainer>
-
-        {/* Clickable Quadrant Overlays */}
-        {(zoomState.level === 0 || zoomState.level > 0) && (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
-            <g className="pointer-events-auto">
-              {generateQuadrantOverlays()}
-            </g>
-          </svg>
-        )}
       </div>
       
       {zoomState.level === 0 && (
