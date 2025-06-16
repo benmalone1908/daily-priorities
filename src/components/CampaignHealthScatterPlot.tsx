@@ -330,23 +330,23 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                         </div>
                         <div className="flex justify-between">
                           <span>ROAS:</span>
-                          <span className="font-medium">{campaign.roas}x (Score: {campaign.roasScore})</span>
+                          <span className="font-medium">{campaign.roas.toFixed(1)}x (Score: {campaign.roasScore})</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Delivery Pacing:</span>
-                          <span className="font-medium">{campaign.deliveryPacing}% (Score: {campaign.deliveryPacingScore})</span>
+                          <span className="font-medium">{campaign.deliveryPacing.toFixed(1)}% (Score: {campaign.deliveryPacingScore})</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Burn Rate:</span>
-                          <span className="font-medium">{campaign.burnRate}% (Score: {campaign.burnRateScore})</span>
+                          <span className="font-medium">{campaign.burnRate.toFixed(0)} (Score: {campaign.burnRateScore})</span>
                         </div>
                         <div className="flex justify-between">
                           <span>CTR:</span>
-                          <span className="font-medium">{campaign.ctr}% (Score: {campaign.ctrScore})</span>
+                          <span className="font-medium">{campaign.ctr.toFixed(3)}% (Score: {campaign.ctrScore})</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Overspend:</span>
-                          <span className="font-medium">${campaign.overspend} (Score: {campaign.overspendScore})</span>
+                          <span className="font-medium">${campaign.overspend.toFixed(2)} (Score: {campaign.overspendScore})</span>
                         </div>
                         <div className="border-t pt-1 mt-1">
                           <div className="flex justify-between">
@@ -401,23 +401,23 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             </div>
             <div className="flex justify-between">
               <span>ROAS:</span>
-              <span className="font-medium">{persistentTooltip.data.roas}x (Score: {persistentTooltip.data.roasScore})</span>
+              <span className="font-medium">{persistentTooltip.data.roas.toFixed(1)}x (Score: {persistentTooltip.data.roasScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Delivery Pacing:</span>
-              <span className="font-medium">{persistentTooltip.data.deliveryPacing}% (Score: {persistentTooltip.data.deliveryPacingScore})</span>
+              <span className="font-medium">{persistentTooltip.data.deliveryPacing.toFixed(1)}% (Score: {persistentTooltip.data.deliveryPacingScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Burn Rate:</span>
-              <span className="font-medium">{persistentTooltip.data.burnRate}% (Score: {persistentTooltip.data.burnRateScore})</span>
+              <span className="font-medium">{persistentTooltip.data.burnRate.toFixed(0)} (Score: {persistentTooltip.data.burnRateScore})</span>
             </div>
             <div className="flex justify-between">
               <span>CTR:</span>
-              <span className="font-medium">{persistentTooltip.data.ctr}% (Score: {persistentTooltip.data.ctrScore})</span>
+              <span className="font-medium">{persistentTooltip.data.ctr.toFixed(3)}% (Score: {persistentTooltip.data.ctrScore})</span>
             </div>
             <div className="flex justify-between">
               <span>Overspend:</span>
-              <span className="font-medium">${persistentTooltip.data.overspend} (Score: {persistentTooltip.data.overspendScore})</span>
+              <span className="font-medium">${persistentTooltip.data.overspend.toFixed(2)} (Score: {persistentTooltip.data.overspendScore})</span>
             </div>
             <div className="border-t pt-1 mt-1">
               <div className="flex justify-between">
