@@ -253,7 +253,18 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
       completionPercentage: 0,
       deliveryPacing: 0,
       burnRate: 0,
-      overspend: 0
+      overspend: 0,
+      burnRateData: {
+        oneDayRate: 0,
+        threeDayRate: 0,
+        sevenDayRate: 0,
+        confidence: 'no-data',
+        oneDayPercentage: 0,
+        threeDayPercentage: 0,
+        sevenDayPercentage: 0
+      },
+      requiredDailyImpressions: 0,
+      burnRatePercentage: 0
     };
   }
   

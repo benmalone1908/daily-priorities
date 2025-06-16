@@ -427,15 +427,15 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span>1-day avg:</span>
-                  <span>{tooltipState.data.burnRateData.oneDayRate.toLocaleString()} ({tooltipState.data.burnRateData.oneDayPercentage.toFixed(1)}%)</span>
+                  <span>{tooltipState.data.burnRateData.oneDayRate.toFixed(1)} ({tooltipState.data.burnRateData.oneDayPercentage.toFixed(1)}%)</span>
                 </div>
                 <div className="flex justify-between">
                   <span>3-day avg:</span>
-                  <span>{tooltipState.data.burnRateData.threeDayRate.toLocaleString()} ({tooltipState.data.burnRateData.threeDayPercentage.toFixed(1)}%)</span>
+                  <span>{tooltipState.data.burnRateData.threeDayRate.toFixed(1)} ({tooltipState.data.burnRateData.threeDayPercentage.toFixed(1)}%)</span>
                 </div>
                 <div className="flex justify-between">
                   <span>7-day avg:</span>
-                  <span>{tooltipState.data.burnRateData.sevenDayRate.toLocaleString()} ({tooltipState.data.burnRateData.sevenDayPercentage.toFixed(1)}%)</span>
+                  <span>{tooltipState.data.burnRateData.sevenDayRate.toFixed(1)} ({tooltipState.data.burnRateData.sevenDayPercentage.toFixed(1)}%)</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Confidence:</span>
