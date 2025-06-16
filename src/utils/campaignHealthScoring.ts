@@ -188,6 +188,12 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
   
   console.log(`Campaign "${campaignName}": Days into flight = ${daysIntoFlight}, Days left = ${daysLeft}`);
   
+  // Special case: If days left is 0 and days into flight > 1, campaign is 100% complete
+  if (daysLeft === 0 && daysIntoFlight > 1) {
+    console.log(`Campaign "${campaignName}" is complete (0 days left, ${daysIntoFlight} days into flight): 100%`);
+    return 100;
+  }
+  
   if (daysIntoFlight === 0 && daysLeft === 0) {
     console.log(`No valid day data for campaign: "${campaignName}"`);
     return 0;
