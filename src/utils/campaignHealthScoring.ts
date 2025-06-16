@@ -8,6 +8,10 @@ export interface CampaignHealthData {
   transactions: number;
   expectedImpressions?: number;
   daysLeft?: number;
+  campaignStartDate?: string;
+  campaignEndDate?: string;
+  daysElapsed?: number;
+  totalDays?: number;
   roasScore: number;
   deliveryPacingScore: number;
   burnRateScore: number;
@@ -152,25 +156,68 @@ export function calculateOverspendScore(spend: number, budget: number, burnRate:
   return 0; // Overspend risk
 }
 
-// New function to calculate completion percentage based on impression delivery
-export function calculateCompletionPercentage(campaignImpressions: number, allCampaignImpressions: number[]): number {
-  if (allCampaignImpressions.length === 0) return 0;
+// New function to calculate time-based completion percentage
+export function calculateTimeBasedCompletion(campaignData: any[]): {
+  completionPercentage: number;
+  startDate: string | null;
+  endDate: string | null;
+  daysElapsed: number;
+  totalDays: number;
+} {
+  if (campaignData.length === 0) {
+    return {
+      completionPercentage: 0,
+      startDate: null,
+      endDate: null,
+      daysElapsed: 0,
+      totalDays: 0
+    };
+  }
+
+  // Extract and sort dates
+  const dates = campaignData
+    .map(row => row.DATE)
+    .filter(date => date && date !== 'Totals')
+    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+  if (dates.length === 0) {
+    return {
+      completionPercentage: 0,
+      startDate: null,
+      endDate: null,
+      daysElapsed: 0,
+      totalDays: 0
+    };
+  }
+
+  const startDate = dates[0];
+  const endDate = dates[dates.length - 1];
+  const currentDate = new Date();
   
-  // Sort impressions to find percentile ranking
-  const sortedImpressions = [...allCampaignImpressions].sort((a, b) => a - b);
-  const maxImpressions = Math.max(...sortedImpressions);
-  const minImpressions = Math.min(...sortedImpressions);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   
-  // If all campaigns have the same impressions, return 50%
-  if (maxImpressions === minImpressions) return 50;
+  // Calculate total campaign duration in days
+  const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   
-  // Calculate percentage based on position in the range
-  const completionPercentage = ((campaignImpressions - minImpressions) / (maxImpressions - minImpressions)) * 100;
+  // Calculate days elapsed from start to today (or end date if campaign is finished)
+  const referenceDate = today > end ? end : today;
+  const daysElapsed = Math.max(0, Math.ceil((referenceDate.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   
-  // Ensure it's between 0 and 100
-  return Math.min(100, Math.max(0, completionPercentage));
+  // Calculate completion percentage, capped at 100%
+  const completionPercentage = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
+
+  return {
+    completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
+    startDate,
+    endDate,
+    daysElapsed,
+    totalDays
+  };
 }
 
+// Remove the old calculateCompletionPercentage function and update calculateCampaignHealth
 export function calculateCampaignHealth(data: any[], campaignName: string, allCampaignImpressions?: number[]): CampaignHealthData {
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
@@ -211,9 +258,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
   const roas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
   const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
   
-  // Calculate completion percentage using impression delivery as proxy
-  const completionPercentage = allCampaignImpressions ? 
-    calculateCompletionPercentage(totals.impressions, allCampaignImpressions) : 0;
+  // Calculate time-based completion percentage
+  const timeCompletion = calculateTimeBasedCompletion(campaignRows);
   
   // Calculate scores
   const roasScore = calculateROASScore(roas);
@@ -248,6 +294,10 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
     revenue: totals.revenue,
     transactions: totals.transactions,
     expectedImpressions,
+    campaignStartDate: timeCompletion.startDate,
+    campaignEndDate: timeCompletion.endDate,
+    daysElapsed: timeCompletion.daysElapsed,
+    totalDays: timeCompletion.totalDays,
     roasScore,
     deliveryPacingScore,
     burnRateScore,
@@ -258,6 +308,6 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
     pace,
     ctr,
     roas,
-    completionPercentage: Math.round(completionPercentage * 10) / 10 // Round to 1 decimal
+    completionPercentage: timeCompletion.completionPercentage
   };
 }
