@@ -490,7 +490,7 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
     
     // Strategy 1: Exact match
     contractTermsRow = contractTermsData.find(row => {
-      const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
+      const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
       
       for (const field of possibleNameFields) {
         const rowCampaign = row[field];
@@ -499,7 +499,7 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
           const normalizedCampaignName = String(campaignName).trim();
           const match = normalizedRowCampaign === normalizedCampaignName;
           
-          if (isTargetCampaign && rowCampaign && (rowCampaign.includes("2001987") || rowCampaign.includes("Union Chill"))) {
+          if (isTargetCampaign) {
             console.log(`💰 [BUDGET TARGET] Checking exact match in field "${field}":`);
             console.log(`💰 [BUDGET TARGET]   Contract: "${normalizedRowCampaign}"`);
             console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
@@ -515,7 +515,7 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
     // Strategy 2: Partial match if exact match fails
     if (!contractTermsRow) {
       contractTermsRow = contractTermsData.find(row => {
-        const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
+        const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
         
         for (const field of possibleNameFields) {
           const rowCampaign = row[field];
@@ -550,15 +550,20 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
       budget = findBudgetInFields(contractTermsRow, campaignName);
     } else if (isTargetCampaign) {
       console.log(`💰 [BUDGET TARGET] ❌ No matching campaign found in contract terms`);
-      console.log(`💰 [BUDGET TARGET] Available contract campaigns:`, 
-        contractTermsData.map(row => {
-          const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
-          for (const field of possibleNameFields) {
-            if (row[field]) return row[field];
+      
+      // Debug: Show all available campaign names in contract terms
+      const availableCampaigns = contractTermsData.map(row => {
+        const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
+        for (const field of possibleNameFields) {
+          if (row[field]) {
+            console.log(`💰 [BUDGET TARGET] Contract campaign from field "${field}": "${row[field]}"`);
+            return row[field];
           }
-          return null;
-        }).filter(Boolean)
-      );
+        }
+        return null;
+      }).filter(Boolean);
+      
+      console.log(`💰 [BUDGET TARGET] All available contract campaigns:`, availableCampaigns);
     }
   }
   
