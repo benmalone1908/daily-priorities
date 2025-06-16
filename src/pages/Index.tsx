@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -747,6 +746,7 @@ const DashboardContent = ({
           <CampaignHealthTab 
             data={globalFilteredData}
             pacingData={pacingData}
+            contractTermsData={contractTermsData}
           />
         </TabsContent>
         
