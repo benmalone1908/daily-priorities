@@ -954,7 +954,6 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           color={getMetricDetails(modalData.metricType).color}
           gradientId={`${modalData.itemName}-${modalData.metricType}`.replace(/[^a-zA-Z0-9]/g, '-')}
           valueFormatter={getMetricDetails(modalData.metricType).formatter}
-          labelFormatter={(label) => `${label}`}
         />
       )}
     </div>

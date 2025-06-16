@@ -234,17 +234,9 @@ const CombinedMetricsChart = ({
           dataKey={activeTab === "display" ? "CLICKS" : "TRANSACTIONS"}
           color={activeTab === "display" ? "#f59e0b" : "#ef4444"}
           gradientId={activeTab === "display" ? "impressions-clicks" : "transactions-revenue"}
-          chartType="composed"
-          showBar={true}
-          barDataKey={activeTab === "display" ? "IMPRESSIONS" : "REVENUE"}
-          barColor={activeTab === "display" ? "#4ade80" : "#8b5cf6"}
           valueFormatter={activeTab === "display" 
             ? (value) => formatClicks(value)
             : (value) => formatTransactions(value)
-          }
-          barValueFormatter={activeTab === "display" 
-            ? (value) => formatImpressions(value)
-            : (value) => formatRevenue(value)
           }
         />
       </CardContent>
