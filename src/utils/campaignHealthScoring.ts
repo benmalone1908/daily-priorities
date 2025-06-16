@@ -161,9 +161,9 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
     console.log("Available fields in pacing data:", Object.keys(pacingData[0] || {}));
   }
   
-  // Try multiple field name variations to find the campaign
+  // Look for the campaign using the correct field name "Campaign"
   const campaignPacing = pacingData.find(row => {
-    const rowCampaign = row["CAMPAIGN"] || row["Campaign"] || row["campaign"] || row["Campaign Name"] || row["CAMPAIGN ORDER NAME"];
+    const rowCampaign = row["Campaign"];
     const normalizedRowCampaign = String(rowCampaign || "").trim();
     const normalizedCampaignName = String(campaignName || "").trim();
     
@@ -177,27 +177,14 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
   if (!campaignPacing) {
     console.log(`No pacing data found for campaign: "${campaignName}"`);
     console.log("Available campaigns in pacing data:", 
-      pacingData.map(row => row["CAMPAIGN"] || row["Campaign"] || row["campaign"] || row["Campaign Name"] || row["CAMPAIGN ORDER NAME"]).filter(Boolean)
+      pacingData.map(row => row["Campaign"]).filter(Boolean)
     );
     return 0;
   }
   
-  // Try multiple field name variations for days
-  const daysIntoFlight = Number(
-    campaignPacing["DAYS INTO FLIGHT"] || 
-    campaignPacing["Days into Flight"] || 
-    campaignPacing["days into flight"] || 
-    campaignPacing["Days Into Flight"] ||
-    0
-  );
-  
-  const daysLeft = Number(
-    campaignPacing["DAYS LEFT"] || 
-    campaignPacing["Days Left"] || 
-    campaignPacing["days left"] || 
-    campaignPacing["Days left"] ||
-    0
-  );
+  // Use the correct field names from the pacing data
+  const daysIntoFlight = Number(campaignPacing["Days Into Flight"]) || 0;
+  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
   
   console.log(`Campaign "${campaignName}": Days into flight = ${daysIntoFlight}, Days left = ${daysLeft}`);
   
