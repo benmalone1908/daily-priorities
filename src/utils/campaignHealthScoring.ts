@@ -1,3 +1,4 @@
+
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -383,6 +384,89 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
   return completionPercentage;
 }
 
+function findBudgetInFields(contractTermsRow: any, campaignName: string): number {
+  const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
+  
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET DEBUG] Searching for budget in contract terms row:`, contractTermsRow);
+    console.log(`💰 [BUDGET DEBUG] Available fields:`, Object.keys(contractTermsRow || {}));
+  }
+  
+  // List of possible budget field names to check
+  const budgetFieldNames = [
+    'Budget', 'BUDGET', 'budget',
+    'Total Budget', 'TOTAL BUDGET', 'total budget',
+    'Campaign Budget', 'CAMPAIGN BUDGET', 'campaign budget',
+    'Media Budget', 'MEDIA BUDGET', 'media budget',
+    'Flight Budget', 'FLIGHT BUDGET', 'flight budget',
+    'Budget Amount', 'BUDGET AMOUNT', 'budget amount',
+    'Total', 'TOTAL', 'total',
+    'Amount', 'AMOUNT', 'amount'
+  ];
+  
+  // First, try exact field name matches
+  for (const fieldName of budgetFieldNames) {
+    if (contractTermsRow[fieldName] !== undefined) {
+      const budgetValue = contractTermsRow[fieldName];
+      const numBudget = Number(budgetValue);
+      
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET DEBUG] Found field "${fieldName}" with value:`, budgetValue, `-> parsed as:`, numBudget);
+      }
+      
+      if (!isNaN(numBudget) && numBudget > 0) {
+        if (isTargetCampaign) {
+          console.log(`💰 [BUDGET DEBUG] ✅ Found valid budget: $${numBudget} in field "${fieldName}"`);
+        }
+        return numBudget;
+      }
+    }
+  }
+  
+  // If no exact matches, search through all fields for anything that looks like a budget
+  const allFields = Object.keys(contractTermsRow || {});
+  for (const fieldName of allFields) {
+    const lowerFieldName = fieldName.toLowerCase();
+    
+    // Check if field name contains budget-related keywords
+    if (lowerFieldName.includes('budget') || lowerFieldName.includes('total') || lowerFieldName.includes('amount')) {
+      const fieldValue = contractTermsRow[fieldName];
+      const numValue = Number(fieldValue);
+      
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET DEBUG] Checking budget-like field "${fieldName}" with value:`, fieldValue, `-> parsed as:`, numValue);
+      }
+      
+      if (!isNaN(numValue) && numValue > 0) {
+        if (isTargetCampaign) {
+          console.log(`💰 [BUDGET DEBUG] ✅ Found valid budget: $${numValue} in budget-like field "${fieldName}"`);
+        }
+        return numValue;
+      }
+    }
+  }
+  
+  // Last resort: look for any numeric field that could be a budget (reasonable range)
+  for (const fieldName of allFields) {
+    const fieldValue = contractTermsRow[fieldName];
+    const numValue = Number(fieldValue);
+    
+    // Check if it's a reasonable budget amount (between $100 and $1,000,000)
+    if (!isNaN(numValue) && numValue >= 100 && numValue <= 1000000) {
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET DEBUG] Found potential budget field "${fieldName}" with value: $${numValue}`);
+      }
+      return numValue;
+    }
+  }
+  
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET DEBUG] ❌ No valid budget found in any field`);
+  }
+  
+  return 0;
+}
+
 function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractTermsData: any[] = []): { budget: number; daysLeft: number } {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
@@ -401,44 +485,79 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
   let budget = 0;
   
   if (contractTermsData.length > 0) {
-    // Look for the campaign in contract terms data
-    const contractTermsRow = contractTermsData.find(row => {
-      const rowCampaign = row["NAME"] || row["CAMPAIGN"] || row["Campaign"];
-      const normalizedRowCampaign = String(rowCampaign || "").trim();
-      const normalizedCampaignName = String(campaignName || "").trim();
-      const match = normalizedRowCampaign === normalizedCampaignName;
+    // Look for the campaign in contract terms data with multiple matching strategies
+    let contractTermsRow = null;
+    
+    // Strategy 1: Exact match
+    contractTermsRow = contractTermsData.find(row => {
+      const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
       
-      if (isTargetCampaign && rowCampaign && (rowCampaign.includes("2001987") || rowCampaign.includes("Union Chill"))) {
-        console.log(`💰 [BUDGET TARGET] Checking contract terms match:`);
-        console.log(`💰 [BUDGET TARGET]   Contract: "${normalizedRowCampaign}"`);
-        console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
-        console.log(`💰 [BUDGET TARGET]   Match: ${match}`);
+      for (const field of possibleNameFields) {
+        const rowCampaign = row[field];
+        if (rowCampaign) {
+          const normalizedRowCampaign = String(rowCampaign).trim();
+          const normalizedCampaignName = String(campaignName).trim();
+          const match = normalizedRowCampaign === normalizedCampaignName;
+          
+          if (isTargetCampaign && rowCampaign && (rowCampaign.includes("2001987") || rowCampaign.includes("Union Chill"))) {
+            console.log(`💰 [BUDGET TARGET] Checking exact match in field "${field}":`);
+            console.log(`💰 [BUDGET TARGET]   Contract: "${normalizedRowCampaign}"`);
+            console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
+            console.log(`💰 [BUDGET TARGET]   Match: ${match}`);
+          }
+          
+          if (match) return true;
+        }
       }
-      
-      return match;
+      return false;
     });
+    
+    // Strategy 2: Partial match if exact match fails
+    if (!contractTermsRow) {
+      contractTermsRow = contractTermsData.find(row => {
+        const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
+        
+        for (const field of possibleNameFields) {
+          const rowCampaign = row[field];
+          if (rowCampaign) {
+            const normalizedRowCampaign = String(rowCampaign).trim().toLowerCase();
+            const normalizedCampaignName = String(campaignName).trim().toLowerCase();
+            
+            // Check for partial matches (campaign ID or key terms)
+            const campaignIdMatch = normalizedRowCampaign.includes("2001987") && normalizedCampaignName.includes("2001987");
+            const unionChillMatch = normalizedRowCampaign.includes("union chill") && normalizedCampaignName.includes("union chill");
+            
+            if (isTargetCampaign && (campaignIdMatch || unionChillMatch)) {
+              console.log(`💰 [BUDGET TARGET] Found partial match in field "${field}":`);
+              console.log(`💰 [BUDGET TARGET]   Contract: "${normalizedRowCampaign}"`);
+              console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
+              console.log(`💰 [BUDGET TARGET]   ID Match: ${campaignIdMatch}, Union Chill Match: ${unionChillMatch}`);
+            }
+            
+            if (campaignIdMatch || unionChillMatch) return true;
+          }
+        }
+        return false;
+      });
+    }
     
     if (contractTermsRow) {
       if (isTargetCampaign) {
         console.log(`💰 [BUDGET TARGET] ✅ Found matching contract terms row:`, contractTermsRow);
       }
       
-      // Look for budget in the "Budget" column
-      const budgetValue = contractTermsRow["Budget"] || contractTermsRow["BUDGET"] || contractTermsRow["budget"];
-      const numBudget = Number(budgetValue);
-      
-      if (!isNaN(numBudget) && numBudget > 0) {
-        budget = numBudget;
-        if (isTargetCampaign) {
-          console.log(`💰 [BUDGET TARGET] ✅ Found budget in contract terms: $${budget}`);
-        }
-      } else if (isTargetCampaign) {
-        console.log(`💰 [BUDGET TARGET] ❌ Budget field found but invalid value:`, budgetValue);
-      }
+      // Use enhanced budget field search
+      budget = findBudgetInFields(contractTermsRow, campaignName);
     } else if (isTargetCampaign) {
       console.log(`💰 [BUDGET TARGET] ❌ No matching campaign found in contract terms`);
       console.log(`💰 [BUDGET TARGET] Available contract campaigns:`, 
-        contractTermsData.map(row => row["NAME"] || row["CAMPAIGN"] || row["Campaign"]).filter(Boolean)
+        contractTermsData.map(row => {
+          const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME'];
+          for (const field of possibleNameFields) {
+            if (row[field]) return row[field];
+          }
+          return null;
+        }).filter(Boolean)
       );
     }
   }
