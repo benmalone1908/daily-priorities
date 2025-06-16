@@ -68,6 +68,8 @@ interface DashboardProps {
   viewByDate?: boolean;
   // Add hideChartTitle prop to fix the TypeScript error
   hideChartTitle?: boolean;
+  // Add contractTermsData prop to fix the TypeScript error
+  contractTermsData?: any[];
 }
 
 interface WeeklyData {
@@ -262,7 +264,9 @@ const Dashboard = ({
   // Add viewByDate to the destructured props with a default value
   viewByDate = true,
   // Add hideChartTitle prop to fix the TypeScript error
-  hideChartTitle = false
+  hideChartTitle = false,
+  // Add contractTermsData prop to fix the TypeScript error
+  contractTermsData
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
