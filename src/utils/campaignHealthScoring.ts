@@ -1,4 +1,3 @@
-
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -154,21 +153,65 @@ export function calculateOverspendScore(spend: number, budget: number, burnRate:
 }
 
 function calculateCompletionPercentage(pacingData: any[], campaignName: string): number {
-  // Find the pacing data for this campaign
-  const campaignPacing = pacingData.find(row => 
-    row["Campaign Name"] === campaignName || 
-    row["CAMPAIGN ORDER NAME"] === campaignName
+  console.log(`Calculating completion for campaign: "${campaignName}"`);
+  console.log(`Pacing data available: ${pacingData.length} rows`);
+  
+  if (pacingData.length > 0) {
+    console.log("Sample pacing data row:", pacingData[0]);
+    console.log("Available fields in pacing data:", Object.keys(pacingData[0] || {}));
+  }
+  
+  // Try multiple field name variations to find the campaign
+  const campaignPacing = pacingData.find(row => {
+    const rowCampaign = row["CAMPAIGN"] || row["Campaign"] || row["campaign"] || row["Campaign Name"] || row["CAMPAIGN ORDER NAME"];
+    const normalizedRowCampaign = String(rowCampaign || "").trim();
+    const normalizedCampaignName = String(campaignName || "").trim();
+    
+    const match = normalizedRowCampaign === normalizedCampaignName;
+    if (match) {
+      console.log(`Found matching campaign: "${normalizedRowCampaign}" = "${normalizedCampaignName}"`);
+    }
+    return match;
+  });
+  
+  if (!campaignPacing) {
+    console.log(`No pacing data found for campaign: "${campaignName}"`);
+    console.log("Available campaigns in pacing data:", 
+      pacingData.map(row => row["CAMPAIGN"] || row["Campaign"] || row["campaign"] || row["Campaign Name"] || row["CAMPAIGN ORDER NAME"]).filter(Boolean)
+    );
+    return 0;
+  }
+  
+  // Try multiple field name variations for days
+  const daysIntoFlight = Number(
+    campaignPacing["DAYS INTO FLIGHT"] || 
+    campaignPacing["Days into Flight"] || 
+    campaignPacing["days into flight"] || 
+    campaignPacing["Days Into Flight"] ||
+    0
   );
   
-  if (!campaignPacing) return 0;
+  const daysLeft = Number(
+    campaignPacing["DAYS LEFT"] || 
+    campaignPacing["Days Left"] || 
+    campaignPacing["days left"] || 
+    campaignPacing["Days left"] ||
+    0
+  );
   
-  const daysIntoFlight = Number(campaignPacing["Days into Flight"]) || 0;
-  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
+  console.log(`Campaign "${campaignName}": Days into flight = ${daysIntoFlight}, Days left = ${daysLeft}`);
   
-  if (daysIntoFlight === 0 && daysLeft === 0) return 0;
+  if (daysIntoFlight === 0 && daysLeft === 0) {
+    console.log(`No valid day data for campaign: "${campaignName}"`);
+    return 0;
+  }
   
   const totalDays = daysIntoFlight + daysLeft;
-  return totalDays > 0 ? (daysIntoFlight / totalDays) * 100 : 0;
+  const completionPercentage = totalDays > 0 ? (daysIntoFlight / totalDays) * 100 : 0;
+  
+  console.log(`Campaign "${campaignName}" completion: ${completionPercentage.toFixed(1)}%`);
+  
+  return completionPercentage;
 }
 
 export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
