@@ -198,23 +198,15 @@ export function calculateTimeBasedCompletion(campaignData: any[]): {
   const end = new Date(endDate);
   const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   
+  // Calculate days elapsed from start to today (but not beyond end date)
+  const daysElapsed = Math.max(1, Math.ceil((Math.min(today.getTime(), end.getTime()) - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  
   // Calculate total campaign duration in days
   const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
   
-  // For campaigns that haven't ended yet, calculate based on today vs campaign end
-  // For campaigns that have ended, show 100% completion
-  let daysElapsed: number;
-  let completionPercentage: number;
-  
-  if (today <= end) {
-    // Campaign is still running - calculate based on current progress
-    daysElapsed = Math.max(1, Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    completionPercentage = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
-  } else {
-    // Campaign has ended - show 100%
-    daysElapsed = totalDays;
-    completionPercentage = 100;
-  }
+  // Calculate completion percentage as: days_elapsed / total_days
+  // This gives us "Days into flight" / ("Days into flight" + "Days left")
+  const completionPercentage = Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100));
 
   return {
     completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
