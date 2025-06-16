@@ -40,8 +40,8 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
-  // Calculate needle rotation based on health score (0-10 mapped to 0-180 degrees)
-  const needleRotation = (campaign.healthScore / 10) * 180;
+  // Calculate angle for needle (0-180 degrees for semicircle)
+  const needleAngle = (campaign.healthScore / 10) * 180;
 
   return (
     <Card className="w-full">
@@ -67,81 +67,77 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
           </div>
           
           <div className="relative w-full h-32 flex items-end justify-center">
-            {/* Semicircle Background */}
-            <svg width="200" height="100" viewBox="0 0 200 100" className="absolute">
-              {/* Background Arc */}
+            <svg width="240" height="120" viewBox="0 0 240 120" className="absolute">
+              {/* Background semicircle */}
               <path
-                d="M 20 80 A 80 80 0 0 1 180 80"
+                d="M 30 100 A 80 80 0 0 1 210 100"
                 fill="none"
                 stroke="#e5e7eb"
-                strokeWidth="20"
+                strokeWidth="16"
                 strokeLinecap="round"
               />
               
-              {/* Color Segments */}
-              {/* Red segment (0-4) */}
+              {/* Red zone (0-4) */}
               <path
-                d="M 20 80 A 80 80 0 0 1 100 20"
+                d="M 30 100 A 80 80 0 0 1 120 20"
                 fill="none"
                 stroke="#ef4444"
-                strokeWidth="20"
+                strokeWidth="16"
                 strokeLinecap="round"
-                opacity="0.3"
+                opacity="0.7"
               />
               
-              {/* Yellow segment (4-7) */}
+              {/* Yellow zone (4-7) */}
               <path
-                d="M 100 20 A 80 80 0 0 1 158 45"
+                d="M 120 20 A 80 80 0 0 1 174 47"
                 fill="none"
                 stroke="#eab308"
-                strokeWidth="20"
+                strokeWidth="16"
                 strokeLinecap="round"
-                opacity="0.3"
+                opacity="0.7"
               />
               
-              {/* Green segment (7-10) */}
+              {/* Green zone (7-10) */}
               <path
-                d="M 158 45 A 80 80 0 0 1 180 80"
+                d="M 174 47 A 80 80 0 0 1 210 100"
                 fill="none"
                 stroke="#22c55e"
-                strokeWidth="20"
+                strokeWidth="16"
                 strokeLinecap="round"
-                opacity="0.3"
+                opacity="0.7"
               />
               
-              {/* Progress Arc */}
+              {/* Progress indicator based on score */}
               <path
-                d={`M 20 80 A 80 80 0 ${needleRotation > 90 ? 1 : 0} 1 ${
-                  20 + 80 * Math.cos((180 - needleRotation) * Math.PI / 180)
+                d={`M 30 100 A 80 80 0 ${needleAngle > 90 ? '1' : '0'} 1 ${
+                  120 + 80 * Math.cos((needleAngle - 90) * Math.PI / 180)
                 } ${
-                  80 - 80 * Math.sin((180 - needleRotation) * Math.PI / 180)
+                  100 - 80 * Math.sin((needleAngle - 90) * Math.PI / 180)
                 }`}
                 fill="none"
                 stroke={campaign.healthScore >= 7 ? "#22c55e" : campaign.healthScore >= 4 ? "#eab308" : "#ef4444"}
-                strokeWidth="20"
+                strokeWidth="16"
                 strokeLinecap="round"
               />
               
-              {/* Center circle */}
-              <circle cx="100" cy="80" r="8" fill="#374151" />
-              
               {/* Needle */}
               <line
-                x1="100"
-                y1="80"
-                x2={100 + 60 * Math.cos((180 - needleRotation) * Math.PI / 180)}
-                y2={80 - 60 * Math.sin((180 - needleRotation) * Math.PI / 180)}
+                x1="120"
+                y1="100"
+                x2={120 + 65 * Math.cos((needleAngle - 90) * Math.PI / 180)}
+                y2={100 - 65 * Math.sin((needleAngle - 90) * Math.PI / 180)}
                 stroke="#dc2626"
                 strokeWidth="3"
                 strokeLinecap="round"
               />
               
-              {/* Needle center dot */}
-              <circle cx="100" cy="80" r="4" fill="#dc2626" />
+              {/* Center circle */}
+              <circle cx="120" cy="100" r="6" fill="#374151" />
+              <circle cx="120" cy="100" r="3" fill="#dc2626" />
             </svg>
             
             {/* Scale labels */}
-            <div className="absolute bottom-0 w-full flex justify-between text-xs text-gray-500 px-2">
+            <div className="absolute bottom-0 w-full flex justify-between text-xs text-gray-500 px-4">
               <span>0</span>
               <span>5</span>
               <span>10</span>
