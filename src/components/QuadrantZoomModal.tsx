@@ -24,13 +24,6 @@ interface TooltipState {
   y: number;
 }
 
-interface MultiCampaignTooltipState {
-  visible: boolean;
-  campaigns: CampaignHealthData[];
-  x: number;
-  y: number;
-}
-
 const QuadrantZoomModal = ({
   open,
   onOpenChange,
@@ -48,42 +41,21 @@ const QuadrantZoomModal = ({
     y: 0
   });
 
-  const [multiCampaignTooltipState, setMultiCampaignTooltipState] = useState<MultiCampaignTooltipState>({
-    visible: false,
-    campaigns: [],
-    x: 0,
-    y: 0
-  });
-
   const filteredData = useMemo(() => {
-    const campaigns = healthData.filter(campaign => 
-      campaign.completionPercentage >= xMin && 
-      campaign.completionPercentage <= xMax &&
-      campaign.healthScore >= yMin && 
-      campaign.healthScore <= yMax
-    );
-
-    const dataMap = new Map<string, { campaigns: CampaignHealthData[], count: number }>();
-    
-    // Group campaigns by coordinates to detect overlaps
-    campaigns.forEach(campaign => {
-      const key = `${campaign.completionPercentage.toFixed(1)},${campaign.healthScore.toFixed(1)}`;
-      if (!dataMap.has(key)) {
-        dataMap.set(key, { campaigns: [], count: 0 });
-      }
-      dataMap.get(key)!.campaigns.push(campaign);
-      dataMap.get(key)!.count++;
-    });
-
-    return campaigns.map(campaign => ({
-      x: campaign.completionPercentage,
-      y: campaign.healthScore,
-      name: campaign.campaignName,
-      fill: getHealthColor(campaign.healthScore),
-      campaignData: campaign,
-      isStacked: dataMap.get(`${campaign.completionPercentage.toFixed(1)},${campaign.healthScore.toFixed(1)}`)!.count > 1,
-      stackCount: dataMap.get(`${campaign.completionPercentage.toFixed(1)},${campaign.healthScore.toFixed(1)}`)!.count
-    }));
+    return healthData
+      .filter(campaign => 
+        campaign.completionPercentage >= xMin && 
+        campaign.completionPercentage <= xMax &&
+        campaign.healthScore >= yMin && 
+        campaign.healthScore <= yMax
+      )
+      .map(campaign => ({
+        x: campaign.completionPercentage,
+        y: campaign.healthScore,
+        name: campaign.campaignName,
+        fill: getHealthColor(campaign.healthScore),
+        campaignData: campaign
+      }));
   }, [healthData, xMin, xMax, yMin, yMax]);
 
   const chartConfig = {
@@ -138,65 +110,26 @@ const QuadrantZoomModal = ({
     return ticks;
   }, [yMin, yMax]);
 
-  const findCampaignsAtCoordinate = (targetX: number, targetY: number, tolerance = 0.1) => {
-    return healthData.filter(campaign => 
-      Math.abs(campaign.completionPercentage - targetX) <= tolerance &&
-      Math.abs(campaign.healthScore - targetY) <= tolerance &&
-      campaign.completionPercentage >= xMin && 
-      campaign.completionPercentage <= xMax &&
-      campaign.healthScore >= yMin && 
-      campaign.healthScore <= yMax
-    );
-  };
-
   const handleScatterClick = (data: any, event: any) => {
     event?.stopPropagation?.();
     
-    if (event) {
+    const campaign = healthData.find(c => c.campaignName === data.name);
+    if (campaign && event) {
       const clientX = event.clientX || event.nativeEvent?.clientX || 100;
       const clientY = event.clientY || event.nativeEvent?.clientY || 100;
       
-      // Find all campaigns at this coordinate
-      const campaignsAtPoint = findCampaignsAtCoordinate(data.x, data.y);
-      
-      if (campaignsAtPoint.length > 1) {
-        // Multiple campaigns - show multi-campaign tooltip
-        setMultiCampaignTooltipState({
-          visible: true,
-          campaigns: campaignsAtPoint,
-          x: clientX,
-          y: clientY
-        });
-        // Hide single campaign tooltip
-        setTooltipState({
-          visible: false,
-          pinned: false,
-          data: null,
-          x: 0,
-          y: 0
-        });
-      } else if (campaignsAtPoint.length === 1) {
-        // Single campaign - show regular tooltip
-        setTooltipState({
-          visible: true,
-          pinned: true,
-          data: campaignsAtPoint[0],
-          x: clientX,
-          y: clientY
-        });
-        // Hide multi-campaign tooltip
-        setMultiCampaignTooltipState({
-          visible: false,
-          campaigns: [],
-          x: 0,
-          y: 0
-        });
-      }
+      setTooltipState({
+        visible: true,
+        pinned: true,
+        data: campaign,
+        x: clientX,
+        y: clientY
+      });
     }
   };
 
   const handleTooltipMouseEnter = (data: any, event: any) => {
-    if (!tooltipState.pinned && !multiCampaignTooltipState.visible) {
+    if (!tooltipState.pinned) {
       const campaign = healthData.find(c => c.campaignName === data.name);
       if (campaign && event) {
         const clientX = event.clientX || event.nativeEvent?.clientX || 100;
@@ -233,27 +166,6 @@ const QuadrantZoomModal = ({
       x: 0,
       y: 0
     });
-  };
-
-  const closeMultiCampaignTooltip = () => {
-    setMultiCampaignTooltipState({
-      visible: false,
-      campaigns: [],
-      x: 0,
-      y: 0
-    });
-  };
-
-  const selectCampaignFromMulti = (campaign: CampaignHealthData, event: React.MouseEvent) => {
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    setTooltipState({
-      visible: true,
-      pinned: true,
-      data: campaign,
-      x: rect.left + rect.width / 2,
-      y: rect.top
-    });
-    closeMultiCampaignTooltip();
   };
 
   return (
@@ -315,41 +227,11 @@ const QuadrantZoomModal = ({
                   onMouseEnter={handleTooltipMouseEnter}
                   onMouseLeave={handleTooltipMouseLeave}
                   className="cursor-pointer"
-                  shape={(props: any) => {
-                    const { cx, cy, fill, payload } = props;
-                    const isStacked = payload?.isStacked;
-                    const stackCount = payload?.stackCount || 1;
-                    
-                    return (
-                      <g>
-                        <circle 
-                          cx={cx} 
-                          cy={cy} 
-                          r={isStacked ? 6 : 4} 
-                          fill={fill}
-                          stroke={isStacked ? "#1f2937" : "transparent"}
-                          strokeWidth={isStacked ? 1 : 0}
-                        />
-                        {isStacked && stackCount > 1 && (
-                          <text
-                            x={cx + 8}
-                            y={cy - 8}
-                            fontSize={10}
-                            fill="#1f2937"
-                            fontWeight="bold"
-                            className="pointer-events-none"
-                          >
-                            {stackCount}
-                          </text>
-                        )}
-                      </g>
-                    );
-                  }}
                 />
               </ScatterChart>
             </ChartContainer>
 
-            {/* Single Campaign Tooltip */}
+            {/* Custom Tooltip */}
             {tooltipState.visible && tooltipState.data && (
               <div 
                 className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
@@ -403,6 +285,7 @@ const QuadrantZoomModal = ({
                     </div>
                   </div>
                   
+                  {/* Detailed Burn Rate Breakdown */}
                   <div className="border-t pt-2 mt-2">
                     <div className="text-xs font-medium mb-1">Burn Rate Breakdown:</div>
                     <div className="space-y-1 text-xs">
@@ -436,54 +319,6 @@ const QuadrantZoomModal = ({
                 )}
               </div>
             )}
-
-            {/* Multi-Campaign Selection Tooltip */}
-            {multiCampaignTooltipState.visible && (
-              <div 
-                className="fixed bg-white p-4 border rounded shadow-lg max-w-sm z-50"
-                style={{ 
-                  left: Math.min(multiCampaignTooltipState.x, window.innerWidth - 350),
-                  top: Math.max(10, multiCampaignTooltipState.y - 100)
-                }}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="font-medium text-sm">Multiple Campaigns</p>
-                    <p className="text-xs text-gray-500">{multiCampaignTooltipState.campaigns.length} campaigns at this location</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeMultiCampaignTooltip}
-                    className="h-6 w-6 p-0"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-                
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {multiCampaignTooltipState.campaigns.map((campaign, index) => (
-                    <div 
-                      key={index}
-                      className="p-2 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={(e) => selectCampaignFromMulti(campaign, e)}
-                    >
-                      <p className="font-medium text-xs truncate" title={campaign.campaignName}>
-                        {campaign.campaignName}
-                      </p>
-                      <div className="flex justify-between text-xs text-gray-600 mt-1">
-                        <span>Health: {campaign.healthScore}</span>
-                        <span>Complete: {campaign.completionPercentage.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <p className="text-xs text-blue-600 mt-3 text-center">
-                  Click on a campaign above to view details
-                </p>
-              </div>
-            )}
           </div>
 
           {filteredData.length > 0 && (
@@ -496,7 +331,6 @@ const QuadrantZoomModal = ({
                     <div className="flex items-center gap-2 text-xs">
                       <span>Score: {campaign.y}</span>
                       <span>Complete: {campaign.x.toFixed(1)}%</span>
-                      {campaign.isStacked && <span className="text-blue-600">({campaign.stackCount} stacked)</span>}
                     </div>
                   </div>
                 ))}
@@ -510,9 +344,9 @@ const QuadrantZoomModal = ({
 };
 
 function getHealthColor(healthScore: number): string {
-  if (healthScore >= 7) return "#22c55e";
-  if (healthScore >= 4) return "#f59e0b";
-  return "#ef4444";
+  if (healthScore >= 7) return "#22c55e"; // Green for healthy
+  if (healthScore >= 4) return "#f59e0b"; // Yellow/Orange for warning
+  return "#ef4444"; // Red for critical
 }
 
 export default QuadrantZoomModal;
