@@ -1,3 +1,4 @@
+
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -237,8 +238,64 @@ export function calculateTimeBasedCompletion(campaignData: any[]): {
   };
 }
 
+// New function to calculate completion percentage from pacing data
+export function calculatePacingCompletion(pacingData: any[], campaignName: string): {
+  completionPercentage: number;
+  daysIntoFlight: number;
+  daysLeft: number;
+  totalDays: number;
+} {
+  // Find the pacing data for this campaign
+  const campaignPacing = pacingData.find(row => {
+    const campaign = row.Campaign || row.CAMPAIGN || row["CAMPAIGN ORDER NAME"] || "";
+    return campaign === campaignName;
+  });
+
+  if (!campaignPacing) {
+    return {
+      completionPercentage: 0,
+      daysIntoFlight: 0,
+      daysLeft: 0,
+      totalDays: 0
+    };
+  }
+
+  // Extract pacing fields with flexible column name matching
+  const daysIntoFlight = Number(
+    campaignPacing["Days into Flight"] || 
+    campaignPacing["DAYS INTO FLIGHT"] || 
+    campaignPacing["Days Into Flight"] || 
+    campaignPacing["DAYS_INTO_FLIGHT"] || 
+    0
+  );
+  
+  const daysLeft = Number(
+    campaignPacing["Days Left"] || 
+    campaignPacing["DAYS LEFT"] || 
+    campaignPacing["DAYS_LEFT"] || 
+    0
+  );
+
+  const totalDays = daysIntoFlight + daysLeft;
+  const completionPercentage = totalDays > 0 ? (daysIntoFlight / totalDays) * 100 : 0;
+
+  console.log(`Pacing completion calculation for ${campaignName}:`, {
+    daysIntoFlight,
+    daysLeft,
+    totalDays,
+    completionPercentage
+  });
+
+  return {
+    completionPercentage: Math.round(completionPercentage * 10) / 10,
+    daysIntoFlight,
+    daysLeft,
+    totalDays
+  };
+}
+
 // Remove the old calculateCompletionPercentage function and update calculateCampaignHealth
-export function calculateCampaignHealth(data: any[], campaignName: string, allCampaignImpressions?: number[]): CampaignHealthData {
+export function calculateCampaignHealth(data: any[], campaignName: string, allCampaignImpressions?: number[], pacingData?: any[]): CampaignHealthData {
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
     row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
@@ -278,8 +335,19 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
   const roas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
   const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
   
-  // Calculate time-based completion percentage
-  const timeCompletion = calculateTimeBasedCompletion(campaignRows);
+  // Calculate completion percentage - prioritize pacing data if available
+  let completionData;
+  if (pacingData && pacingData.length > 0) {
+    completionData = calculatePacingCompletion(pacingData, campaignName);
+  } else {
+    const timeCompletion = calculateTimeBasedCompletion(campaignRows);
+    completionData = {
+      completionPercentage: timeCompletion.completionPercentage,
+      daysIntoFlight: timeCompletion.daysElapsed,
+      daysLeft: 0, // Not available from time-based calculation
+      totalDays: timeCompletion.totalDays
+    };
+  }
   
   // Calculate scores
   const roasScore = calculateROASScore(roas);
@@ -305,6 +373,9 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
   
   const pace = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
   
+  // Get time completion for dates (fallback to pacing data if available)
+  const timeCompletion = calculateTimeBasedCompletion(campaignRows);
+  
   return {
     campaignName,
     budget: undefined, // Will be enhanced when budget data is available
@@ -314,10 +385,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
     revenue: totals.revenue,
     transactions: totals.transactions,
     expectedImpressions,
+    daysLeft: completionData.daysLeft || undefined,
     campaignStartDate: timeCompletion.startDate,
     campaignEndDate: timeCompletion.endDate,
-    daysElapsed: timeCompletion.daysElapsed,
-    totalDays: timeCompletion.totalDays,
+    daysElapsed: completionData.daysIntoFlight,
+    totalDays: completionData.totalDays,
     roasScore,
     deliveryPacingScore,
     burnRateScore,
@@ -328,6 +400,6 @@ export function calculateCampaignHealth(data: any[], campaignName: string, allCa
     pace,
     ctr,
     roas,
-    completionPercentage: timeCompletion.completionPercentage
+    completionPercentage: completionData.completionPercentage
   };
 }
