@@ -1,10 +1,10 @@
+
 import { useMemo } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
+import CampaignHealthTable from "./CampaignHealthTable";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
-import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 
 interface CampaignHealthTabProps {
   data: any[];
@@ -21,20 +21,9 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
         .map(row => row["CAMPAIGN ORDER NAME"])
     ));
 
-    // Calculate total impressions for all campaigns to use in completion percentage calculation
-    const allCampaignImpressions = campaigns.map(campaignName => {
-      const campaignRows = data.filter(row => 
-        row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
-      );
-      return campaignRows.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
-    });
-
-    // Calculate health score for each campaign with proper completion percentage
+    // Calculate health score for each campaign
     return campaigns
-      .map(campaignName => {
-        const campaignHealth = calculateCampaignHealth(data, campaignName, allCampaignImpressions);
-        return campaignHealth;
-      })
+      .map(campaignName => calculateCampaignHealth(data, campaignName))
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
   }, [data, isTestCampaign]);
 
@@ -54,44 +43,6 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
       avgScore: Math.round(avgScore * 10) / 10
     };
   }, [healthData]);
-
-  const getScoreColor = (score: number) => {
-    if (score >= 7) return "#10b981"; // green-500
-    if (score >= 4) return "#f59e0b"; // amber-500
-    return "#ef4444"; // red-500
-  };
-
-  const chartData = healthData.map(campaign => ({
-    x: campaign.completionPercentage || 0,
-    y: campaign.healthScore,
-    campaignName: campaign.campaignName,
-    score: campaign.healthScore,
-    color: getScoreColor(campaign.healthScore)
-  }));
-
-  const chartConfig = {
-    campaigns: {
-      label: "Campaigns",
-    },
-  };
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="font-semibold text-sm">{data.campaignName}</p>
-          <p className="text-sm text-gray-600">
-            Score: <span className="font-medium">{data.score.toFixed(1)}/10</span>
-          </p>
-          <p className="text-sm text-gray-600">
-            Completion: <span className="font-medium">{data.x.toFixed(1)}%</span>
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-6">
@@ -159,61 +110,11 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
         </div>
       </Card>
 
-      {/* Campaign Health Scatter Plot */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Campaign Health vs Completion</h3>
-        <div className="h-96">
-          <ChartContainer config={chartConfig}>
-            <ScatterChart
-              data={chartData}
-              margin={{
-                top: 20,
-                right: 20,
-                bottom: 60,
-                left: 60,
-              }}
-            >
-              <XAxis 
-                type="number" 
-                dataKey="x" 
-                name="Completion %" 
-                domain={[0, 100]}
-                tickFormatter={(value) => `${value}%`}
-                label={{ value: 'Campaign Completion %', position: 'insideBottom', offset: -10 }}
-              />
-              <YAxis 
-                type="number" 
-                dataKey="y" 
-                name="Health Score" 
-                domain={[0, 10]}
-                label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
-              />
-              <ChartTooltip content={<CustomTooltip />} />
-              <Scatter name="Campaigns" dataKey="y" fill="#8884d8">
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ChartContainer>
-        </div>
-        
-        {/* Legend */}
-        <div className="flex justify-center mt-4 space-x-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-sm">Healthy (≥7.0)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-            <span className="text-sm">Warning (4.0-6.9)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span className="text-sm">Critical (&lt;4.0)</span>
-          </div>
-        </div>
-      </Card>
+      {/* Campaign Health Table */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Campaign Health Details</h3>
+        <CampaignHealthTable healthData={healthData} />
+      </div>
     </div>
   );
 };
