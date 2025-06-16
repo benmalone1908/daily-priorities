@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
@@ -136,14 +135,20 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
   };
 
   const handleScatterClick = (data: any, event: any) => {
-    event.stopPropagation();
+    // Recharts passes the event differently - check for the actual event object
+    const actualEvent = event?.activePayload?.[0]?.payload ? event : { nativeEvent: event };
+    
+    if (actualEvent?.nativeEvent) {
+      actualEvent.nativeEvent.stopPropagation?.();
+    }
+    
     const campaign = healthData.find(c => c.campaignName === data.name);
-    if (campaign && event.nativeEvent) {
+    if (campaign && actualEvent?.nativeEvent) {
       setPersistentTooltip({
         visible: true,
         data: campaign,
-        x: event.nativeEvent.clientX,
-        y: event.nativeEvent.clientY
+        x: actualEvent.nativeEvent.clientX || 100,
+        y: actualEvent.nativeEvent.clientY || 100
       });
     }
   };
