@@ -150,35 +150,94 @@ export function calculateCTRScore(ctr: number, benchmark: number = CTR_BENCHMARK
   return 0;
 }
 
-function calculateSpendBurnRate(data: any[], campaignName: string): { dailySpendRate: number; confidence: string } {
+function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: number = 0, daysIntoFlight: number = 0): { dailySpendRate: number; confidence: string } {
   // Filter data for this campaign and sort by date
   const campaignData = data
     .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
     .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
   
   if (campaignData.length === 0) {
+    console.log(`No spend data found for campaign: ${campaignName}`);
     return { dailySpendRate: 0, confidence: 'no-data' };
   }
   
-  // Get most recent data points for spend rate calculation
+  console.log(`Calculating spend burn rate for campaign: ${campaignName}`);
+  console.log(`Total campaign spend: $${totalSpend}, Days into flight: ${daysIntoFlight}`);
+  
+  // Get spend values and filter out anomalous data
+  const spendValues = campaignData.map(row => Number(row.SPEND) || 0);
+  const totalDataSpend = spendValues.reduce((sum, spend) => sum + spend, 0);
+  
+  console.log(`Raw spend data: [${spendValues.slice(-7).join(', ')}] (last 7 days)`);
+  console.log(`Total from data: $${totalDataSpend}`);
+  
+  // Calculate average daily spend based on total spend and days elapsed
+  let averageDailySpend = 0;
+  if (daysIntoFlight > 0 && totalSpend > 0) {
+    averageDailySpend = totalSpend / daysIntoFlight;
+    console.log(`Average daily spend (total/days): $${averageDailySpend.toFixed(2)}`);
+  }
+  
+  // Get most recent data points for trend analysis
   const recent = campaignData.slice(-7); // Last 7 days
   
   let dailySpendRate = 0;
   let confidence = 'no-data';
   
   if (recent.length >= 7) {
-    // Use 7-day average if available
-    dailySpendRate = recent.reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 7;
+    // Use 7-day average, but validate against overall pattern
+    const sevenDayAvg = recent.reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 7;
+    console.log(`7-day average: $${sevenDayAvg.toFixed(2)}`);
+    
+    // If 7-day average is drastically different from overall average, use the more conservative one
+    if (averageDailySpend > 0 && Math.abs(sevenDayAvg - averageDailySpend) > averageDailySpend * 2) {
+      console.log(`7-day average seems anomalous, using overall average instead`);
+      dailySpendRate = averageDailySpend;
+    } else {
+      dailySpendRate = sevenDayAvg;
+    }
     confidence = '7-day';
   } else if (recent.length >= 3) {
-    // Use 3-day average if available
-    dailySpendRate = recent.slice(-3).reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 3;
+    // Use 3-day average with validation
+    const threeDayAvg = recent.slice(-3).reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 3;
+    console.log(`3-day average: $${threeDayAvg.toFixed(2)}`);
+    
+    if (averageDailySpend > 0 && Math.abs(threeDayAvg - averageDailySpend) > averageDailySpend * 2) {
+      console.log(`3-day average seems anomalous, using overall average instead`);
+      dailySpendRate = averageDailySpend;
+    } else {
+      dailySpendRate = threeDayAvg;
+    }
     confidence = '3-day';
   } else if (recent.length >= 1) {
-    // Use most recent day if available
-    dailySpendRate = Number(recent[recent.length - 1].SPEND) || 0;
+    // Use most recent day with validation
+    const oneDaySpend = Number(recent[recent.length - 1].SPEND) || 0;
+    console.log(`1-day spend: $${oneDaySpend.toFixed(2)}`);
+    
+    if (averageDailySpend > 0 && Math.abs(oneDaySpend - averageDailySpend) > averageDailySpend * 3) {
+      console.log(`1-day spend seems anomalous, using overall average instead`);
+      dailySpendRate = averageDailySpend;
+    } else {
+      dailySpendRate = oneDaySpend;
+    }
     confidence = '1-day';
+  } else if (averageDailySpend > 0) {
+    // Fallback to overall average
+    dailySpendRate = averageDailySpend;
+    confidence = 'overall-average';
   }
+  
+  // Apply additional safeguards
+  if (totalSpend > 0 && daysIntoFlight > 0) {
+    const maxReasonableDaily = (totalSpend / daysIntoFlight) * 2; // Allow up to 2x current average
+    if (dailySpendRate > maxReasonableDaily) {
+      console.log(`Daily spend rate $${dailySpendRate.toFixed(2)} seems too high, capping at $${maxReasonableDaily.toFixed(2)}`);
+      dailySpendRate = maxReasonableDaily;
+      confidence = confidence + '-capped';
+    }
+  }
+  
+  console.log(`Final daily spend rate: $${dailySpendRate.toFixed(2)} (confidence: ${confidence})`);
   
   return { dailySpendRate, confidence };
 }
@@ -192,14 +251,18 @@ export function calculateOverspendScore(
 ): number {
   if (!budget || budget === 0 || daysLeft < 0) return 0; // No budget data or campaign ended
   
+  console.log(`Overspend calculation: spend=$${currentSpend}, budget=$${budget}, dailyRate=$${dailySpendRate.toFixed(2)}, daysLeft=${daysLeft}`);
+  
   // Calculate projected total spend
   const projectedTotalSpend = currentSpend + (dailySpendRate * daysLeft);
   const projectedOverspend = Math.max(0, projectedTotalSpend - budget);
   const overspendPercentage = budget > 0 ? (projectedOverspend / budget) * 100 : 0;
   
+  console.log(`Projected total spend: $${projectedTotalSpend.toFixed(2)}, overspend: $${projectedOverspend.toFixed(2)} (${overspendPercentage.toFixed(1)}%)`);
+  
   // Adjust confidence based on data quality
   let confidenceMultiplier = 1;
-  switch (confidence) {
+  switch (confidence.split('-')[0]) { // Handle confidence strings like '7-day-capped'
     case '7-day':
       confidenceMultiplier = 1;
       break;
@@ -209,8 +272,16 @@ export function calculateOverspendScore(
     case '1-day':
       confidenceMultiplier = 0.6;
       break;
+    case 'overall':
+      confidenceMultiplier = 0.9;
+      break;
     default:
       return 0;
+  }
+  
+  // Reduce confidence if the rate was capped due to anomalies
+  if (confidence.includes('capped')) {
+    confidenceMultiplier *= 0.7;
   }
   
   // Score based on projected overspend percentage
@@ -227,7 +298,10 @@ export function calculateOverspendScore(
     baseScore = 0; // Very high overspend risk
   }
   
-  return Math.round(baseScore * confidenceMultiplier * 10) / 10;
+  const finalScore = Math.round(baseScore * confidenceMultiplier * 10) / 10;
+  console.log(`Overspend score: ${finalScore} (base: ${baseScore}, confidence: ${confidenceMultiplier})`);
+  
+  return finalScore;
 }
 
 function calculateCompletionPercentage(pacingData: any[], campaignName: string): number {
@@ -375,10 +449,19 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   // Get budget and days left from pacing data
   const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName);
   
-  // Calculate spend burn rate for overspend projection
-  const { dailySpendRate, confidence: spendConfidence } = calculateSpendBurnRate(data, campaignName);
+  // Calculate completion percentage and days into flight
+  const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
+  const daysIntoFlight = Math.max(1, campaignRows.length); // Use data days as approximation
   
-  // Calculate actual overspend score using proper projection
+  // Calculate spend burn rate with improved logic
+  const { dailySpendRate, confidence: spendConfidence } = calculateSpendBurnRate(
+    data, 
+    campaignName, 
+    totals.spend, 
+    daysIntoFlight
+  );
+  
+  // Calculate actual overspend score using improved projection
   const overspendScore = calculateOverspendScore(totals.spend, budget, dailySpendRate, daysLeft, spendConfidence);
   
   // Calculate projected overspend amount
@@ -394,9 +477,6 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     (overspendScore * 0.05);
   
   const pace = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
-  
-  // Calculate completion percentage from pacing data
-  const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
   
   // Calculate the actual values for display
   const deliveryPacing = pace || 0;
@@ -426,7 +506,7 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
     deliveryPacing: Math.round(deliveryPacing * 10) / 10,
     burnRate: Math.round(burnRateValue),
-    overspend: Math.round(overspendAmount * 100) / 100, // Now shows projected overspend amount
+    overspend: Math.round(overspendAmount * 100) / 100, // Now shows projected overspend amount with improved calculation
     burnRateData,
     requiredDailyImpressions: Math.round(requiredDailyImpressions),
     burnRatePercentage: Math.round(burnRatePercentage * 10) / 10
