@@ -373,7 +373,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
           className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
           style={{ 
             left: Math.min(tooltipState.x, window.innerWidth - 250),
-            top: Math.max(10, tooltipState.y - 150)
+            top: Math.max(10, tooltipState.y - 200)
           }}
         >
           <div className="flex justify-between items-start mb-2">
@@ -404,7 +404,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
             </div>
             <div className="flex justify-between">
               <span>Burn Rate:</span>
-              <span className="font-medium">{tooltipState.data.burnRate.toFixed(0)} (Score: {tooltipState.data.burnRateScore})</span>
+              <span className="font-medium">{tooltipState.data.burnRatePercentage.toFixed(1)}% (Score: {tooltipState.data.burnRateScore})</span>
             </div>
             <div className="flex justify-between">
               <span>CTR:</span>
@@ -418,6 +418,33 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               <div className="flex justify-between">
                 <span>Completion:</span>
                 <span className="font-medium">{tooltipState.data.completionPercentage.toFixed(1)}%</span>
+              </div>
+            </div>
+            
+            {/* Detailed Burn Rate Breakdown */}
+            <div className="border-t pt-2 mt-2">
+              <div className="text-xs font-medium mb-1">Burn Rate Breakdown:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>1-day avg:</span>
+                  <span>{tooltipState.data.burnRateData.oneDayRate.toLocaleString()} ({tooltipState.data.burnRateData.oneDayPercentage.toFixed(1)}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>3-day avg:</span>
+                  <span>{tooltipState.data.burnRateData.threeDayRate.toLocaleString()} ({tooltipState.data.burnRateData.threeDayPercentage.toFixed(1)}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>7-day avg:</span>
+                  <span>{tooltipState.data.burnRateData.sevenDayRate.toLocaleString()} ({tooltipState.data.burnRateData.sevenDayPercentage.toFixed(1)}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Confidence:</span>
+                  <span className="font-medium">{tooltipState.data.burnRateData.confidence}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Daily target:</span>
+                  <span>{tooltipState.data.requiredDailyImpressions.toLocaleString()}</span>
+                </div>
               </div>
             </div>
           </div>

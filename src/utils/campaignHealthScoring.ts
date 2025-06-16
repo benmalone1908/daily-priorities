@@ -22,6 +22,9 @@ export interface CampaignHealthData {
   deliveryPacing: number;
   burnRate: number;
   overspend: number;
+  burnRateData: BurnRateData;
+  requiredDailyImpressions: number;
+  burnRatePercentage: number;
 }
 
 export interface BurnRateData {
@@ -29,6 +32,9 @@ export interface BurnRateData {
   threeDayRate: number;
   sevenDayRate: number;
   confidence: string;
+  oneDayPercentage: number;
+  threeDayPercentage: number;
+  sevenDayPercentage: number;
 }
 
 // CTR Benchmark - can be made configurable later
@@ -56,7 +62,7 @@ export function calculateDeliveryPacingScore(actualImpressions: number, expected
   return 0;
 }
 
-export function calculateBurnRate(data: any[], campaignName: string): BurnRateData {
+export function calculateBurnRate(data: any[], campaignName: string, requiredDailyImpressions: number = 0): BurnRateData {
   // Filter data for this campaign and sort by date
   const campaignData = data
     .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
@@ -67,7 +73,10 @@ export function calculateBurnRate(data: any[], campaignName: string): BurnRateDa
       oneDayRate: 0,
       threeDayRate: 0,
       sevenDayRate: 0,
-      confidence: 'no-data'
+      confidence: 'no-data',
+      oneDayPercentage: 0,
+      threeDayPercentage: 0,
+      sevenDayPercentage: 0
     };
   }
   
@@ -85,11 +94,19 @@ export function calculateBurnRate(data: any[], campaignName: string): BurnRateDa
   else if (recent.length >= 3) confidence = '3-day';
   else if (recent.length >= 1) confidence = '1-day';
   
+  // Calculate percentages
+  const oneDayPercentage = requiredDailyImpressions > 0 ? (oneDayRate / requiredDailyImpressions) * 100 : 0;
+  const threeDayPercentage = requiredDailyImpressions > 0 ? (threeDayRate / requiredDailyImpressions) * 100 : 0;
+  const sevenDayPercentage = requiredDailyImpressions > 0 ? (sevenDayRate / requiredDailyImpressions) * 100 : 0;
+  
   return {
     oneDayRate,
     threeDayRate,
     sevenDayRate,
-    confidence
+    confidence,
+    oneDayPercentage,
+    threeDayPercentage,
+    sevenDayPercentage
   };
 }
 
@@ -261,9 +278,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const expectedImpressions = totals.impressions * 1.1; // Assume 110% target for demo
   const deliveryPacingScore = calculateDeliveryPacingScore(totals.impressions, expectedImpressions);
   
-  const burnRate = calculateBurnRate(data, campaignName);
-  const requiredDailyImpressions = totals.impressions / campaignRows.length; // Simplified
-  const burnRateScore = calculateBurnRateScore(burnRate, requiredDailyImpressions);
+  // Calculate required daily impressions based on expected impressions and campaign days
+  const requiredDailyImpressions = campaignRows.length > 0 ? expectedImpressions / (campaignRows.length * 1.5) : totals.impressions / 30;
+  
+  const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
+  const burnRateScore = calculateBurnRateScore(burnRateData, requiredDailyImpressions);
   
   const overspendScore = 5; // Simplified - assume on track for now
   
@@ -282,7 +301,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   
   // Calculate the actual values for display
   const deliveryPacing = pace || 0;
-  const burnRateValue = burnRate.sevenDayRate || burnRate.threeDayRate || burnRate.oneDayRate || 0;
+  const burnRateValue = burnRateData.sevenDayRate || burnRateData.threeDayRate || burnRateData.oneDayRate || 0;
+  const burnRatePercentage = requiredDailyImpressions > 0 ? (burnRateValue / requiredDailyImpressions) * 100 : 0;
   const overspend = Math.max(0, totals.spend - (totals.spend * 0.9)); // Simplified overspend calculation
   
   return {
@@ -300,13 +320,16 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     ctrScore,
     overspendScore,
     healthScore: Math.round(healthScore * 10) / 10, // Round to 1 decimal
-    burnRateConfidence: burnRate.confidence,
+    burnRateConfidence: burnRateData.confidence,
     pace,
     ctr,
     roas,
     completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
     deliveryPacing: Math.round(deliveryPacing * 10) / 10,
     burnRate: Math.round(burnRateValue),
-    overspend: Math.round(overspend * 100) / 100
+    overspend: Math.round(overspend * 100) / 100,
+    burnRateData,
+    requiredDailyImpressions: Math.round(requiredDailyImpressions),
+    burnRatePercentage: Math.round(burnRatePercentage * 10) / 10
   };
 }
