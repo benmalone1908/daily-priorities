@@ -383,137 +383,75 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
   return completionPercentage;
 }
 
-function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget: number; daysLeft: number } {
+function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractTermsData: any[] = []): { budget: number; daysLeft: number } {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
     console.log(`💰 [BUDGET TARGET] Looking for budget data for: ${campaignName}`);
+    console.log(`💰 [BUDGET TARGET] Contract terms data length: ${contractTermsData.length}`);
     console.log(`💰 [BUDGET TARGET] Pacing data length: ${pacingData.length}`);
-    if (pacingData.length > 0) {
-      console.log(`💰 [BUDGET TARGET] Sample pacing row fields:`, Object.keys(pacingData[0]));
-      console.log(`💰 [BUDGET TARGET] Sample campaign name from pacing:`, pacingData[0]["Campaign"]);
-      
-      // Show all available campaigns for debugging
-      const allCampaigns = pacingData.map(row => row["Campaign"]).filter(Boolean);
-      console.log(`💰 [BUDGET TARGET] All ${allCampaigns.length} campaigns in pacing data:`, allCampaigns);
-      
-      // Check if our target campaign exists in the list
-      const exactMatch = allCampaigns.find(camp => camp === campaignName);
-      console.log(`💰 [BUDGET TARGET] Exact match found:`, exactMatch ? "YES" : "NO");
-      
-      // Check for partial matches
-      const partialMatches = allCampaigns.filter(camp => 
-        camp.includes("2001987") || camp.includes("Union Chill") || camp.includes("Garden Greens")
-      );
-      console.log(`💰 [BUDGET TARGET] Partial matches:`, partialMatches);
+    
+    if (contractTermsData.length > 0) {
+      console.log(`💰 [BUDGET TARGET] Sample contract terms row:`, contractTermsData[0]);
+      console.log(`💰 [BUDGET TARGET] Contract terms fields:`, Object.keys(contractTermsData[0] || {}));
     }
   }
   
+  // First, try to get budget from contract terms data
+  let budget = 0;
+  
+  if (contractTermsData.length > 0) {
+    // Look for the campaign in contract terms data
+    const contractTermsRow = contractTermsData.find(row => {
+      const rowCampaign = row["NAME"] || row["CAMPAIGN"] || row["Campaign"];
+      const normalizedRowCampaign = String(rowCampaign || "").trim();
+      const normalizedCampaignName = String(campaignName || "").trim();
+      const match = normalizedRowCampaign === normalizedCampaignName;
+      
+      if (isTargetCampaign && rowCampaign && (rowCampaign.includes("2001987") || rowCampaign.includes("Union Chill"))) {
+        console.log(`💰 [BUDGET TARGET] Checking contract terms match:`);
+        console.log(`💰 [BUDGET TARGET]   Contract: "${normalizedRowCampaign}"`);
+        console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
+        console.log(`💰 [BUDGET TARGET]   Match: ${match}`);
+      }
+      
+      return match;
+    });
+    
+    if (contractTermsRow) {
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET TARGET] ✅ Found matching contract terms row:`, contractTermsRow);
+      }
+      
+      // Look for budget in the "Budget" column
+      const budgetValue = contractTermsRow["Budget"] || contractTermsRow["BUDGET"] || contractTermsRow["budget"];
+      const numBudget = Number(budgetValue);
+      
+      if (!isNaN(numBudget) && numBudget > 0) {
+        budget = numBudget;
+        if (isTargetCampaign) {
+          console.log(`💰 [BUDGET TARGET] ✅ Found budget in contract terms: $${budget}`);
+        }
+      } else if (isTargetCampaign) {
+        console.log(`💰 [BUDGET TARGET] ❌ Budget field found but invalid value:`, budgetValue);
+      }
+    } else if (isTargetCampaign) {
+      console.log(`💰 [BUDGET TARGET] ❌ No matching campaign found in contract terms`);
+      console.log(`💰 [BUDGET TARGET] Available contract campaigns:`, 
+        contractTermsData.map(row => row["NAME"] || row["CAMPAIGN"] || row["Campaign"]).filter(Boolean)
+      );
+    }
+  }
+  
+  // Get days left from pacing data
   const campaignPacing = pacingData.find(row => {
     const rowCampaign = row["Campaign"];
     const normalizedRowCampaign = String(rowCampaign || "").trim();
     const normalizedCampaignName = String(campaignName || "").trim();
-    const match = normalizedRowCampaign === normalizedCampaignName;
-    
-    if (isTargetCampaign && rowCampaign && rowCampaign.includes("2001987")) {
-      console.log(`💰 [BUDGET TARGET] Checking potential match:`);
-      console.log(`💰 [BUDGET TARGET]   Pacing: "${normalizedRowCampaign}"`);
-      console.log(`💰 [BUDGET TARGET]   Target: "${normalizedCampaignName}"`);
-      console.log(`💰 [BUDGET TARGET]   Match: ${match}`);
-    }
-    
-    return match;
+    return normalizedRowCampaign === normalizedCampaignName;
   });
   
-  if (!campaignPacing) {
-    if (isTargetCampaign) {
-      console.log(`💰 [BUDGET TARGET] ❌ NO PACING DATA FOUND for campaign`);
-      console.log(`💰 [BUDGET TARGET] This is why budget = $0!`);
-    }
-    return { budget: 0, daysLeft: 0 };
-  }
-  
-  if (isTargetCampaign) {
-    console.log(`💰 [BUDGET TARGET] ✅ Found matching pacing row:`, campaignPacing);
-    console.log(`💰 [BUDGET TARGET] Available fields in this row:`, Object.keys(campaignPacing));
-    
-    // Log all field values to see what we're working with
-    console.log(`💰 [BUDGET TARGET] All field values:`);
-    Object.entries(campaignPacing).forEach(([key, value]) => {
-      console.log(`💰 [BUDGET TARGET]   ${key}: ${value}`);
-    });
-  }
-  
-  // Expand the search to include ALL fields that might contain budget information
-  const allFields = Object.keys(campaignPacing);
-  const possibleBudgetFields = [
-    "Budget", "Total Budget", "budget", "BUDGET", "Campaign Budget",
-    "Total Spend", "Max Spend", "Spend Limit", "Flight Budget",
-    "Order Value", "Contract Value", "Media Budget", "Total Value"
-  ];
-  
-  // Also search for any field that contains "budget", "spend", "value", or "limit"
-  const budgetRelatedFields = allFields.filter(field => {
-    const lowerField = field.toLowerCase();
-    return lowerField.includes('budget') || 
-           lowerField.includes('spend') || 
-           lowerField.includes('value') || 
-           lowerField.includes('limit') ||
-           lowerField.includes('total');
-  });
-  
-  // Combine explicit fields with discovered fields
-  const fieldsToTry = [...new Set([...possibleBudgetFields, ...budgetRelatedFields])];
-  
-  if (isTargetCampaign) {
-    console.log(`💰 [BUDGET TARGET] Budget-related fields found:`, budgetRelatedFields);
-    console.log(`💰 [BUDGET TARGET] All fields to try:`, fieldsToTry);
-  }
-  
-  let budget = 0;
-  
-  for (const field of fieldsToTry) {
-    const value = campaignPacing[field];
-    const numValue = Number(value);
-    
-    if (isTargetCampaign) {
-      console.log(`💰 [BUDGET TARGET] Trying field "${field}": raw="${value}", number=${numValue}, valid=${!isNaN(numValue) && numValue > 0}`);
-    }
-    
-    if (!isNaN(numValue) && numValue > 0) {
-      budget = numValue;
-      if (isTargetCampaign) {
-        console.log(`💰 [BUDGET TARGET] ✅ Found budget in field "${field}": $${budget}`);
-      }
-      break;
-    }
-  }
-  
-  if (isTargetCampaign && budget === 0) {
-    console.log(`💰 [BUDGET TARGET] ❌ NO BUDGET FOUND in any field!`);
-    console.log(`💰 [BUDGET TARGET] Tried ${fieldsToTry.length} fields`);
-    
-    // As a last resort, try to find any numeric value that could be a budget (>= $1000)
-    const potentialBudgets = [];
-    Object.entries(campaignPacing).forEach(([key, value]) => {
-      const numValue = Number(value);
-      if (!isNaN(numValue) && numValue >= 1000 && numValue <= 100000) {
-        potentialBudgets.push({ field: key, value: numValue });
-      }
-    });
-    
-    if (potentialBudgets.length > 0) {
-      console.log(`💰 [BUDGET TARGET] Potential budget values found:`, potentialBudgets);
-      // Use the largest reasonable value as budget
-      const bestCandidate = potentialBudgets.reduce((max, current) => 
-        current.value > max.value ? current : max
-      );
-      budget = bestCandidate.value;
-      console.log(`💰 [BUDGET TARGET] 🎯 Using best candidate: $${budget} from field "${bestCandidate.field}"`);
-    }
-  }
-  
-  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
+  const daysLeft = campaignPacing ? Number(campaignPacing["Days Left"]) || 0 : 0;
   
   if (isTargetCampaign) {
     console.log(`💰 [BUDGET TARGET] Final result: budget=$${budget}, daysLeft=${daysLeft}`);
@@ -522,7 +460,7 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
   return { budget, daysLeft };
 }
 
-export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
+export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = [], contractTermsData: any[] = []): CampaignHealthData {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
@@ -611,12 +549,12 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
   const burnRateScore = calculateBurnRateScore(burnRateData, requiredDailyImpressions);
   
-  // Get budget and days left from pacing data
-  const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName);
+  // Get budget and days left from contract terms and pacing data
+  const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName, contractTermsData);
   if (isTargetCampaign) {
-    console.log(`🚀 Target campaign budget from pacing data: $${budget}, Days left: ${daysLeft}`);
+    console.log(`🚀 Target campaign budget from contract terms: $${budget}, Days left: ${daysLeft}`);
   } else {
-    console.log(`Budget from pacing data: $${budget}, Days left: ${daysLeft}`);
+    console.log(`Budget from contract terms: $${budget}, Days left: ${daysLeft}`);
   }
   
   // Calculate completion percentage and days into flight
