@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
@@ -109,13 +110,14 @@ const QuadrantZoomModal = ({
   }, [yMin, yMax]);
 
   const handleScatterClick = (data: any, event: any) => {
+    event.stopPropagation();
     const campaign = healthData.find(c => c.campaignName === data.name);
-    if (campaign && event) {
+    if (campaign && event.nativeEvent) {
       setPersistentTooltip({
         visible: true,
         data: campaign,
-        x: event.clientX,
-        y: event.clientY
+        x: event.nativeEvent.clientX,
+        y: event.nativeEvent.clientY
       });
     }
   };
@@ -192,24 +194,24 @@ const QuadrantZoomModal = ({
                               <span className="font-medium">{campaign.healthScore}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>ROAS Score:</span>
-                              <span className="font-medium">{campaign.roasScore}</span>
+                              <span>ROAS:</span>
+                              <span className="font-medium">{campaign.roas}x (Score: {campaign.roasScore})</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Delivery Pacing:</span>
-                              <span className="font-medium">{campaign.deliveryPacingScore}</span>
+                              <span className="font-medium">{campaign.deliveryPacing}% (Score: {campaign.deliveryPacingScore})</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Burn Rate:</span>
-                              <span className="font-medium">{campaign.burnRateScore}</span>
+                              <span className="font-medium">{campaign.burnRate}% (Score: {campaign.burnRateScore})</span>
                             </div>
                             <div className="flex justify-between">
-                              <span>CTR Score:</span>
-                              <span className="font-medium">{campaign.ctrScore}</span>
+                              <span>CTR:</span>
+                              <span className="font-medium">{campaign.ctr}% (Score: {campaign.ctrScore})</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Overspend:</span>
-                              <span className="font-medium">{campaign.overspendScore}</span>
+                              <span className="font-medium">${campaign.overspend} (Score: {campaign.overspendScore})</span>
                             </div>
                             <div className="border-t pt-1 mt-1">
                               <div className="flex justify-between">
@@ -262,24 +264,24 @@ const QuadrantZoomModal = ({
                     <span className="font-medium">{persistentTooltip.data.healthScore}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>ROAS Score:</span>
-                    <span className="font-medium">{persistentTooltip.data.roasScore}</span>
+                    <span>ROAS:</span>
+                    <span className="font-medium">{persistentTooltip.data.roas}x (Score: {persistentTooltip.data.roasScore})</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Delivery Pacing:</span>
-                    <span className="font-medium">{persistentTooltip.data.deliveryPacingScore}</span>
+                    <span className="font-medium">{persistentTooltip.data.deliveryPacing}% (Score: {persistentTooltip.data.deliveryPacingScore})</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Burn Rate:</span>
-                    <span className="font-medium">{persistentTooltip.data.burnRateScore}</span>
+                    <span className="font-medium">{persistentTooltip.data.burnRate}% (Score: {persistentTooltip.data.burnRateScore})</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>CTR Score:</span>
-                    <span className="font-medium">{persistentTooltip.data.ctrScore}</span>
+                    <span>CTR:</span>
+                    <span className="font-medium">{persistentTooltip.data.ctr}% (Score: {persistentTooltip.data.ctrScore})</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Overspend:</span>
-                    <span className="font-medium">{persistentTooltip.data.overspendScore}</span>
+                    <span className="font-medium">${persistentTooltip.data.overspend} (Score: {persistentTooltip.data.overspendScore})</span>
                   </div>
                   <div className="border-t pt-1 mt-1">
                     <div className="flex justify-between">
