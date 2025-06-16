@@ -5,6 +5,7 @@ import { ChartContainer, ChartTooltip } from "./ui/chart";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 
 interface QuadrantZoomModalProps {
   open: boolean;
@@ -18,8 +19,7 @@ interface QuadrantZoomModalProps {
 
 interface TooltipState {
   visible: boolean;
-  pinned: boolean;
-  data: CampaignHealthData | null;
+  campaigns: CampaignHealthData[];
   x: number;
   y: number;
 }
@@ -35,8 +35,7 @@ const QuadrantZoomModal = ({
 }: QuadrantZoomModalProps) => {
   const [tooltipState, setTooltipState] = useState<TooltipState>({
     visible: false,
-    pinned: false,
-    data: null,
+    campaigns: [],
     x: 0,
     y: 0
   });
@@ -113,47 +112,22 @@ const QuadrantZoomModal = ({
   const handleScatterClick = (data: any, event: any) => {
     event?.stopPropagation?.();
     
-    const campaign = healthData.find(c => c.campaignName === data.name);
-    if (campaign && event) {
+    if (event) {
       const clientX = event.clientX || event.nativeEvent?.clientX || 100;
       const clientY = event.clientY || event.nativeEvent?.clientY || 100;
       
+      // Find all campaigns at this coordinate (within tolerance)
+      const tolerance = 0.1;
+      const matchingCampaigns = healthData.filter(campaign => 
+        Math.abs(campaign.completionPercentage - data.x) <= tolerance &&
+        Math.abs(campaign.healthScore - data.y) <= tolerance
+      );
+      
       setTooltipState({
         visible: true,
-        pinned: true,
-        data: campaign,
+        campaigns: matchingCampaigns,
         x: clientX,
         y: clientY
-      });
-    }
-  };
-
-  const handleTooltipMouseEnter = (data: any, event: any) => {
-    if (!tooltipState.pinned) {
-      const campaign = healthData.find(c => c.campaignName === data.name);
-      if (campaign && event) {
-        const clientX = event.clientX || event.nativeEvent?.clientX || 100;
-        const clientY = event.clientY || event.nativeEvent?.clientY || 100;
-        
-        setTooltipState({
-          visible: true,
-          pinned: false,
-          data: campaign,
-          x: clientX,
-          y: clientY
-        });
-      }
-    }
-  };
-
-  const handleTooltipMouseLeave = () => {
-    if (!tooltipState.pinned) {
-      setTooltipState({
-        visible: false,
-        pinned: false,
-        data: null,
-        x: 0,
-        y: 0
       });
     }
   };
@@ -161,8 +135,7 @@ const QuadrantZoomModal = ({
   const closeTooltip = () => {
     setTooltipState({
       visible: false,
-      pinned: false,
-      data: null,
+      campaigns: [],
       x: 0,
       y: 0
     });
@@ -224,98 +197,115 @@ const QuadrantZoomModal = ({
                 <Scatter 
                   dataKey="y"
                   onClick={handleScatterClick}
-                  onMouseEnter={handleTooltipMouseEnter}
-                  onMouseLeave={handleTooltipMouseLeave}
                   className="cursor-pointer"
                 />
               </ScatterChart>
             </ChartContainer>
 
-            {/* Custom Tooltip */}
-            {tooltipState.visible && tooltipState.data && (
+            {/* Multi-Campaign Tooltip with Accordion */}
+            {tooltipState.visible && tooltipState.campaigns.length > 0 && (
               <div 
-                className="fixed bg-white p-4 border rounded shadow-lg max-w-xs z-50"
+                className="fixed bg-white border rounded shadow-lg max-w-md z-50 max-h-96 overflow-y-auto"
                 style={{ 
-                  left: Math.min(tooltipState.x, window.innerWidth - 250),
+                  left: Math.min(tooltipState.x, window.innerWidth - 400),
                   top: Math.max(10, tooltipState.y - 200)
                 }}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <p className="font-medium text-sm">{tooltipState.data.campaignName}</p>
-                  {tooltipState.pinned && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={closeTooltip}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
+                <div className="flex justify-between items-center p-3 border-b">
+                  <h4 className="font-medium text-sm">
+                    {tooltipState.campaigns.length === 1 
+                      ? 'Campaign Details' 
+                      : `${tooltipState.campaigns.length} Campaigns at this Point`
+                    }
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closeTooltip}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span>Overall Health:</span>
-                    <span className="font-medium">{tooltipState.data.healthScore}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>ROAS:</span>
-                    <span className="font-medium">{tooltipState.data.roas.toFixed(1)}x (Score: {tooltipState.data.roasScore})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Delivery Pacing:</span>
-                    <span className="font-medium">{tooltipState.data.deliveryPacing.toFixed(1)}% (Score: {tooltipState.data.deliveryPacingScore})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Burn Rate:</span>
-                    <span className="font-medium">{tooltipState.data.burnRatePercentage.toFixed(1)}% (Score: {tooltipState.data.burnRateScore})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>CTR:</span>
-                    <span className="font-medium">{tooltipState.data.ctr.toFixed(3)}% (Score: {tooltipState.data.ctrScore})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Overspend:</span>
-                    <span className="font-medium">${tooltipState.data.overspend.toFixed(2)} (Score: {tooltipState.data.overspendScore})</span>
-                  </div>
-                  <div className="border-t pt-1 mt-1">
-                    <div className="flex justify-between">
-                      <span>Completion:</span>
-                      <span className="font-medium">{tooltipState.data.completionPercentage.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                  
-                  {/* Detailed Burn Rate Breakdown */}
-                  <div className="border-t pt-2 mt-2">
-                    <div className="text-xs font-medium mb-1">Burn Rate Breakdown:</div>
+                
+                {tooltipState.campaigns.length === 1 ? (
+                  // Single campaign - show full details directly
+                  <div className="p-3">
+                    <p className="font-medium text-sm mb-2">{tooltipState.campaigns[0].campaignName}</p>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span>1-day avg:</span>
-                        <span>{tooltipState.data.burnRateData.oneDayRate.toFixed(1)} ({tooltipState.data.burnRateData.oneDayPercentage.toFixed(1)}%)</span>
+                        <span>Overall Health:</span>
+                        <span className="font-medium">{tooltipState.campaigns[0].healthScore}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>3-day avg:</span>
-                        <span>{tooltipState.data.burnRateData.threeDayRate.toFixed(1)} ({tooltipState.data.burnRateData.threeDayPercentage.toFixed(1)}%)</span>
+                        <span>ROAS:</span>
+                        <span className="font-medium">{tooltipState.campaigns[0].roas.toFixed(1)}x (Score: {tooltipState.campaigns[0].roasScore})</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>7-day avg:</span>
-                        <span>{tooltipState.data.burnRateData.sevenDayRate.toFixed(1)} ({tooltipState.data.burnRateData.sevenDayPercentage.toFixed(1)}%)</span>
+                        <span>Delivery Pacing:</span>
+                        <span className="font-medium">{tooltipState.campaigns[0].deliveryPacing.toFixed(1)}% (Score: {tooltipState.campaigns[0].deliveryPacingScore})</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Confidence:</span>
-                        <span className="font-medium">{tooltipState.data.burnRateData.confidence}</span>
+                        <span>Burn Rate:</span>
+                        <span className="font-medium">{tooltipState.campaigns[0].burnRatePercentage.toFixed(1)}% (Score: {tooltipState.campaigns[0].burnRateScore})</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Daily target:</span>
-                        <span>{tooltipState.data.requiredDailyImpressions.toLocaleString()}</span>
+                        <span>CTR:</span>
+                        <span className="font-medium">{tooltipState.campaigns[0].ctr.toFixed(3)}% (Score: {tooltipState.campaigns[0].ctrScore})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Overspend:</span>
+                        <span className="font-medium">${tooltipState.campaigns[0].overspend.toFixed(2)} (Score: {tooltipState.campaigns[0].overspendScore})</span>
+                      </div>
+                      <div className="border-t pt-1 mt-1">
+                        <div className="flex justify-between">
+                          <span>Completion:</span>
+                          <span className="font-medium">{tooltipState.campaigns[0].completionPercentage.toFixed(1)}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                {!tooltipState.pinned && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    Click to pin this info
-                  </p>
+                ) : (
+                  // Multiple campaigns - show accordion
+                  <Accordion type="single" collapsible className="w-full">
+                    {tooltipState.campaigns.map((campaign, index) => (
+                      <AccordionItem key={`${campaign.campaignName}-${index}`} value={`campaign-${index}`}>
+                        <AccordionTrigger className="px-3 py-2 text-left">
+                          <div className="flex justify-between items-center w-full mr-2">
+                            <span className="font-medium text-sm truncate">{campaign.campaignName}</span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span>Score: {campaign.healthScore}</span>
+                              <span>Complete: {campaign.completionPercentage.toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-3 pb-3">
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span>ROAS:</span>
+                              <span className="font-medium">{campaign.roas.toFixed(1)}x (Score: {campaign.roasScore})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Delivery Pacing:</span>
+                              <span className="font-medium">{campaign.deliveryPacing.toFixed(1)}% (Score: {campaign.deliveryPacingScore})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Burn Rate:</span>
+                              <span className="font-medium">{campaign.burnRatePercentage.toFixed(1)}% (Score: {campaign.burnRateScore})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>CTR:</span>
+                              <span className="font-medium">{campaign.ctr.toFixed(3)}% (Score: {campaign.ctrScore})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Overspend:</span>
+                              <span className="font-medium">${campaign.overspend.toFixed(2)} (Score: {campaign.overspendScore})</span>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 )}
               </div>
             )}
