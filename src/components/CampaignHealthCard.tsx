@@ -1,7 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 
 interface CampaignHealthCardProps {
@@ -41,6 +40,9 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
+  // Calculate needle rotation based on health score (0-10 mapped to 0-180 degrees)
+  const needleRotation = (campaign.healthScore / 10) * 180;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-4">
@@ -55,7 +57,7 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Fuel Gauge for Health Score */}
+        {/* Semicircle Fuel Gauge for Health Score */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700">Health Score</span>
@@ -63,23 +65,87 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
               {campaign.healthScore}/10
             </span>
           </div>
-          <div className="relative">
-            <Progress 
-              value={campaign.healthScore * 10} 
-              className="h-6 bg-gradient-to-r from-red-100 via-yellow-100 to-green-100"
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-full h-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 rounded-full opacity-20"></div>
+          
+          <div className="relative w-full h-32 flex items-end justify-center">
+            {/* Semicircle Background */}
+            <svg width="200" height="100" viewBox="0 0 200 100" className="absolute">
+              {/* Background Arc */}
+              <path
+                d="M 20 80 A 80 80 0 0 1 180 80"
+                fill="none"
+                stroke="#e5e7eb"
+                strokeWidth="20"
+                strokeLinecap="round"
+              />
+              
+              {/* Color Segments */}
+              {/* Red segment (0-4) */}
+              <path
+                d="M 20 80 A 80 80 0 0 1 100 20"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="20"
+                strokeLinecap="round"
+                opacity="0.3"
+              />
+              
+              {/* Yellow segment (4-7) */}
+              <path
+                d="M 100 20 A 80 80 0 0 1 158 45"
+                fill="none"
+                stroke="#eab308"
+                strokeWidth="20"
+                strokeLinecap="round"
+                opacity="0.3"
+              />
+              
+              {/* Green segment (7-10) */}
+              <path
+                d="M 158 45 A 80 80 0 0 1 180 80"
+                fill="none"
+                stroke="#22c55e"
+                strokeWidth="20"
+                strokeLinecap="round"
+                opacity="0.3"
+              />
+              
+              {/* Progress Arc */}
+              <path
+                d={`M 20 80 A 80 80 0 ${needleRotation > 90 ? 1 : 0} 1 ${
+                  20 + 80 * Math.cos((180 - needleRotation) * Math.PI / 180)
+                } ${
+                  80 - 80 * Math.sin((180 - needleRotation) * Math.PI / 180)
+                }`}
+                fill="none"
+                stroke={campaign.healthScore >= 7 ? "#22c55e" : campaign.healthScore >= 4 ? "#eab308" : "#ef4444"}
+                strokeWidth="20"
+                strokeLinecap="round"
+              />
+              
+              {/* Center circle */}
+              <circle cx="100" cy="80" r="8" fill="#374151" />
+              
+              {/* Needle */}
+              <line
+                x1="100"
+                y1="80"
+                x2={100 + 60 * Math.cos((180 - needleRotation) * Math.PI / 180)}
+                y2={80 - 60 * Math.sin((180 - needleRotation) * Math.PI / 180)}
+                stroke="#dc2626"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+              
+              {/* Needle center dot */}
+              <circle cx="100" cy="80" r="4" fill="#dc2626" />
+            </svg>
+            
+            {/* Scale labels */}
+            <div className="absolute bottom-0 w-full flex justify-between text-xs text-gray-500 px-2">
+              <span>0</span>
+              <span>5</span>
+              <span>10</span>
             </div>
-            <div 
-              className="absolute top-0 w-1 h-6 bg-gray-800 rounded-sm"
-              style={{ left: `${campaign.healthScore * 10}%`, transform: 'translateX(-50%)' }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>0</span>
-            <span>5</span>
-            <span>10</span>
           </div>
         </div>
 
