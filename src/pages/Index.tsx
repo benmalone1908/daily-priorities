@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -612,58 +613,65 @@ const DashboardContent = ({
 
   return (
     <>
+      {/* Two-row header layout */}
       <div className="border-b animate-fade-in">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Top row: Title and Date Picker */}
+        <div className="flex items-center justify-between px-1 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
           </div>
           
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="flex items-center gap-2">
-              <CampaignStatusToggle />
-              {pacingData.length === 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPacingUpload(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Pacing Data
-                </Button>
-              )}
-            </div>
-            <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
-                <TabsTrigger value="dashboard">
-                  <LayoutDashboard className="mr-2" size={16} />
-                  Dashboard
-                </TabsTrigger>
-                <TabsTrigger value="sparks">
-                  <ChartLine className="mr-2" size={16} />
-                  Trends
-                </TabsTrigger>
-                <TabsTrigger value="health">
-                  <Activity className="mr-2" size={16} />
-                  Health
-                </TabsTrigger>
-                {pacingData.length > 0 && (
-                  <TabsTrigger value="pacing">
-                    <Target className="mr-2" size={16} />
-                    Pacing
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="raw-data">
-                  <FileText className="mr-2" size={16} />
-                  Raw Data
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="flex items-center">
             <DateRangePicker 
               dateRange={dateRange}
               onDateRangeChange={onDateRangeChange}
               displayDateRangeSummary={false}
             />
+          </div>
+        </div>
+        
+        {/* Bottom row: Tabs and Controls */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-1 py-3">
+          <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
+              <TabsTrigger value="dashboard">
+                <LayoutDashboard className="mr-2" size={16} />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="sparks">
+                <ChartLine className="mr-2" size={16} />
+                Trends
+              </TabsTrigger>
+              <TabsTrigger value="health">
+                <Activity className="mr-2" size={16} />
+                Health
+              </TabsTrigger>
+              {pacingData.length > 0 && (
+                <TabsTrigger value="pacing">
+                  <Target className="mr-2" size={16} />
+                  Pacing
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="raw-data">
+                <FileText className="mr-2" size={16} />
+                Raw Data
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="flex items-center gap-2">
+            <CampaignStatusToggle />
+            {pacingData.length === 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPacingUpload(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Pacing Data
+              </Button>
+            )}
           </div>
         </div>
       </div>
