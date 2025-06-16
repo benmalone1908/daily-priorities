@@ -21,6 +21,13 @@ export interface CampaignHealthData {
   completionPercentage?: number;
 }
 
+export interface BurnRateData {
+  oneDayRate: number;
+  threeDayRate: number;
+  sevenDayRate: number;
+  confidence: string;
+}
+
 // CTR Benchmark - can be made configurable later
 const CTR_BENCHMARK = 0.5; // 0.5% default benchmark
 
