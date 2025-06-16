@@ -230,7 +230,10 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
       burnRateConfidence: 'no-data',
       ctr: 0,
       roas: 0,
-      completionPercentage: 0
+      completionPercentage: 0,
+      deliveryPacing: 0,
+      burnRate: 0,
+      overspend: 0
     };
   }
   
@@ -274,6 +277,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   // Calculate completion percentage from pacing data
   const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
   
+  // Calculate the actual values for display
+  const deliveryPacing = pace || 0;
+  const burnRateValue = burnRate.sevenDayRate || burnRate.threeDayRate || burnRate.oneDayRate || 0;
+  const overspend = Math.max(0, totals.spend - (totals.spend * 0.9)); // Simplified overspend calculation
+  
   return {
     campaignName,
     budget: undefined, // Will be enhanced when budget data is available
@@ -293,6 +301,9 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     pace,
     ctr,
     roas,
-    completionPercentage: Math.round(completionPercentage * 10) / 10 // Round to 1 decimal
+    completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal
+    deliveryPacing: Math.round(deliveryPacing * 10) / 10,
+    burnRate: Math.round(burnRateValue),
+    overspend: Math.round(overspend * 100) / 100
   };
 }
