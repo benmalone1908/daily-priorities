@@ -49,22 +49,46 @@ const QuadrantZoomModal = ({
     },
   };
 
-  // Generate ticks for the zoomed view
+  // Generate ticks for the zoomed view with proper bounds checking
   const xTicks = useMemo(() => {
+    if (xMax <= xMin) return [xMin]; // Prevent invalid range
+    
     const ticks = [];
     const increment = (xMax - xMin) / 5;
-    for (let i = xMin; i <= xMax; i += increment) {
+    
+    // Ensure we don't create too many ticks
+    if (increment <= 0) return [xMin, xMax];
+    
+    for (let i = xMin; i <= xMax && ticks.length < 10; i += increment) {
       ticks.push(Math.round(i));
     }
+    
+    // Ensure xMax is included if not already
+    if (ticks[ticks.length - 1] !== Math.round(xMax)) {
+      ticks.push(Math.round(xMax));
+    }
+    
     return ticks;
   }, [xMin, xMax]);
 
   const yTicks = useMemo(() => {
+    if (yMax <= yMin) return [yMin]; // Prevent invalid range
+    
     const ticks = [];
     const increment = (yMax - yMin) / 5;
-    for (let i = yMin; i <= yMax; i += increment) {
+    
+    // Ensure we don't create too many ticks
+    if (increment <= 0) return [yMin, yMax];
+    
+    for (let i = yMin; i <= yMax && ticks.length < 10; i += increment) {
       ticks.push(Math.round(i * 10) / 10);
     }
+    
+    // Ensure yMax is included if not already
+    if (ticks[ticks.length - 1] !== Math.round(yMax * 10) / 10) {
+      ticks.push(Math.round(yMax * 10) / 10);
+    }
+    
     return ticks;
   }, [yMin, yMax]);
 
