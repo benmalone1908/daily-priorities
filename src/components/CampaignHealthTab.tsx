@@ -1,16 +1,17 @@
 
 import { useMemo } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
-import CampaignHealthTable from "./CampaignHealthTable";
+import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface CampaignHealthTabProps {
   data: any[];
+  pacingData?: any[];
 }
 
-const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
+const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) => {
   const { isTestCampaign } = useCampaignFilter();
 
   const healthData = useMemo(() => {
@@ -23,9 +24,9 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
 
     // Calculate health score for each campaign
     return campaigns
-      .map(campaignName => calculateCampaignHealth(data, campaignName))
+      .map(campaignName => calculateCampaignHealth(data, campaignName, pacingData))
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
-  }, [data, isTestCampaign]);
+  }, [data, pacingData, isTestCampaign]);
 
   const summaryStats = useMemo(() => {
     if (healthData.length === 0) return { total: 0, healthy: 0, warning: 0, critical: 0, avgScore: 0 };
@@ -110,11 +111,15 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
         </div>
       </Card>
 
-      {/* Campaign Health Table */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Campaign Health Details</h3>
-        <CampaignHealthTable healthData={healthData} />
-      </div>
+      {/* Campaign Health Scatter Plot */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Campaign Health vs Completion</h3>
+        <div className="mb-4 text-sm text-muted-foreground">
+          This chart shows the relationship between campaign completion percentage and health score. 
+          Green dots indicate healthy campaigns (≥7), yellow indicates warning (4-6.9), and red indicates critical (&lt;4).
+        </div>
+        <CampaignHealthScatterPlot healthData={healthData} />
+      </Card>
     </div>
   );
 };

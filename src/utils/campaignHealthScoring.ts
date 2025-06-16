@@ -19,6 +19,7 @@ export interface CampaignHealthData {
   pace?: number;
   ctr: number;
   roas: number;
+  completionPercentage: number;
 }
 
 export interface BurnRateData {
@@ -152,7 +153,25 @@ export function calculateOverspendScore(spend: number, budget: number, burnRate:
   return 0; // Overspend risk
 }
 
-export function calculateCampaignHealth(data: any[], campaignName: string): CampaignHealthData {
+function calculateCompletionPercentage(pacingData: any[], campaignName: string): number {
+  // Find the pacing data for this campaign
+  const campaignPacing = pacingData.find(row => 
+    row["Campaign Name"] === campaignName || 
+    row["CAMPAIGN ORDER NAME"] === campaignName
+  );
+  
+  if (!campaignPacing) return 0;
+  
+  const daysIntoFlight = Number(campaignPacing["Days into Flight"]) || 0;
+  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
+  
+  if (daysIntoFlight === 0 && daysLeft === 0) return 0;
+  
+  const totalDays = daysIntoFlight + daysLeft;
+  return totalDays > 0 ? (daysIntoFlight / totalDays) * 100 : 0;
+}
+
+export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
     row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
@@ -174,7 +193,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
       healthScore: 0,
       burnRateConfidence: 'no-data',
       ctr: 0,
-      roas: 0
+      roas: 0,
+      completionPercentage: 0
     };
   }
   
@@ -215,6 +235,9 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
   
   const pace = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
   
+  // Calculate completion percentage from pacing data
+  const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
+  
   return {
     campaignName,
     budget: undefined, // Will be enhanced when budget data is available
@@ -233,6 +256,7 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
     burnRateConfidence: burnRate.confidence,
     pace,
     ctr,
-    roas
+    roas,
+    completionPercentage: Math.round(completionPercentage * 10) / 10 // Round to 1 decimal
   };
 }
