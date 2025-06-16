@@ -36,7 +36,6 @@ export function parseDateString(dateStr: string): Date | null {
   try {
     // Standardize the date string
     const cleanDateStr = dateStr.trim();
-    console.log(`Parsing date string: ${cleanDateStr}`);
     
     // Handle MM/DD/YYYY format
     if (cleanDateStr.includes('/')) {
@@ -72,7 +71,6 @@ export function parseDateString(dateStr: string): Date | null {
         return null;
       }
       
-      console.log(`Parsed date string: ${cleanDateStr} -> ${date.toISOString()}`);
       return date;
     } 
     // Handle YYYY-MM-DD format
@@ -85,7 +83,6 @@ export function parseDateString(dateStr: string): Date | null {
         return null;
       }
       
-      console.log(`Parsed ISO date string: ${cleanDateStr} -> ${date.toISOString()}`);
       return date;
     }
     // Try standard JS Date parsing as fallback
@@ -101,7 +98,6 @@ export function parseDateString(dateStr: string): Date | null {
       const safeDate = new Date(date);
       safeDate.setHours(12, 0, 0, 0);
       
-      console.log(`Parsed general date: ${cleanDateStr} -> ${safeDate.toISOString()}`);
       return safeDate;
     }
   } catch (error) {
