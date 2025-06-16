@@ -14,6 +14,15 @@ interface CampaignHealthTabProps {
 const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) => {
   const { isTestCampaign } = useCampaignFilter();
 
+  // Debug logging to see what pacing data we're receiving
+  console.log("CampaignHealthTab: Received pacing data length:", pacingData.length);
+  if (pacingData.length > 0) {
+    console.log("CampaignHealthTab: Sample pacing data:", pacingData[0]);
+    console.log("CampaignHealthTab: Available pacing campaigns:", 
+      pacingData.map(row => row["Campaign"]).filter(Boolean).slice(0, 5)
+    );
+  }
+
   const healthData = useMemo(() => {
     // Get unique campaigns excluding test campaigns
     const campaigns = Array.from(new Set(
@@ -21,6 +30,9 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
         .filter(row => row["CAMPAIGN ORDER NAME"] && !isTestCampaign(row["CAMPAIGN ORDER NAME"]))
         .map(row => row["CAMPAIGN ORDER NAME"])
     ));
+
+    console.log("CampaignHealthTab: Processing campaigns:", campaigns.slice(0, 3));
+    console.log("CampaignHealthTab: Passing pacing data length:", pacingData.length);
 
     // Calculate health score for each campaign
     return campaigns
