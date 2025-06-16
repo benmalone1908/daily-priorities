@@ -5,6 +5,8 @@ import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { Alert, AlertDescription } from "./ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface CampaignHealthTabProps {
   data: any[];
@@ -23,7 +25,7 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
     );
   }
 
-  const healthData = useMemo(() => {
+  const { healthData, missingPacingCampaigns } = useMemo(() => {
     // Get unique campaigns excluding test campaigns
     const campaigns = Array.from(new Set(
       data
@@ -34,10 +36,23 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
     console.log("CampaignHealthTab: Processing campaigns:", campaigns.slice(0, 3));
     console.log("CampaignHealthTab: Passing pacing data length:", pacingData.length);
 
+    // Get campaigns present in pacing data
+    const pacingCampaigns = new Set(
+      pacingData.map(row => row["Campaign"]).filter(Boolean)
+    );
+
+    // Find campaigns missing from pacing data
+    const missingFromPacing = campaigns.filter(campaign => !pacingCampaigns.has(campaign));
+
     // Calculate health score for each campaign
-    return campaigns
+    const healthScores = campaigns
       .map(campaignName => calculateCampaignHealth(data, campaignName, pacingData))
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
+
+    return {
+      healthData: healthScores,
+      missingPacingCampaigns: missingFromPacing
+    };
   }, [data, pacingData, isTestCampaign]);
 
   const summaryStats = useMemo(() => {
@@ -59,6 +74,28 @@ const CampaignHealthTab = ({ data, pacingData = [] }: CampaignHealthTabProps) =>
 
   return (
     <div className="space-y-6">
+      {/* Missing Pacing Data Alert */}
+      {missingPacingCampaigns.length > 0 && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <div className="font-medium mb-2">
+              {missingPacingCampaigns.length} campaign(s) missing from pacing data:
+            </div>
+            <div className="text-sm space-y-1">
+              {missingPacingCampaigns.slice(0, 5).map(campaign => (
+                <div key={campaign} className="truncate">• {campaign}</div>
+              ))}
+              {missingPacingCampaigns.length > 5 && (
+                <div className="text-xs text-yellow-600">
+                  ...and {missingPacingCampaigns.length - 5} more
+                </div>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="p-4">
