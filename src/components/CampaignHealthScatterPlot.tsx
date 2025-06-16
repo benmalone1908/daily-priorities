@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
@@ -106,30 +105,73 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
   // Generate quadrant overlays for current zoom level
   const generateQuadrantOverlays = () => {
     const overlays = [];
-    const xStep = (zoomState.xMax - zoomState.xMin) / 5;
-    const yStep = (zoomState.yMax - zoomState.yMin) / 5;
+    
+    if (zoomState.level === 0) {
+      // Use actual axis increments: 20% for x-axis, 2 points for y-axis
+      const xIncrements = [0, 20, 40, 60, 80, 100];
+      const yIncrements = [0, 2, 4, 6, 8, 10];
 
-    for (let i = 0; i < 5; i++) {
-      for (let j = 0; j < 5; j++) {
-        const xStart = zoomState.xMin + i * xStep;
-        const xEnd = zoomState.xMin + (i + 1) * xStep;
-        const yStart = zoomState.yMin + j * yStep;
-        const yEnd = zoomState.yMin + (j + 1) * yStep;
+      for (let i = 0; i < xIncrements.length - 1; i++) {
+        for (let j = 0; j < yIncrements.length - 1; j++) {
+          const xStart = xIncrements[i];
+          const xEnd = xIncrements[i + 1];
+          const yStart = yIncrements[j];
+          const yEnd = yIncrements[j + 1];
 
-        overlays.push(
-          <rect
-            key={`quadrant-${i}-${j}`}
-            x={`${(xStart / 100) * 100}%`}
-            y={`${(1 - yEnd / 10) * 100}%`}
-            width={`${(xStep / 100) * 100}%`}
-            height={`${(yStep / 10) * 100}%`}
-            fill="transparent"
-            stroke="rgba(59, 130, 246, 0.2)"
-            strokeWidth="1"
-            className="cursor-pointer hover:fill-blue-50 hover:fill-opacity-20 transition-all"
-            onClick={() => handleQuadrantClick(xStart, xEnd, yStart, yEnd)}
-          />
-        );
+          // Calculate percentage positions for SVG overlay
+          const xPos = (xStart / 100) * 100;
+          const yPos = (1 - yEnd / 10) * 100;
+          const width = ((xEnd - xStart) / 100) * 100;
+          const height = ((yEnd - yStart) / 10) * 100;
+
+          overlays.push(
+            <rect
+              key={`quadrant-${i}-${j}`}
+              x={`${xPos}%`}
+              y={`${yPos}%`}
+              width={`${width}%`}
+              height={`${height}%`}
+              fill="transparent"
+              stroke="rgba(59, 130, 246, 0.2)"
+              strokeWidth="1"
+              className="cursor-pointer hover:fill-blue-50 hover:fill-opacity-20 transition-all"
+              onClick={() => handleQuadrantClick(xStart, xEnd, yStart, yEnd)}
+            />
+          );
+        }
+      }
+    } else {
+      // For zoomed views, create 5x5 sub-quadrants
+      const xStep = (zoomState.xMax - zoomState.xMin) / 5;
+      const yStep = (zoomState.yMax - zoomState.yMin) / 5;
+
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 5; j++) {
+          const xStart = zoomState.xMin + i * xStep;
+          const xEnd = zoomState.xMin + (i + 1) * xStep;
+          const yStart = zoomState.yMin + j * yStep;
+          const yEnd = zoomState.yMin + (j + 1) * yStep;
+
+          const xPos = (xStart / 100) * 100;
+          const yPos = (1 - yEnd / 10) * 100;
+          const width = (xStep / 100) * 100;
+          const height = (yStep / 10) * 100;
+
+          overlays.push(
+            <rect
+              key={`quadrant-${i}-${j}`}
+              x={`${xPos}%`}
+              y={`${yPos}%`}
+              width={`${width}%`}
+              height={`${height}%`}
+              fill="transparent"
+              stroke="rgba(59, 130, 246, 0.2)"
+              strokeWidth="1"
+              className="cursor-pointer hover:fill-blue-50 hover:fill-opacity-20 transition-all"
+              onClick={() => handleQuadrantClick(xStart, xEnd, yStart, yEnd)}
+            />
+          );
+        }
       }
     }
     return overlays;
@@ -258,7 +300,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         </ChartContainer>
 
         {/* Clickable Quadrant Overlays */}
-        {zoomState.level === 0 && (
+        {(zoomState.level === 0 || zoomState.level > 0) && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
             <g className="pointer-events-auto">
               {generateQuadrantOverlays()}
