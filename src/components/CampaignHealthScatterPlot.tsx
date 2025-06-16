@@ -1,6 +1,5 @@
-
-import { useMemo, useState } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Cell } from "recharts";
+import { useMemo, useState, useRef } from "react";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceArea, Cell } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { Button } from "./ui/button";
@@ -36,6 +35,8 @@ interface TooltipState {
 }
 
 const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProps) => {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  
   const [zoomState, setZoomState] = useState<ZoomState>({
     xMin: 0,
     xMax: 100,
@@ -156,26 +157,56 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
 
   const handleScatterClick = (data: any, event: any) => {
     console.log('Scatter clicked:', data, event);
+    console.log('Data coordinates:', data.x, data.y);
+    console.log('All health data:', healthData.map(c => ({ name: c.campaignName, completion: c.completionPercentage, health: c.healthScore })));
+    
     event?.stopPropagation?.();
     
     if (event) {
       const clientX = event.clientX || event.nativeEvent?.clientX || 100;
       const clientY = event.clientY || event.nativeEvent?.clientY || 100;
       
-      // Find all campaigns at this coordinate (within tolerance)
-      const tolerance = 0.1;
-      const matchingCampaigns = healthData.filter(campaign => 
-        Math.abs(campaign.completionPercentage - data.x) <= tolerance &&
-        Math.abs(campaign.healthScore - data.y) <= tolerance
-      );
+      // Increase tolerance and add debugging
+      const tolerance = 0.5;
+      const matchingCampaigns = healthData.filter(campaign => {
+        const xMatch = Math.abs(campaign.completionPercentage - data.x) <= tolerance;
+        const yMatch = Math.abs(campaign.healthScore - data.y) <= tolerance;
+        console.log(`Campaign ${campaign.campaignName}: completion=${campaign.completionPercentage}, health=${campaign.healthScore}, xMatch=${xMatch}, yMatch=${yMatch}`);
+        return xMatch && yMatch;
+      });
       
       console.log('Matching campaigns:', matchingCampaigns);
+      
+      // Better positioning logic
+      const chartContainer = chartContainerRef.current;
+      const containerRect = chartContainer?.getBoundingClientRect();
+      
+      let tooltipX = clientX;
+      let tooltipY = clientY;
+      
+      if (containerRect) {
+        // If tooltip would go off the right edge, position it to the left of cursor
+        if (clientX + 400 > containerRect.right) {
+          tooltipX = clientX - 420;
+        }
+        
+        // Keep tooltip within container bounds
+        tooltipX = Math.max(containerRect.left + 10, Math.min(tooltipX, containerRect.right - 410));
+        
+        // Position tooltip above cursor if it would go below container
+        if (clientY + 200 > containerRect.bottom) {
+          tooltipY = clientY - 210;
+        }
+        
+        // Keep tooltip within vertical bounds
+        tooltipY = Math.max(containerRect.top + 10, Math.min(tooltipY, containerRect.bottom - 210));
+      }
       
       setTooltipState({
         visible: true,
         campaigns: matchingCampaigns,
-        x: clientX,
-        y: clientY
+        x: tooltipX,
+        y: tooltipY
       });
     }
   };
@@ -299,7 +330,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         </div>
       </div>
 
-      <div className="w-full h-[500px] relative">
+      <div className="w-full h-[500px] relative" ref={chartContainerRef}>
         <ChartContainer config={chartConfig}>
           <ScatterChart
             data={chartData}
@@ -366,8 +397,8 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         <div 
           className="fixed bg-white border rounded shadow-lg max-w-md z-50 max-h-96 overflow-y-auto"
           style={{ 
-            left: Math.min(tooltipState.x, window.innerWidth - 400),
-            top: Math.max(10, tooltipState.y - 200)
+            left: tooltipState.x,
+            top: tooltipState.y
           }}
         >
           <div className="flex justify-between items-center p-3 border-b">
@@ -469,6 +500,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         </div>
       )}
       
+      {/* Help text */}
       {zoomState.level === 0 && (
         <div className="mt-2 text-center">
           <p className="text-sm text-gray-500">
