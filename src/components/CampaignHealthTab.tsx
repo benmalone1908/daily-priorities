@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { Card } from "./ui/card";
@@ -22,18 +21,19 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
         .map(row => row["CAMPAIGN ORDER NAME"])
     ));
 
-    // Calculate health score for each campaign
+    // Calculate total impressions for all campaigns to use in completion percentage calculation
+    const allCampaignImpressions = campaigns.map(campaignName => {
+      const campaignRows = data.filter(row => 
+        row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
+      );
+      return campaignRows.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+    });
+
+    // Calculate health score for each campaign with proper completion percentage
     return campaigns
       .map(campaignName => {
-        const campaignHealth = calculateCampaignHealth(data, campaignName);
-        
-        // Calculate completion percentage (simplified - using spend vs expected)
-        const completionPercentage = campaignHealth.pace || 0;
-        
-        return {
-          ...campaignHealth,
-          completionPercentage: Math.min(100, Math.max(0, completionPercentage))
-        };
+        const campaignHealth = calculateCampaignHealth(data, campaignName, allCampaignImpressions);
+        return campaignHealth;
       })
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
   }, [data, isTestCampaign]);
@@ -62,7 +62,7 @@ const CampaignHealthTab = ({ data }: CampaignHealthTabProps) => {
   };
 
   const chartData = healthData.map(campaign => ({
-    x: campaign.completionPercentage,
+    x: campaign.completionPercentage || 0,
     y: campaign.healthScore,
     campaignName: campaign.campaignName,
     score: campaign.healthScore,

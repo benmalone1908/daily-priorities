@@ -1,4 +1,3 @@
-
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -19,13 +18,7 @@ export interface CampaignHealthData {
   pace?: number;
   ctr: number;
   roas: number;
-}
-
-export interface BurnRateData {
-  oneDayRate: number;
-  threeDayRate: number;
-  sevenDayRate: number;
-  confidence: string;
+  completionPercentage?: number;
 }
 
 // CTR Benchmark - can be made configurable later
@@ -152,7 +145,26 @@ export function calculateOverspendScore(spend: number, budget: number, burnRate:
   return 0; // Overspend risk
 }
 
-export function calculateCampaignHealth(data: any[], campaignName: string): CampaignHealthData {
+// New function to calculate completion percentage based on impression delivery
+export function calculateCompletionPercentage(campaignImpressions: number, allCampaignImpressions: number[]): number {
+  if (allCampaignImpressions.length === 0) return 0;
+  
+  // Sort impressions to find percentile ranking
+  const sortedImpressions = [...allCampaignImpressions].sort((a, b) => a - b);
+  const maxImpressions = Math.max(...sortedImpressions);
+  const minImpressions = Math.min(...sortedImpressions);
+  
+  // If all campaigns have the same impressions, return 50%
+  if (maxImpressions === minImpressions) return 50;
+  
+  // Calculate percentage based on position in the range
+  const completionPercentage = ((campaignImpressions - minImpressions) / (maxImpressions - minImpressions)) * 100;
+  
+  // Ensure it's between 0 and 100
+  return Math.min(100, Math.max(0, completionPercentage));
+}
+
+export function calculateCampaignHealth(data: any[], campaignName: string, allCampaignImpressions?: number[]): CampaignHealthData {
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
     row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
@@ -174,7 +186,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
       healthScore: 0,
       burnRateConfidence: 'no-data',
       ctr: 0,
-      roas: 0
+      roas: 0,
+      completionPercentage: 0
     };
   }
   
@@ -190,6 +203,10 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
   // Calculate derived metrics
   const roas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
   const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
+  
+  // Calculate completion percentage using impression delivery as proxy
+  const completionPercentage = allCampaignImpressions ? 
+    calculateCompletionPercentage(totals.impressions, allCampaignImpressions) : 0;
   
   // Calculate scores
   const roasScore = calculateROASScore(roas);
@@ -233,6 +250,7 @@ export function calculateCampaignHealth(data: any[], campaignName: string): Camp
     burnRateConfidence: burnRate.confidence,
     pace,
     ctr,
-    roas
+    roas,
+    completionPercentage: Math.round(completionPercentage * 10) / 10 // Round to 1 decimal
   };
 }
