@@ -379,12 +379,15 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
 }
 
 export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
+  console.log(`\n=== CALCULATING HEALTH FOR CAMPAIGN: "${campaignName}" ===`);
+  
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
     row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals'
   );
   
   if (campaignRows.length === 0) {
+    console.log(`No data found for campaign: "${campaignName}"`);
     return {
       campaignName,
       spend: 0,
@@ -419,6 +422,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     };
   }
   
+  console.log(`Found ${campaignRows.length} data rows for campaign`);
+  
   // Sum up totals
   const totals = campaignRows.reduce((acc, row) => ({
     spend: acc.spend + (Number(row.SPEND) || 0),
@@ -427,6 +432,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     revenue: acc.revenue + (Number(row.REVENUE) || 0),
     transactions: acc.transactions + (Number(row.TRANSACTIONS) || 0)
   }), { spend: 0, impressions: 0, clicks: 0, revenue: 0, transactions: 0 });
+  
+  console.log(`Campaign totals:`, totals);
   
   // Calculate derived metrics
   const roas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
@@ -448,12 +455,16 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   
   // Get budget and days left from pacing data
   const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName);
+  console.log(`Budget from pacing data: $${budget}, Days left: ${daysLeft}`);
   
   // Calculate completion percentage and days into flight
   const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
   const daysIntoFlight = Math.max(1, campaignRows.length); // Use data days as approximation
   
+  console.log(`Days into flight: ${daysIntoFlight}, Completion: ${completionPercentage}%`);
+  
   // Calculate spend burn rate with improved logic
+  console.log(`\n--- CALCULATING SPEND BURN RATE ---`);
   const { dailySpendRate, confidence: spendConfidence } = calculateSpendBurnRate(
     data, 
     campaignName, 
@@ -461,12 +472,20 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     daysIntoFlight
   );
   
+  console.log(`Final daily spend rate: $${dailySpendRate}, confidence: ${spendConfidence}`);
+  
   // Calculate actual overspend score using improved projection
+  console.log(`\n--- CALCULATING OVERSPEND SCORE ---`);
+  console.log(`Inputs: currentSpend=$${totals.spend}, budget=$${budget}, dailyRate=$${dailySpendRate}, daysLeft=${daysLeft}`);
+  
   const overspendScore = calculateOverspendScore(totals.spend, budget, dailySpendRate, daysLeft, spendConfidence);
   
   // Calculate projected overspend amount
   const projectedTotalSpend = totals.spend + (dailySpendRate * Math.max(0, daysLeft));
   const overspendAmount = Math.max(0, projectedTotalSpend - budget);
+  
+  console.log(`Projected total spend: $${projectedTotalSpend}, Overspend amount: $${overspendAmount}`);
+  console.log(`Overspend score: ${overspendScore}`);
   
   // Calculate final health score with weights
   const healthScore = 
@@ -482,6 +501,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const deliveryPacing = pace || 0;
   const burnRateValue = burnRateData.sevenDayRate || burnRateData.threeDayRate || burnRateData.oneDayRate || 0;
   const burnRatePercentage = requiredDailyImpressions > 0 ? (burnRateValue / requiredDailyImpressions) * 100 : 0;
+  
+  console.log(`=== FINAL RESULTS FOR "${campaignName}" ===`);
+  console.log(`Health Score: ${Math.round(healthScore * 10) / 10}`);
+  console.log(`Overspend: $${Math.round(overspendAmount * 100) / 100}`);
+  console.log(`===============================\n`);
   
   return {
     campaignName,
