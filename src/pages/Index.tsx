@@ -738,6 +738,7 @@ const DashboardContent = ({
           {/* Campaign Health tab content */}
           <CampaignHealthTab 
             data={globalFilteredData}
+            pacingData={pacingData}
           />
         </TabsContent>
         
