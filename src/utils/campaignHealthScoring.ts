@@ -1,3 +1,4 @@
+
 export interface CampaignHealthData {
   campaignName: string;
   budget?: number;
@@ -151,31 +152,38 @@ export function calculateCTRScore(ctr: number, benchmark: number = CTR_BENCHMARK
 }
 
 function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: number = 0, daysIntoFlight: number = 0): { dailySpendRate: number; confidence: string } {
+  const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
+  
+  if (isTargetCampaign) {
+    console.log(`🔍 [TARGET CAMPAIGN] Calculating spend burn rate for: ${campaignName}`);
+    console.log(`🔍 [TARGET CAMPAIGN] Input params: totalSpend=$${totalSpend}, daysIntoFlight=${daysIntoFlight}`);
+  }
+  
   // Filter data for this campaign and sort by date
   const campaignData = data
     .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
     .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
   
   if (campaignData.length === 0) {
-    console.log(`No spend data found for campaign: ${campaignName}`);
+    if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] No spend data found`);
     return { dailySpendRate: 0, confidence: 'no-data' };
   }
-  
-  console.log(`Calculating spend burn rate for campaign: ${campaignName}`);
-  console.log(`Total campaign spend: $${totalSpend}, Days into flight: ${daysIntoFlight}`);
   
   // Get spend values and filter out anomalous data
   const spendValues = campaignData.map(row => Number(row.SPEND) || 0);
   const totalDataSpend = spendValues.reduce((sum, spend) => sum + spend, 0);
   
-  console.log(`Raw spend data: [${spendValues.slice(-7).join(', ')}] (last 7 days)`);
-  console.log(`Total from data: $${totalDataSpend}`);
+  if (isTargetCampaign) {
+    console.log(`🔍 [TARGET CAMPAIGN] Raw spend data (last 7 days): [${spendValues.slice(-7).join(', ')}]`);
+    console.log(`🔍 [TARGET CAMPAIGN] Total from raw data: $${totalDataSpend}`);
+    console.log(`🔍 [TARGET CAMPAIGN] Campaign data rows: ${campaignData.length}`);
+  }
   
   // Calculate average daily spend based on total spend and days elapsed
   let averageDailySpend = 0;
   if (daysIntoFlight > 0 && totalSpend > 0) {
     averageDailySpend = totalSpend / daysIntoFlight;
-    console.log(`Average daily spend (total/days): $${averageDailySpend.toFixed(2)}`);
+    if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] Average daily spend (total/days): $${averageDailySpend.toFixed(2)}`);
   }
   
   // Get most recent data points for trend analysis
@@ -187,11 +195,11 @@ function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: n
   if (recent.length >= 7) {
     // Use 7-day average, but validate against overall pattern
     const sevenDayAvg = recent.reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 7;
-    console.log(`7-day average: $${sevenDayAvg.toFixed(2)}`);
+    if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 7-day average: $${sevenDayAvg.toFixed(2)}`);
     
     // If 7-day average is drastically different from overall average, use the more conservative one
     if (averageDailySpend > 0 && Math.abs(sevenDayAvg - averageDailySpend) > averageDailySpend * 2) {
-      console.log(`7-day average seems anomalous, using overall average instead`);
+      if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 7-day average seems anomalous, using overall average instead`);
       dailySpendRate = averageDailySpend;
     } else {
       dailySpendRate = sevenDayAvg;
@@ -200,10 +208,10 @@ function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: n
   } else if (recent.length >= 3) {
     // Use 3-day average with validation
     const threeDayAvg = recent.slice(-3).reduce((sum, row) => sum + (Number(row.SPEND) || 0), 0) / 3;
-    console.log(`3-day average: $${threeDayAvg.toFixed(2)}`);
+    if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 3-day average: $${threeDayAvg.toFixed(2)}`);
     
     if (averageDailySpend > 0 && Math.abs(threeDayAvg - averageDailySpend) > averageDailySpend * 2) {
-      console.log(`3-day average seems anomalous, using overall average instead`);
+      if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 3-day average seems anomalous, using overall average instead`);
       dailySpendRate = averageDailySpend;
     } else {
       dailySpendRate = threeDayAvg;
@@ -212,10 +220,10 @@ function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: n
   } else if (recent.length >= 1) {
     // Use most recent day with validation
     const oneDaySpend = Number(recent[recent.length - 1].SPEND) || 0;
-    console.log(`1-day spend: $${oneDaySpend.toFixed(2)}`);
+    if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 1-day spend: $${oneDaySpend.toFixed(2)}`);
     
     if (averageDailySpend > 0 && Math.abs(oneDaySpend - averageDailySpend) > averageDailySpend * 3) {
-      console.log(`1-day spend seems anomalous, using overall average instead`);
+      if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] 1-day spend seems anomalous, using overall average instead`);
       dailySpendRate = averageDailySpend;
     } else {
       dailySpendRate = oneDaySpend;
@@ -231,13 +239,15 @@ function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: n
   if (totalSpend > 0 && daysIntoFlight > 0) {
     const maxReasonableDaily = (totalSpend / daysIntoFlight) * 2; // Allow up to 2x current average
     if (dailySpendRate > maxReasonableDaily) {
-      console.log(`Daily spend rate $${dailySpendRate.toFixed(2)} seems too high, capping at $${maxReasonableDaily.toFixed(2)}`);
+      if (isTargetCampaign) console.log(`🔍 [TARGET CAMPAIGN] Daily spend rate $${dailySpendRate.toFixed(2)} seems too high, capping at $${maxReasonableDaily.toFixed(2)}`);
       dailySpendRate = maxReasonableDaily;
       confidence = confidence + '-capped';
     }
   }
   
-  console.log(`Final daily spend rate: $${dailySpendRate.toFixed(2)} (confidence: ${confidence})`);
+  if (isTargetCampaign) {
+    console.log(`🔍 [TARGET CAMPAIGN] Final daily spend rate: $${dailySpendRate.toFixed(2)} (confidence: ${confidence})`);
+  }
   
   return { dailySpendRate, confidence };
 }
@@ -249,16 +259,27 @@ export function calculateOverspendScore(
   daysLeft: number,
   confidence: string
 ): number {
-  if (!budget || budget === 0 || daysLeft < 0) return 0; // No budget data or campaign ended
+  const isTargetCampaign = budget === 3000; // Identify our target campaign by budget
   
-  console.log(`Overspend calculation: spend=$${currentSpend}, budget=$${budget}, dailyRate=$${dailySpendRate.toFixed(2)}, daysLeft=${daysLeft}`);
+  if (isTargetCampaign) {
+    console.log(`🎯 [OVERSPEND TARGET] Starting overspend calculation`);
+    console.log(`🎯 [OVERSPEND TARGET] Inputs: spend=$${currentSpend}, budget=$${budget}, dailyRate=$${dailySpendRate.toFixed(2)}, daysLeft=${daysLeft}, confidence=${confidence}`);
+  }
+  
+  if (!budget || budget === 0 || daysLeft < 0) {
+    if (isTargetCampaign) console.log(`🎯 [OVERSPEND TARGET] No budget data or campaign ended, returning 0`);
+    return 0; // No budget data or campaign ended
+  }
   
   // Calculate projected total spend
   const projectedTotalSpend = currentSpend + (dailySpendRate * daysLeft);
   const projectedOverspend = Math.max(0, projectedTotalSpend - budget);
   const overspendPercentage = budget > 0 ? (projectedOverspend / budget) * 100 : 0;
   
-  console.log(`Projected total spend: $${projectedTotalSpend.toFixed(2)}, overspend: $${projectedOverspend.toFixed(2)} (${overspendPercentage.toFixed(1)}%)`);
+  if (isTargetCampaign) {
+    console.log(`🎯 [OVERSPEND TARGET] Calculation: ${currentSpend} + (${dailySpendRate.toFixed(2)} × ${daysLeft}) = ${projectedTotalSpend.toFixed(2)}`);
+    console.log(`🎯 [OVERSPEND TARGET] Projected overspend: $${projectedOverspend.toFixed(2)} (${overspendPercentage.toFixed(1)}%)`);
+  }
   
   // Adjust confidence based on data quality
   let confidenceMultiplier = 1;
@@ -276,6 +297,7 @@ export function calculateOverspendScore(
       confidenceMultiplier = 0.9;
       break;
     default:
+      if (isTargetCampaign) console.log(`🎯 [OVERSPEND TARGET] Unknown confidence, returning 0`);
       return 0;
   }
   
@@ -299,7 +321,10 @@ export function calculateOverspendScore(
   }
   
   const finalScore = Math.round(baseScore * confidenceMultiplier * 10) / 10;
-  console.log(`Overspend score: ${finalScore} (base: ${baseScore}, confidence: ${confidenceMultiplier})`);
+  
+  if (isTargetCampaign) {
+    console.log(`🎯 [OVERSPEND TARGET] Score calculation: base=${baseScore}, confidence=${confidenceMultiplier}, final=${finalScore}`);
+  }
   
   return finalScore;
 }
@@ -360,14 +385,32 @@ function calculateCompletionPercentage(pacingData: any[], campaignName: string):
 }
 
 function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget: number; daysLeft: number } {
+  const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
+  
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET TARGET] Looking for budget data for: ${campaignName}`);
+    console.log(`💰 [BUDGET TARGET] Pacing data length: ${pacingData.length}`);
+    if (pacingData.length > 0) {
+      console.log(`💰 [BUDGET TARGET] Available campaigns in pacing data:`, 
+        pacingData.map(row => `"${row["Campaign"]}"`).slice(0, 3));
+    }
+  }
+  
   const campaignPacing = pacingData.find(row => {
     const rowCampaign = row["Campaign"];
     const normalizedRowCampaign = String(rowCampaign || "").trim();
     const normalizedCampaignName = String(campaignName || "").trim();
-    return normalizedRowCampaign === normalizedCampaignName;
+    const match = normalizedRowCampaign === normalizedCampaignName;
+    
+    if (isTargetCampaign && match) {
+      console.log(`💰 [BUDGET TARGET] Found matching pacing row:`, row);
+    }
+    
+    return match;
   });
   
   if (!campaignPacing) {
+    if (isTargetCampaign) console.log(`💰 [BUDGET TARGET] No pacing data found for campaign`);
     return { budget: 0, daysLeft: 0 };
   }
   
@@ -375,11 +418,21 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string): { budget
   const budget = Number(campaignPacing["Budget"]) || Number(campaignPacing["Total Budget"]) || 0;
   const daysLeft = Number(campaignPacing["Days Left"]) || 0;
   
+  if (isTargetCampaign) {
+    console.log(`💰 [BUDGET TARGET] Extracted budget: $${budget}, days left: ${daysLeft}`);
+  }
+  
   return { budget, daysLeft };
 }
 
 export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = []): CampaignHealthData {
-  console.log(`\n=== CALCULATING HEALTH FOR CAMPAIGN: "${campaignName}" ===`);
+  const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
+  
+  if (isTargetCampaign) {
+    console.log(`\n🚀 === CALCULATING HEALTH FOR TARGET CAMPAIGN: "${campaignName}" ===`);
+  } else {
+    console.log(`\n=== CALCULATING HEALTH FOR CAMPAIGN: "${campaignName}" ===`);
+  }
   
   // Aggregate campaign data
   const campaignRows = data.filter(row => 
@@ -422,7 +475,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     };
   }
   
-  console.log(`Found ${campaignRows.length} data rows for campaign`);
+  if (isTargetCampaign) {
+    console.log(`🚀 Found ${campaignRows.length} data rows for target campaign`);
+  } else {
+    console.log(`Found ${campaignRows.length} data rows for campaign`);
+  }
   
   // Sum up totals
   const totals = campaignRows.reduce((acc, row) => ({
@@ -433,7 +490,11 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     transactions: acc.transactions + (Number(row.TRANSACTIONS) || 0)
   }), { spend: 0, impressions: 0, clicks: 0, revenue: 0, transactions: 0 });
   
-  console.log(`Campaign totals:`, totals);
+  if (isTargetCampaign) {
+    console.log(`🚀 Target campaign totals:`, totals);
+  } else {
+    console.log(`Campaign totals:`, totals);
+  }
   
   // Calculate derived metrics
   const roas = totals.spend > 0 ? totals.revenue / totals.spend : 0;
@@ -455,16 +516,28 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   
   // Get budget and days left from pacing data
   const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName);
-  console.log(`Budget from pacing data: $${budget}, Days left: ${daysLeft}`);
+  if (isTargetCampaign) {
+    console.log(`🚀 Target campaign budget from pacing data: $${budget}, Days left: ${daysLeft}`);
+  } else {
+    console.log(`Budget from pacing data: $${budget}, Days left: ${daysLeft}`);
+  }
   
   // Calculate completion percentage and days into flight
   const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
   const daysIntoFlight = Math.max(1, campaignRows.length); // Use data days as approximation
   
-  console.log(`Days into flight: ${daysIntoFlight}, Completion: ${completionPercentage}%`);
+  if (isTargetCampaign) {
+    console.log(`🚀 Target campaign days into flight: ${daysIntoFlight}, Completion: ${completionPercentage}%`);
+  } else {
+    console.log(`Days into flight: ${daysIntoFlight}, Completion: ${completionPercentage}%`);
+  }
   
   // Calculate spend burn rate with improved logic
-  console.log(`\n--- CALCULATING SPEND BURN RATE ---`);
+  if (isTargetCampaign) {
+    console.log(`🚀 --- CALCULATING SPEND BURN RATE FOR TARGET ---`);
+  } else {
+    console.log(`\n--- CALCULATING SPEND BURN RATE ---`);
+  }
   const { dailySpendRate, confidence: spendConfidence } = calculateSpendBurnRate(
     data, 
     campaignName, 
@@ -472,11 +545,20 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     daysIntoFlight
   );
   
-  console.log(`Final daily spend rate: $${dailySpendRate}, confidence: ${spendConfidence}`);
+  if (isTargetCampaign) {
+    console.log(`🚀 Target campaign final daily spend rate: $${dailySpendRate}, confidence: ${spendConfidence}`);
+  } else {
+    console.log(`Final daily spend rate: $${dailySpendRate}, confidence: ${spendConfidence}`);
+  }
   
   // Calculate actual overspend score using improved projection
-  console.log(`\n--- CALCULATING OVERSPEND SCORE ---`);
-  console.log(`Inputs: currentSpend=$${totals.spend}, budget=$${budget}, dailyRate=$${dailySpendRate}, daysLeft=${daysLeft}`);
+  if (isTargetCampaign) {
+    console.log(`🚀 --- CALCULATING OVERSPEND SCORE FOR TARGET ---`);
+    console.log(`🚀 Target inputs: currentSpend=$${totals.spend}, budget=$${budget}, dailyRate=$${dailySpendRate}, daysLeft=${daysLeft}`);
+  } else {
+    console.log(`\n--- CALCULATING OVERSPEND SCORE ---`);
+    console.log(`Inputs: currentSpend=$${totals.spend}, budget=$${budget}, dailyRate=$${dailySpendRate}, daysLeft=${daysLeft}`);
+  }
   
   const overspendScore = calculateOverspendScore(totals.spend, budget, dailySpendRate, daysLeft, spendConfidence);
   
@@ -484,8 +566,13 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const projectedTotalSpend = totals.spend + (dailySpendRate * Math.max(0, daysLeft));
   const overspendAmount = Math.max(0, projectedTotalSpend - budget);
   
-  console.log(`Projected total spend: $${projectedTotalSpend}, Overspend amount: $${overspendAmount}`);
-  console.log(`Overspend score: ${overspendScore}`);
+  if (isTargetCampaign) {
+    console.log(`🚀 Target projected total spend: $${projectedTotalSpend}, Overspend amount: $${overspendAmount}`);
+    console.log(`🚀 Target overspend score: ${overspendScore}`);
+  } else {
+    console.log(`Projected total spend: $${projectedTotalSpend}, Overspend amount: $${overspendAmount}`);
+    console.log(`Overspend score: ${overspendScore}`);
+  }
   
   // Calculate final health score with weights
   const healthScore = 
@@ -502,10 +589,17 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const burnRateValue = burnRateData.sevenDayRate || burnRateData.threeDayRate || burnRateData.oneDayRate || 0;
   const burnRatePercentage = requiredDailyImpressions > 0 ? (burnRateValue / requiredDailyImpressions) * 100 : 0;
   
-  console.log(`=== FINAL RESULTS FOR "${campaignName}" ===`);
-  console.log(`Health Score: ${Math.round(healthScore * 10) / 10}`);
-  console.log(`Overspend: $${Math.round(overspendAmount * 100) / 100}`);
-  console.log(`===============================\n`);
+  if (isTargetCampaign) {
+    console.log(`🚀 === FINAL RESULTS FOR TARGET CAMPAIGN "${campaignName}" ===`);
+    console.log(`🚀 Health Score: ${Math.round(healthScore * 10) / 10}`);
+    console.log(`🚀 Overspend: $${Math.round(overspendAmount * 100) / 100}`);
+    console.log(`🚀 ===============================\n`);
+  } else {
+    console.log(`=== FINAL RESULTS FOR "${campaignName}" ===`);
+    console.log(`Health Score: ${Math.round(healthScore * 10) / 10}`);
+    console.log(`Overspend: $${Math.round(overspendAmount * 100) / 100}`);
+    console.log(`===============================\n`);
+  }
   
   return {
     campaignName,
@@ -536,3 +630,4 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     burnRatePercentage: Math.round(burnRatePercentage * 10) / 10
   };
 }
+
