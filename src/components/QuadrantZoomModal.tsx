@@ -1,5 +1,6 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip } from "./ui/chart";
 import { Button } from "./ui/button";
@@ -110,6 +111,7 @@ const QuadrantZoomModal = ({
   }, [yMin, yMax]);
 
   const handleScatterClick = (data: any, event: any) => {
+    console.log('Modal scatter clicked:', data, event);
     event?.stopPropagation?.();
     
     if (event) {
@@ -122,6 +124,8 @@ const QuadrantZoomModal = ({
         Math.abs(campaign.completionPercentage - data.x) <= tolerance &&
         Math.abs(campaign.healthScore - data.y) <= tolerance
       );
+      
+      console.log('Modal matching campaigns:', matchingCampaigns);
       
       setTooltipState({
         visible: true,
@@ -176,7 +180,6 @@ const QuadrantZoomModal = ({
                   dataKey="x" 
                   name="Completion %"
                   domain={[xMin, xMax]}
-                  ticks={xTicks}
                   tick={{ fontSize: 12 }}
                   label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
                 />
@@ -185,20 +188,22 @@ const QuadrantZoomModal = ({
                   dataKey="y" 
                   name="Health Score"
                   domain={[yMin, yMax]}
-                  ticks={yTicks}
                   tick={{ fontSize: 12 }}
                   label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
                 />
                 
-                <Tooltip
-                  content={() => null} // Disable default tooltip since we're using custom
-                />
-                
                 <Scatter 
                   dataKey="y"
-                  onClick={handleScatterClick}
                   className="cursor-pointer"
-                />
+                >
+                  {filteredData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill}
+                      onClick={(event) => handleScatterClick(entry, event)}
+                    />
+                  ))}
+                </Scatter>
               </ScatterChart>
             </ChartContainer>
 

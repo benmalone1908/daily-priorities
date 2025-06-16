@@ -1,5 +1,6 @@
+
 import { useMemo, useState } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Cell } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { Button } from "./ui/button";
@@ -154,6 +155,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
   };
 
   const handleScatterClick = (data: any, event: any) => {
+    console.log('Scatter clicked:', data, event);
     event?.stopPropagation?.();
     
     if (event) {
@@ -166,6 +168,8 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         Math.abs(campaign.completionPercentage - data.x) <= tolerance &&
         Math.abs(campaign.healthScore - data.y) <= tolerance
       );
+      
+      console.log('Matching campaigns:', matchingCampaigns);
       
       setTooltipState({
         visible: true,
@@ -329,7 +333,6 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               dataKey="x" 
               name="Completion %"
               domain={[zoomState.xMin, zoomState.xMax]}
-              ticks={xTicks}
               tick={{ fontSize: 12 }}
               label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
             />
@@ -338,20 +341,22 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               dataKey="y" 
               name="Health Score"
               domain={[zoomState.yMin, zoomState.yMax]}
-              ticks={yTicks}
               tick={{ fontSize: 12 }}
               label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
             />
             
-            <Tooltip
-              content={() => null} // Disable default tooltip since we're using custom
-            />
-            
             <Scatter 
               dataKey="y"
-              onClick={handleScatterClick}
               className="cursor-pointer"
-            />
+            >
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.fill}
+                  onClick={(event) => handleScatterClick(entry, event)}
+                />
+              ))}
+            </Scatter>
           </ScatterChart>
         </ChartContainer>
       </div>
