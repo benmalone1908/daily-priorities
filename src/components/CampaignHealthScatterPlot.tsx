@@ -1,10 +1,10 @@
-
 import { useMemo, useState } from "react";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { Button } from "./ui/button";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import QuadrantZoomModal from "./QuadrantZoomModal";
 
 interface CampaignHealthScatterPlotProps {
   healthData: CampaignHealthData[];
@@ -18,6 +18,14 @@ interface ZoomState {
   level: number;
 }
 
+interface ModalState {
+  open: boolean;
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+}
+
 const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProps) => {
   const [zoomState, setZoomState] = useState<ZoomState>({
     xMin: 0,
@@ -25,6 +33,14 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     yMin: 0,
     yMax: 10,
     level: 0
+  });
+
+  const [modalState, setModalState] = useState<ModalState>({
+    open: false,
+    xMin: 0,
+    xMax: 0,
+    yMin: 0,
+    yMax: 0
   });
 
   const chartData = useMemo(() => {
@@ -65,12 +81,12 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
   }, [zoomState]);
 
   const handleQuadrantClick = (xStart: number, xEnd: number, yStart: number, yEnd: number) => {
-    setZoomState({
+    setModalState({
+      open: true,
       xMin: xStart,
       xMax: xEnd,
       yMin: yStart,
-      yMax: yEnd,
-      level: zoomState.level + 1
+      yMax: yEnd
     });
   };
 
@@ -274,11 +290,9 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                       <p className="text-sm text-gray-600">
                         Completion: <span className="font-medium">{data.x.toFixed(1)}%</span>
                       </p>
-                      {zoomState.level === 0 && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          Click quadrant to zoom in
-                        </p>
-                      )}
+                      <p className="text-xs text-blue-600 mt-1">
+                        Click quadrant to view details
+                      </p>
                     </div>
                   );
                 }
@@ -296,10 +310,21 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
       {zoomState.level === 0 && (
         <div className="mt-2 text-center">
           <p className="text-sm text-gray-500">
-            Click on any quadrant to zoom in for detailed view
+            Click on any quadrant to view detailed breakdown in modal
           </p>
         </div>
       )}
+
+      {/* Quadrant Zoom Modal */}
+      <QuadrantZoomModal
+        open={modalState.open}
+        onOpenChange={(open) => setModalState(prev => ({ ...prev, open }))}
+        healthData={healthData}
+        xMin={modalState.xMin}
+        xMax={modalState.xMax}
+        yMin={modalState.yMin}
+        yMax={modalState.yMax}
+      />
     </div>
   );
 };
