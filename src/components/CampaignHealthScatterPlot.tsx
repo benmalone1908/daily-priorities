@@ -284,6 +284,36 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     return areas;
   };
 
+  const renderBurnRateDetails = (campaign: CampaignHealthData) => {
+    if (!campaign.burnRateData) return null;
+
+    const { oneDayRate, threeDayRate, sevenDayRate, oneDayPercentage, threeDayPercentage, sevenDayPercentage, confidence } = campaign.burnRateData;
+
+    return (
+      <div className="border-t pt-2 mt-2">
+        <div className="text-xs font-medium mb-1">Burn Rate Details:</div>
+        <div className="space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className={confidence === 'high' ? 'font-medium text-green-700' : ''}>1-Day Rate:</span>
+            <span className={confidence === 'high' ? 'font-medium text-green-700' : ''}>{oneDayRate.toFixed(0)} impressions ({oneDayPercentage.toFixed(1)}%)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className={confidence === 'medium' ? 'font-medium text-yellow-700' : ''}>3-Day Rate:</span>
+            <span className={confidence === 'medium' ? 'font-medium text-yellow-700' : ''}>{threeDayRate.toFixed(0)} impressions ({threeDayPercentage.toFixed(1)}%)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className={confidence === 'low' ? 'font-medium text-red-700' : ''}>7-Day Rate:</span>
+            <span className={confidence === 'low' ? 'font-medium text-red-700' : ''}>{sevenDayRate.toFixed(0)} impressions ({sevenDayPercentage.toFixed(1)}%)</span>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Confidence:</span>
+            <span className="capitalize">{confidence}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (healthData.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -453,6 +483,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                     <span className="font-medium">{tooltipState.campaigns[0].completionPercentage.toFixed(1)}%</span>
                   </div>
                 </div>
+                {renderBurnRateDetails(tooltipState.campaigns[0])}
               </div>
             </div>
           ) : (
@@ -491,6 +522,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                         <span>Overspend:</span>
                         <span className="font-medium">${campaign.overspend.toFixed(2)} (Score: {campaign.overspendScore})</span>
                       </div>
+                      {renderBurnRateDetails(campaign)}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
