@@ -216,46 +216,44 @@ const QuadrantZoomModal = ({
           </div>
           
           <div className="w-full border border-gray-200 rounded-lg p-4" ref={chartContainerRef}>
-            <div className="w-full h-[400px]">
-              <ChartContainer config={chartConfig}>
-                <ScatterChart
-                  data={filteredData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+            <ChartContainer config={chartConfig} className="w-full min-h-[350px]">
+              <ScatterChart
+                data={filteredData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                
+                <XAxis 
+                  type="number" 
+                  dataKey="x" 
+                  name="Completion %"
+                  domain={[xMin, xMax]}
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
+                />
+                <YAxis 
+                  type="number" 
+                  dataKey="y" 
+                  name="Health Score"
+                  domain={[yMin, yMax]}
+                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
+                />
+                
+                <Scatter 
+                  dataKey="y"
+                  className="cursor-pointer"
                 >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  
-                  <XAxis 
-                    type="number" 
-                    dataKey="x" 
-                    name="Completion %"
-                    domain={[xMin, xMax]}
-                    tick={{ fontSize: 12 }}
-                    label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="y" 
-                    name="Health Score"
-                    domain={[yMin, yMax]}
-                    tick={{ fontSize: 12 }}
-                    label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
-                  />
-                  
-                  <Scatter 
-                    dataKey="y"
-                    className="cursor-pointer"
-                  >
-                    {filteredData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.fill}
-                        onClick={(event) => handleScatterClick(entry, event)}
-                      />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ChartContainer>
-            </div>
+                  {filteredData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill}
+                      onClick={(event) => handleScatterClick(entry, event)}
+                    />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ChartContainer>
 
             {/* Multi-Campaign Tooltip with Accordion */}
             {tooltipState.visible && tooltipState.campaigns.length > 0 && (

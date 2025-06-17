@@ -361,63 +361,61 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
       </div>
 
       <div className="w-full border border-gray-200 rounded-lg p-4" ref={chartContainerRef}>
-        <div className="w-full h-[500px]">
-          <ChartContainer config={chartConfig}>
-            <ScatterChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+        <ChartContainer config={chartConfig} className="w-full min-h-[400px]">
+          <ScatterChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+            
+            {/* Quadrant Grid Lines */}
+            {zoomState.level === 0 && (
+              <>
+                <ReferenceLine x={20} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine x={40} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine x={60} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine x={80} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine y={2} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine y={4} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine y={6} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+                <ReferenceLine y={8} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
+              </>
+            )}
+            
+            {/* Clickable Quadrant Areas */}
+            {generateQuadrantAreas()}
+            
+            <XAxis 
+              type="number" 
+              dataKey="x" 
+              name="Completion %"
+              domain={[zoomState.xMin, zoomState.xMax]}
+              tick={{ fontSize: 12 }}
+              label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
+            />
+            <YAxis 
+              type="number" 
+              dataKey="y" 
+              name="Health Score"
+              domain={[zoomState.yMin, zoomState.yMax]}
+              tick={{ fontSize: 12 }}
+              label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
+            />
+            
+            <Scatter 
+              dataKey="y"
+              className="cursor-pointer"
             >
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              
-              {/* Quadrant Grid Lines */}
-              {zoomState.level === 0 && (
-                <>
-                  <ReferenceLine x={20} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine x={40} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine x={60} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine x={80} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine y={2} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine y={4} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine y={6} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                  <ReferenceLine y={8} stroke="#e5e7eb" strokeDasharray="2 2" opacity={0.5} />
-                </>
-              )}
-              
-              {/* Clickable Quadrant Areas */}
-              {generateQuadrantAreas()}
-              
-              <XAxis 
-                type="number" 
-                dataKey="x" 
-                name="Completion %"
-                domain={[zoomState.xMin, zoomState.xMax]}
-                tick={{ fontSize: 12 }}
-                label={{ value: 'Campaign Completion (%)', position: 'insideBottom', offset: -10 }}
-              />
-              <YAxis 
-                type="number" 
-                dataKey="y" 
-                name="Health Score"
-                domain={[zoomState.yMin, zoomState.yMax]}
-                tick={{ fontSize: 12 }}
-                label={{ value: 'Health Score', angle: -90, position: 'insideLeft' }}
-              />
-              
-              <Scatter 
-                dataKey="y"
-                className="cursor-pointer"
-              >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.fill}
-                    onClick={(event) => handleScatterClick(entry, event)}
-                  />
-                ))}
-              </Scatter>
-            </ScatterChart>
-          </ChartContainer>
-        </div>
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.fill}
+                  onClick={(event) => handleScatterClick(entry, event)}
+                />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        </ChartContainer>
       </div>
       
       {/* Multi-Campaign Tooltip with Accordion */}
