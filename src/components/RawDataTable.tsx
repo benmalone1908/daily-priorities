@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -9,7 +8,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileDown } from "lucide-react";
+import { FileDown, ChevronDown, ChevronRight } from "lucide-react";
 import { 
   Pagination, 
   PaginationContent, 
@@ -26,6 +25,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { normalizeDate } from "@/lib/utils";
 
 interface RawDataTableProps {
@@ -34,16 +34,53 @@ interface RawDataTableProps {
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
-  const [view, setView] = useState<"daily" | "aggregate">("daily");
+  const [view, setView] = useState<"daily" | "aggregate" | "advertiser">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [expandedAgencies, setExpandedAgencies] = useState<Set<string>>(new Set());
   
   // Filter out 'Totals' rows since we're creating our own aggregations
   const filteredData = useMemo(() => {
     return data.filter(row => row.DATE !== 'Totals');
   }, [data]);
+
+  // Extract agency from campaign name (simplified version)
+  const extractAgencyFromCampaign = (campaignName: string) => {
+    const match = campaignName.match(/:\s*([A-Z]+):/);
+    if (match) {
+      const abbreviation = match[1];
+      // Map abbreviations to full names
+      const agencyMap: Record<string, string> = {
+        'MJ': 'MediaJel',
+        '2RS': 'Two Rivers',
+        'SM': 'SM Services',
+        'NP': 'Noble People',
+        'TF': 'Tact Firm',
+        'TRN': 'Terrayn',
+        'BLO': 'Be Local One',
+        'HRB': 'Herb.co',
+        'WWX': 'Wunderworx',
+        'NLMC': 'NLMC',
+      };
+      return agencyMap[abbreviation] || abbreviation;
+    }
+    return 'Unknown Agency';
+  };
+
+  // Extract advertiser from campaign name (simplified version)
+  const extractAdvertiserFromCampaign = (campaignName: string) => {
+    // Extract the part after the second colon
+    const parts = campaignName.split(':');
+    if (parts.length >= 3) {
+      const advertiserPart = parts[2].trim();
+      // Extract the advertiser name (before the first dash)
+      const advertiserMatch = advertiserPart.match(/^([^-]+)/);
+      return advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+    }
+    return 'Unknown Advertiser';
+  };
 
   // Process data based on view type
   const processedData = useMemo(() => {
@@ -72,7 +109,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           TRANSACTIONS: Number(row.TRANSACTIONS) || 0
         };
       });
-    } else {
+    } else if (view === "aggregate") {
       // Aggregate view - group by campaign
       const campaignGroups: Record<string, any> = {};
 
@@ -113,6 +150,59 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           ROAS: roas
         };
       });
+    } else {
+      // Advertiser view - group by agency then advertiser
+      const agencyGroups: Record<string, Record<string, any>> = {};
+
+      filteredData.forEach(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"];
+        const agency = extractAgencyFromCampaign(campaignName);
+        const advertiser = extractAdvertiserFromCampaign(campaignName);
+        
+        if (!agencyGroups[agency]) {
+          agencyGroups[agency] = {};
+        }
+        
+        if (!agencyGroups[agency][advertiser]) {
+          agencyGroups[agency][advertiser] = {
+            "AGENCY": agency,
+            "ADVERTISER": advertiser,
+            IMPRESSIONS: 0,
+            CLICKS: 0,
+            TRANSACTIONS: 0,
+            REVENUE: 0,
+            SPEND: 0
+          };
+        }
+        
+        agencyGroups[agency][advertiser].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        agencyGroups[agency][advertiser].CLICKS += Number(row.CLICKS) || 0;
+        agencyGroups[agency][advertiser].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+        agencyGroups[agency][advertiser].REVENUE += Number(row.REVENUE) || 0;
+        agencyGroups[agency][advertiser].SPEND += Number(row.SPEND) || 0;
+      });
+      
+      // Convert to flat array with agency and advertiser info
+      const result: any[] = [];
+      Object.entries(agencyGroups).forEach(([agency, advertisers]) => {
+        Object.values(advertisers).forEach(advertiser => {
+          const ctr = advertiser.IMPRESSIONS > 0 
+            ? (advertiser.CLICKS / advertiser.IMPRESSIONS) * 100 
+            : 0;
+            
+          const roas = advertiser.SPEND > 0 
+            ? advertiser.REVENUE / advertiser.SPEND 
+            : 0;
+            
+          result.push({
+            ...advertiser,
+            CTR: ctr,
+            ROAS: roas
+          });
+        });
+      });
+      
+      return result;
     }
   }, [filteredData, view]);
   
@@ -143,7 +233,17 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       }
       
       // Secondary sort by Campaign Name if primary sort values are equal
-      if (sortColumn !== "CAMPAIGN ORDER NAME") {
+      if (view === "advertiser") {
+        // For advertiser view, secondary sort by agency then advertiser
+        if (sortColumn !== "AGENCY") {
+          const aAgency = a["AGENCY"];
+          const bAgency = b["AGENCY"];
+          if (aAgency !== bAgency) return aAgency.localeCompare(bAgency);
+          const aAdvertiser = a["ADVERTISER"];
+          const bAdvertiser = b["ADVERTISER"];
+          return aAdvertiser.localeCompare(bAdvertiser);
+        }
+      } else if (sortColumn !== "CAMPAIGN ORDER NAME") {
         const aCampaign = a["CAMPAIGN ORDER NAME"];
         const bCampaign = b["CAMPAIGN ORDER NAME"];
         return aCampaign.localeCompare(bCampaign);
@@ -151,18 +251,50 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       
       return 0;
     });
-  }, [processedData, sortColumn, sortDirection]);
+  }, [processedData, sortColumn, sortDirection, view]);
+
+  // Group data by agency for advertiser view
+  const groupedByAgency = useMemo(() => {
+    if (view !== "advertiser") return {};
+    
+    const groups: Record<string, any[]> = {};
+    sortedData.forEach(row => {
+      const agency = row.AGENCY;
+      if (!groups[agency]) {
+        groups[agency] = [];
+      }
+      groups[agency].push(row);
+    });
+    
+    return groups;
+  }, [sortedData, view]);
 
   // Paginate the data
   const paginatedData = useMemo(() => {
-    const startIndex = (page - 1) * rowsPerPage;
-    return sortedData.slice(startIndex, startIndex + rowsPerPage);
-  }, [sortedData, page, rowsPerPage]);
+    if (view === "advertiser") {
+      // For advertiser view, we need to paginate the agencies, not individual rows
+      const agencies = Object.keys(groupedByAgency);
+      const startIndex = (page - 1) * rowsPerPage;
+      const paginatedAgencies = agencies.slice(startIndex, startIndex + rowsPerPage);
+      
+      const result: Record<string, any[]> = {};
+      paginatedAgencies.forEach(agency => {
+        result[agency] = groupedByAgency[agency];
+      });
+      return result;
+    } else {
+      const startIndex = (page - 1) * rowsPerPage;
+      return sortedData.slice(startIndex, startIndex + rowsPerPage);
+    }
+  }, [sortedData, page, rowsPerPage, view, groupedByAgency]);
   
   // Total number of pages based on selected rows per page
   const totalPages = useMemo(() => {
+    if (view === "advertiser") {
+      return Math.ceil(Object.keys(groupedByAgency).length / rowsPerPage);
+    }
     return Math.ceil(sortedData.length / rowsPerPage);
-  }, [sortedData, rowsPerPage]);
+  }, [sortedData, rowsPerPage, view, groupedByAgency]);
 
   // Handle column header click for sorting
   const handleSort = (column: string) => {
@@ -176,14 +308,27 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   };
   
   // Handle view change
-  const handleViewChange = (newView: "daily" | "aggregate") => {
+  const handleViewChange = (newView: "daily" | "aggregate" | "advertiser") => {
     setView(newView);
     setPage(1); // Reset to first page when view changes
     
     // If switching views, keep the same sort column if it exists in both views
     if (newView === 'aggregate' && sortColumn === 'DATE') {
       setSortColumn("CAMPAIGN ORDER NAME");
+    } else if (newView === 'advertiser' && (sortColumn === 'DATE' || sortColumn === 'CAMPAIGN ORDER NAME')) {
+      setSortColumn("AGENCY");
     }
+  };
+  
+  // Toggle agency expansion
+  const toggleAgency = (agency: string) => {
+    const newExpanded = new Set(expandedAgencies);
+    if (newExpanded.has(agency)) {
+      newExpanded.delete(agency);
+    } else {
+      newExpanded.add(agency);
+    }
+    setExpandedAgencies(newExpanded);
   };
   
   // Generate and download CSV
@@ -193,9 +338,14 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       const csvData = sortedData;
       
       // Define columns based on view type
-      const columns = view === 'daily' 
-        ? ['CAMPAIGN ORDER NAME', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS']
-        : ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      let columns: string[];
+      if (view === 'daily') {
+        columns = ['CAMPAIGN ORDER NAME', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      } else if (view === 'advertiser') {
+        columns = ['AGENCY', 'ADVERTISER', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      } else {
+        columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      }
       
       // Generate CSV header row
       let csv = columns.join(',') + '\n';
@@ -350,6 +500,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           >
             Aggregate View
           </Button>
+          <Button 
+            onClick={() => handleViewChange("advertiser")}
+            variant={view === "advertiser" ? "default" : "outline"}
+            size="sm"
+          >
+            Advertiser View
+          </Button>
           
           <Button
             onClick={exportToCsv}
@@ -388,15 +545,39 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         <Table>
           <TableHeader>
             <TableRow className="text-xs">
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[40%]"
-                onClick={() => handleSort("CAMPAIGN ORDER NAME")}
-              >
-                Campaign Name
-                {sortColumn === "CAMPAIGN ORDER NAME" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
+              {view === "advertiser" ? (
+                <>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[30%]"
+                    onClick={() => handleSort("AGENCY")}
+                  >
+                    Agency
+                    {sortColumn === "AGENCY" && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </TableHead>
+                  
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[30%]"
+                    onClick={() => handleSort("ADVERTISER")}
+                  >
+                    Advertiser
+                    {sortColumn === "ADVERTISER" && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </TableHead>
+                </>
+              ) : (
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[40%]"
+                  onClick={() => handleSort("CAMPAIGN ORDER NAME")}
+                >
+                  Campaign Name
+                  {sortColumn === "CAMPAIGN ORDER NAME" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+              )}
               
               {view === "daily" && (
                 <TableHead 
@@ -482,32 +663,79 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.length > 0 ? (
-              paginatedData.map((row, index) => (
-                <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
-                  <TableCell className="font-medium py-1 px-1 break-words" title={row["CAMPAIGN ORDER NAME"]}>
-                    {row["CAMPAIGN ORDER NAME"]}
+            {view === "advertiser" ? (
+              Object.keys(paginatedData as Record<string, any[]>).length > 0 ? (
+                Object.entries(paginatedData as Record<string, any[]>).map(([agency, advertisers]) => (
+                  <Collapsible key={agency} open={expandedAgencies.has(agency)} onOpenChange={() => toggleAgency(agency)}>
+                    <CollapsibleTrigger asChild>
+                      <TableRow className="cursor-pointer hover:bg-muted/25 font-medium bg-muted/10">
+                        <TableCell colSpan={9} className="py-2 px-1">
+                          <div className="flex items-center">
+                            {expandedAgencies.has(agency) ? (
+                              <ChevronDown className="h-4 w-4 mr-2" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 mr-2" />
+                            )}
+                            <span className="font-semibold">{agency}</span>
+                            <span className="ml-2 text-sm text-muted-foreground">({advertisers.length} advertisers)</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      {advertisers.map((advertiser, index) => (
+                        <TableRow key={`${agency}-${advertiser.ADVERTISER}-${index}`} className="text-xs">
+                          <TableCell className="py-1 px-1 pl-8 text-muted-foreground">{agency}</TableCell>
+                          <TableCell className="font-medium py-1 px-1" title={advertiser.ADVERTISER}>
+                            {advertiser.ADVERTISER}
+                          </TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "IMPRESSIONS")}</TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "CLICKS")}</TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "CTR")}</TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "TRANSACTIONS")}</TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "REVENUE")}</TableCell>
+                          <TableCell className="text-right py-1 px-1">{formatColumnValue(advertiser, "SPEND")}</TableCell>
+                          <TableCell className="text-right py-1 px-1 pr-3">{formatColumnValue(advertiser, "ROAS")}</TableCell>
+                        </TableRow>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-1">
+                    No data available
                   </TableCell>
-                  
-                  {view === "daily" && (
-                    <TableCell className="py-1 px-1 text-right">{formatColumnValue(row, "DATE")}</TableCell>
-                  )}
-                  
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CLICKS")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CTR")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "REVENUE")}</TableCell>
-                  <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "SPEND")}</TableCell>
-                  <TableCell className="text-right py-1 px-1 pr-3">{formatColumnValue(row, "ROAS")}</TableCell>
                 </TableRow>
-              ))
+              )
             ) : (
-              <TableRow>
-                <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
-                  No data available
-                </TableCell>
-              </TableRow>
+              (paginatedData as any[]).length > 0 ? (
+                (paginatedData as any[]).map((row, index) => (
+                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
+                    <TableCell className="font-medium py-1 px-1 break-words" title={row["CAMPAIGN ORDER NAME"]}>
+                      {row["CAMPAIGN ORDER NAME"]}
+                    </TableCell>
+                    
+                    {view === "daily" && (
+                      <TableCell className="py-1 px-1 text-right">{formatColumnValue(row, "DATE")}</TableCell>
+                    )}
+                    
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CLICKS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CTR")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "REVENUE")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "SPEND")}</TableCell>
+                    <TableCell className="text-right py-1 px-1 pr-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
+                    No data available
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
         </Table>
@@ -537,11 +765,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       )}
       
       <div className="text-sm text-muted-foreground text-center">
-        Showing {paginatedData.length} of {sortedData.length} results
+        {view === "advertiser" 
+          ? `Showing ${Object.keys(paginatedData as Record<string, any[]>).length} agencies with ${Object.values(paginatedData as Record<string, any[]>).reduce((total, advertisers) => total + advertisers.length, 0)} advertisers`
+          : `Showing ${(paginatedData as any[]).length} of ${sortedData.length} results`
+        }
       </div>
     </div>
   );
 };
 
 export default RawDataTable;
-
