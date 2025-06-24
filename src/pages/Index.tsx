@@ -403,14 +403,14 @@ const DashboardContent = ({
     let filtered = data;
     
     if (!dateRange || !dateRange.from) {
+      console.log("No date range specified, returning all data");
       return filtered;
     }
 
     const fromDate = setToStartOfDay(dateRange.from);
     const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
     
-    logDateDetails("Filtering data with from date", fromDate);
-    logDateDetails("Filtering data with to date", toDate);
+    console.log("Filtering data - From:", fromDate.toISOString(), "To:", toDate.toISOString());
     
     filtered = data.filter(row => {
       try {
@@ -428,8 +428,10 @@ const DashboardContent = ({
           return false;
         }
         
-        const isAfterFrom = rowDate >= fromDate;
-        const isBeforeTo = rowDate <= toDate;
+        // Normalize row date to start of day for comparison
+        const normalizedRowDate = setToStartOfDay(rowDate);
+        const isAfterFrom = normalizedRowDate >= fromDate;
+        const isBeforeTo = normalizedRowDate <= toDate;
         
         return isAfterFrom && isBeforeTo;
       } catch (error) {
@@ -437,6 +439,19 @@ const DashboardContent = ({
         return false;
       }
     });
+
+    console.log(`Filtered from ${data.length} rows to ${filtered.length} rows`);
+    
+    // Additional check - if we get no data, log the date range issue
+    if (filtered.length === 0 && data.length > 0) {
+      console.warn("Date filtering resulted in empty dataset. Checking data dates...");
+      const sampleDates = data.slice(0, 5).map(row => ({
+        original: row.DATE,
+        parsed: parseDateString(row.DATE)
+      }));
+      console.log("Sample dates from data:", sampleDates);
+      console.log("Filter range:", { from: fromDate, to: toDate });
+    }
 
     return filtered;
   };
