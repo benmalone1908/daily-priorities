@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -378,9 +379,10 @@ const DashboardContent = ({
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo } = useCampaignFilter();
 
-  const getMostRecentDate = () => {
-    if (!data || data.length === 0) return null;
-    const dates = data
+  // Updated getMostRecentDate function to accept filtered data as parameter
+  const getMostRecentDate = (filteredData: any[]) => {
+    if (!filteredData || filteredData.length === 0) return null;
+    const dates = filteredData
       .map(row => row.DATE)
       .filter(date => date && date !== 'Totals')
       .sort((a, b) => {
@@ -461,7 +463,8 @@ const DashboardContent = ({
   const filteredDataByLiveStatus = useMemo(() => {
     if (!showLiveOnly) return filteredData;
 
-    const mostRecentDate = getMostRecentDate();
+    // Use the filtered data to get the most recent date, not the full dataset
+    const mostRecentDate = getMostRecentDate(filteredData);
     if (!mostRecentDate) return filteredData;
 
     console.log('Filtering for campaigns active on most recent date:', mostRecentDate);
