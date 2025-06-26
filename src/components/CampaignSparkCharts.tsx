@@ -406,15 +406,19 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
       console.log(`Found ${campaigns.length} unique campaigns for charts`);
       
       return campaigns.map(campaign => {
-        const campaignRows = filteredData.filter(row => 
-          row["CAMPAIGN ORDER NAME"] === campaign && row.DATE !== 'Totals'
+        // Use ALL data for this campaign, not just the date-filtered data
+        // This allows us to detect gaps properly
+        const allCampaignRows = data.filter(row => 
+          row["CAMPAIGN ORDER NAME"] === campaign && 
+          row.DATE !== 'Totals' &&
+          !isTestCampaign(row["CAMPAIGN ORDER NAME"] || "")
         );
         
-        if (campaignRows.length === 0) {
+        if (allCampaignRows.length === 0) {
           return null;
         }
         
-        campaignRows.sort((a, b) => {
+        allCampaignRows.sort((a, b) => {
           try {
             const dateA = parseDateString(a.DATE);
             const dateB = parseDateString(b.DATE);
@@ -429,7 +433,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         
         const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         
-        const rawTimeSeriesData = campaignRows.map(row => {
+        const rawTimeSeriesData = allCampaignRows.map(row => {
           try {
             const parsedDate = parseDateString(row.DATE);
             if (!parsedDate) {
@@ -467,14 +471,23 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         }
 
         // Fill missing dates with zero values using the complete date range
-        const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
+        const fullTimeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
+        
+        // Now filter to only show the selected date range if one is specified
+        const timeSeriesData = dateRange?.from ? 
+          fullTimeSeriesData.filter(item => {
+            const fromDate = setToStartOfDay(dateRange.from!);
+            const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
+            return item.rawDate >= fromDate && item.rawDate <= toDate;
+          }) : fullTimeSeriesData;
 
+        // Calculate totals only from the visible time series data
         const totals = {
-          impressions: rawTimeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
-          clicks: rawTimeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
-          transactions: rawTimeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
-          revenue: rawTimeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
-          spend: rawTimeSeriesData.reduce((sum, row) => sum + row.spend, 0),
+          impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+          clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+          transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+          revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+          spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
         };
         
         const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
@@ -589,7 +602,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         };
       }).filter(Boolean);
     }
-  }, [filteredData, viewMode, extractAdvertiserName, dateRange]);
+  }, [filteredData, viewMode, extractAdvertiserName, dateRange, data, isTestCampaign]);
 
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
