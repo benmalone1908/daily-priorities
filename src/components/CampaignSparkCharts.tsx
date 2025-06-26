@@ -61,6 +61,7 @@ const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
 };
 
 // FIXED: Helper function to fill missing dates with null values for proper gap visualization
+// Only creates gaps between first and last actual data points, not before campaign starts
 const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dataByDate = new Map();
@@ -79,35 +80,52 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   
   console.log(`FIXED: fillMissingDates - Processing ${allDates.length} dates, existing data has ${timeSeriesData.length} entries`);
   
-  // Generate complete time series with null values for missing dates (creates gaps)
-  const result = allDates.map(date => {
-    // Use the same consistent date key format
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
-    
-    const existingData = dataByDate.get(dateKey);
-    
-    if (existingData) {
-      return existingData;
-    } else {
-      // Return null values for missing dates to create visual gaps
-      return {
-        date: dateFormat.format(date),
-        rawDate: date,
-        impressions: null,
-        clicks: null,
-        transactions: null,
-        revenue: null,
-        spend: null,
-        ctr: null,
-        roas: null
-      };
-    }
-  });
+  // Find the first and last dates with actual data
+  const actualDataDates = timeSeriesData
+    .map(item => item.rawDate)
+    .filter(Boolean)
+    .sort((a, b) => a.getTime() - b.getTime());
   
-  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries (${result.filter(r => r.impressions === null).length} with gaps)`);
+  if (actualDataDates.length === 0) {
+    return [];
+  }
+  
+  const firstDataDate = actualDataDates[0];
+  const lastDataDate = actualDataDates[actualDataDates.length - 1];
+  
+  console.log(`FIXED: Campaign data range: ${firstDataDate.toISOString()} to ${lastDataDate.toISOString()}`);
+  
+  // Generate complete time series, but only fill gaps between first and last data points
+  const result = allDates
+    .filter(date => date >= firstDataDate && date <= lastDataDate) // Only include dates within campaign range
+    .map(date => {
+      // Use the same consistent date key format
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+      
+      const existingData = dataByDate.get(dateKey);
+      
+      if (existingData) {
+        return existingData;
+      } else {
+        // Return null values for missing dates to create visual gaps (only within campaign range)
+        return {
+          date: dateFormat.format(date),
+          rawDate: date,
+          impressions: null,
+          clicks: null,
+          transactions: null,
+          revenue: null,
+          spend: null,
+          ctr: null,
+          roas: null
+        };
+      }
+    });
+  
+  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries within campaign range (${result.filter(r => r.impressions === null).length} with gaps)`);
   return result;
 };
 
