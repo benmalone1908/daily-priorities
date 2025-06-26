@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -88,26 +89,28 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
   const firstDataDate = datesWithData[0]!;
   const lastDataDate = datesWithData[datesWithData.length - 1]!;
   
-  // Generate complete time series, filling gaps with zero values between first and last data points
-  const result = allDates
-    .filter(date => date >= firstDataDate && date <= lastDataDate)
-    .map(date => {
+  // Generate complete time series only within the data range
+  const result = [];
+  for (const date of allDates) {
+    if (date >= firstDataDate && date <= lastDataDate) {
       const dateStr = dateFormat.format(date);
       const existingData = dataByDate.get(dateStr);
       
       if (existingData) {
-        return existingData;
+        // Use existing data as-is
+        result.push(existingData);
       } else {
-        // Return zero values for missing dates to create trend line that goes to zero
-        return {
+        // Fill gap with zero values
+        result.push({
           date: dateStr,
           IMPRESSIONS: 0,
           CLICKS: 0,
           TRANSACTIONS: 0,
           REVENUE: 0
-        };
+        });
       }
-    });
+    }
+  }
     
   return result;
 };
