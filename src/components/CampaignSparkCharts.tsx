@@ -60,22 +60,33 @@ const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
   return dates;
 };
 
-// Helper function to fill missing dates with zero values
+// FIXED: Helper function to fill missing dates with zero values
 const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dataByDate = new Map();
   
-  // Create a map of existing data by date string
+  // Create a map of existing data by date string (using consistent format)
   timeSeriesData.forEach(item => {
     if (item.rawDate) {
-      const dateKey = item.rawDate.toISOString().split('T')[0];
+      // Use a consistent date key format
+      const year = item.rawDate.getFullYear();
+      const month = String(item.rawDate.getMonth() + 1).padStart(2, '0');
+      const day = String(item.rawDate.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
       dataByDate.set(dateKey, item);
     }
   });
   
+  console.log(`FIXED: fillMissingDates - Processing ${allDates.length} dates, existing data has ${timeSeriesData.length} entries`);
+  
   // Generate complete time series with zero values for missing dates
-  return allDates.map(date => {
-    const dateKey = date.toISOString().split('T')[0];
+  const result = allDates.map(date => {
+    // Use the same consistent date key format
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+    
     const existingData = dataByDate.get(dateKey);
     
     if (existingData) {
@@ -95,6 +106,9 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
       };
     }
   });
+  
+  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries (${result.filter(r => r.impressions === 0).length} with zeros)`);
+  return result;
 };
 
 const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: CampaignSparkChartsProps) => {
@@ -473,6 +487,8 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         // FIXED: Fill missing dates with zero values using the complete date range
         // This ensures gaps are properly filled with zeros
         console.log(`FIXED: Filling missing dates for ${campaign} with ${completeDateRange.length} total dates`);
+        console.log(`FIXED: ${campaign} has ${rawTimeSeriesData.length} actual data points`);
+        
         const fullTimeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
         
         // Now filter to only show the selected date range if one is specified
@@ -484,6 +500,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           }) : fullTimeSeriesData;
 
         console.log(`FIXED: ${campaign} final timeSeriesData length: ${timeSeriesData.length}`);
+        console.log(`FIXED: ${campaign} zero-value entries: ${timeSeriesData.filter(item => item.impressions === 0).length}`);
         
         // Calculate totals only from the visible time series data
         const totals = {
