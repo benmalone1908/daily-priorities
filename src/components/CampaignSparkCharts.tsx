@@ -60,8 +60,8 @@ const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
   return dates;
 };
 
-// FIXED: Helper function to fill missing dates with null values for proper gap visualization
-// Only creates gaps between first and last actual data points, not before campaign starts
+// FIXED: Helper function to fill missing dates with zero values to show trend line going to zero
+// Creates a continuous line that drops to zero during gaps and runs along x-axis
 const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dataByDate = new Map();
@@ -95,7 +95,7 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   
   console.log(`FIXED: Campaign data range: ${firstDataDate.toISOString()} to ${lastDataDate.toISOString()}`);
   
-  // Generate complete time series, but only fill gaps between first and last data points
+  // Generate complete time series, filling gaps with zero values between first and last data points
   const result = allDates
     .filter(date => date >= firstDataDate && date <= lastDataDate) // Only include dates within campaign range
     .map(date => {
@@ -110,22 +110,22 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
       if (existingData) {
         return existingData;
       } else {
-        // Return null values for missing dates to create visual gaps (only within campaign range)
+        // Return zero values for missing dates to create trend line that goes to zero
         return {
           date: dateFormat.format(date),
           rawDate: date,
-          impressions: null,
-          clicks: null,
-          transactions: null,
-          revenue: null,
-          spend: null,
-          ctr: null,
-          roas: null
+          impressions: 0,
+          clicks: 0,
+          transactions: 0,
+          revenue: 0,
+          spend: 0,
+          ctr: 0,
+          roas: 0
         };
       }
     });
   
-  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries within campaign range (${result.filter(r => r.impressions === null).length} with gaps)`);
+  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries within campaign range (${result.filter(r => r.impressions === 0).length} with zero values)`);
   return result;
 };
 
@@ -502,8 +502,8 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
 
-        // FIXED: Fill missing dates with null values using the complete date range
-        // This ensures gaps are properly filled with nulls
+        // FIXED: Fill missing dates with zero values to show trend line going to zero
+        // This ensures gaps are properly filled with zero values
         console.log(`FIXED: Filling missing dates for ${campaign} with ${completeDateRange.length} total dates`);
         console.log(`FIXED: ${campaign} has ${rawTimeSeriesData.length} actual data points`);
         
@@ -618,7 +618,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
         
-        // Fill missing dates with null values for advertiser view too
+        // Fill missing dates with zero values for advertiser view too
         const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
         
         const totals = {

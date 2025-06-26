@@ -25,6 +25,7 @@ const SparkChartModal = ({
 }: SparkChartModalProps) => {
   const formatTooltipValue = (value: any) => {
     if (value === null || value === undefined) return "No data";
+    if (value === 0) return "0 (Campaign paused)";
     return valueFormatter(value);
   };
 
@@ -96,7 +97,7 @@ const SparkChartModal = ({
                 fillOpacity={1}
                 fill={`url(#${gradientId})`}
                 strokeWidth={2}
-                connectNulls={false}
+                connectNulls={true}
               />
             </AreaChart>
           </ResponsiveContainer>
