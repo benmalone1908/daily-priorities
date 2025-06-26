@@ -134,15 +134,22 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
     return null;
   }
 
+  console.log('AggregatedSparkCharts: Raw data received:', data.length, 'rows');
+  console.log('AggregatedSparkCharts: Sample raw data:', data.slice(0, 3));
+
   // Get complete date range for filling gaps
   const completeDateRange = useMemo(() => getCompleteDateRange(data), [data]);
 
   // Group data by date for time series
   const timeSeriesData = useMemo(() => {
+    console.log('AggregatedSparkCharts: Starting time series aggregation...');
     const dateGroups: Record<string, any> = {};
     
-    data.forEach(row => {
-      if (!row || !row.DATE || row.DATE === 'Totals') return;
+    data.forEach((row, index) => {
+      if (!row || !row.DATE || row.DATE === 'Totals') {
+        if (index < 5) console.log('AggregatedSparkCharts: Skipping row:', row);
+        return;
+      }
       
       const dateStr = String(row.DATE).trim();
       if (!dateGroups[dateStr]) {
@@ -156,12 +163,27 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
         };
       }
       
+      // Log first few aggregations
+      if (index < 5) {
+        console.log(`AggregatedSparkCharts: Aggregating row ${index}:`, {
+          date: dateStr,
+          impressions: Number(row.IMPRESSIONS) || 0,
+          clicks: Number(row.CLICKS) || 0,
+          revenue: Number(row.REVENUE) || 0,
+          transactions: Number(row.TRANSACTIONS) || 0,
+          spend: Number(row.SPEND) || 0
+        });
+      }
+      
       dateGroups[dateStr].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
       dateGroups[dateStr].CLICKS += Number(row.CLICKS) || 0;
       dateGroups[dateStr].REVENUE += Number(row.REVENUE) || 0;
       dateGroups[dateStr].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
       dateGroups[dateStr].SPEND += Number(row.SPEND) || 0;
     });
+    
+    console.log('AggregatedSparkCharts: Date groups created:', Object.keys(dateGroups).length);
+    console.log('AggregatedSparkCharts: Sample date group:', Object.values(dateGroups)[0]);
     
     const rawData = Object.values(dateGroups).sort((a: any, b: any) => {
       try {
@@ -171,19 +193,31 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
       }
     });
     
+    console.log('AggregatedSparkCharts: Raw aggregated data:', rawData.length, 'entries');
+    console.log('AggregatedSparkCharts: Sample aggregated data:', rawData.slice(0, 3));
+    
     // Fill missing dates with zero values for continuous trend lines
-    return fillMissingDatesForAggregated(rawData, completeDateRange);
+    const filledData = fillMissingDatesForAggregated(rawData, completeDateRange);
+    console.log('AggregatedSparkCharts: Final filled data:', filledData.length, 'entries');
+    console.log('AggregatedSparkCharts: Sample filled data:', filledData.slice(0, 3));
+    
+    return filledData;
   }, [data, completeDateRange]);
   
   // Calculate totals
   const totals = useMemo(() => {
+    console.log('AggregatedSparkCharts: Calculating totals from timeSeriesData:', timeSeriesData.length, 'entries');
+    
     let impressions = 0;
     let clicks = 0;
     let revenue = 0;
     let transactions = 0;
     let spend = 0;
     
-    timeSeriesData.forEach(day => {
+    timeSeriesData.forEach((day, index) => {
+      if (index < 5) {
+        console.log(`AggregatedSparkCharts: Adding to totals from day ${index}:`, day);
+      }
       impressions += Number(day.IMPRESSIONS) || 0;
       clicks += Number(day.CLICKS) || 0;
       revenue += Number(day.REVENUE) || 0;
@@ -194,7 +228,10 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
     const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
     const roas = spend > 0 ? revenue / spend : 0;
     
-    return { impressions, clicks, ctr, revenue, transactions, spend, roas };
+    const calculatedTotals = { impressions, clicks, ctr, revenue, transactions, spend, roas };
+    console.log('AggregatedSparkCharts: Final totals:', calculatedTotals);
+    
+    return calculatedTotals;
   }, [timeSeriesData]);
   
   // Calculate trends (comparing last two data points)
