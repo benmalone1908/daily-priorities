@@ -111,7 +111,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
   
   // Get filter functions from context
   const { extractAdvertiserName, extractAgencyInfo, isTestCampaign } = useCampaignFilter();
-  
+
   const agencyOptions = useMemo(() => {
     const agencies = new Set<string>();
     
@@ -369,32 +369,32 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
 
     console.log(`Generating chart data from ${filteredData.length} rows`);
     
-    // Calculate the date range for filling missing dates
-    // Use the dateRange filter if available, otherwise fall back to data-based range
+    // FIXED: Calculate the date range for filling missing dates
+    // Always use the dateRange filter if available to ensure gaps are filled
     let completeDateRange: Date[] = [];
     
     if (dateRange?.from) {
       const fromDate = setToStartOfDay(dateRange.from);
       const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
       completeDateRange = generateDateRange(fromDate, toDate);
-      console.log(`Using dateRange filter: ${fromDate.toISOString()} to ${toDate.toISOString()} (${completeDateRange.length} days)`);
+      console.log(`FIXED: Using dateRange filter for completeDateRange: ${fromDate.toISOString()} to ${toDate.toISOString()} (${completeDateRange.length} days)`);
     } else {
-      // Fallback to data-based range if no dateRange filter is provided
-      const allDates = filteredData
-        .filter(row => row.DATE !== 'Totals')
+      // Fallback: use the full data range from ALL campaigns, not just filtered data
+      const allValidDates = data
+        .filter(row => row.DATE !== 'Totals' && !isTestCampaign(row["CAMPAIGN ORDER NAME"] || ""))
         .map(row => parseDateString(row.DATE))
         .filter(Boolean)
         .sort((a, b) => a.getTime() - b.getTime());
       
-      if (allDates.length === 0) {
-        console.log('No valid dates found in filtered data');
+      if (allValidDates.length === 0) {
+        console.log('No valid dates found in data');
         return [];
       }
       
-      const startDate = allDates[0];
-      const endDate = allDates[allDates.length - 1];
+      const startDate = allValidDates[0];
+      const endDate = allValidDates[allValidDates.length - 1];
       completeDateRange = generateDateRange(startDate, endDate);
-      console.log(`Using data-based range: ${startDate.toISOString()} to ${endDate.toISOString()} (${completeDateRange.length} days)`);
+      console.log(`FIXED: Using full data range for completeDateRange: ${startDate.toISOString()} to ${endDate.toISOString()} (${completeDateRange.length} days)`);
     }
     
     if (viewMode === "campaign") {
@@ -470,7 +470,9 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
 
-        // Fill missing dates with zero values using the complete date range
+        // FIXED: Fill missing dates with zero values using the complete date range
+        // This ensures gaps are properly filled with zeros
+        console.log(`FIXED: Filling missing dates for ${campaign} with ${completeDateRange.length} total dates`);
         const fullTimeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
         
         // Now filter to only show the selected date range if one is specified
@@ -481,6 +483,8 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
             return item.rawDate >= fromDate && item.rawDate <= toDate;
           }) : fullTimeSeriesData;
 
+        console.log(`FIXED: ${campaign} final timeSeriesData length: ${timeSeriesData.length}`);
+        
         // Calculate totals only from the visible time series data
         const totals = {
           impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
