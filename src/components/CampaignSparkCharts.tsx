@@ -370,22 +370,32 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
     console.log(`Generating chart data from ${filteredData.length} rows`);
     
     // Calculate the date range for filling missing dates
-    const allDates = filteredData
-      .filter(row => row.DATE !== 'Totals')
-      .map(row => parseDateString(row.DATE))
-      .filter(Boolean)
-      .sort((a, b) => a.getTime() - b.getTime());
+    // Use the dateRange filter if available, otherwise fall back to data-based range
+    let completeDateRange: Date[] = [];
     
-    if (allDates.length === 0) {
-      console.log('No valid dates found in filtered data');
-      return [];
+    if (dateRange?.from) {
+      const fromDate = setToStartOfDay(dateRange.from);
+      const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
+      completeDateRange = generateDateRange(fromDate, toDate);
+      console.log(`Using dateRange filter: ${fromDate.toISOString()} to ${toDate.toISOString()} (${completeDateRange.length} days)`);
+    } else {
+      // Fallback to data-based range if no dateRange filter is provided
+      const allDates = filteredData
+        .filter(row => row.DATE !== 'Totals')
+        .map(row => parseDateString(row.DATE))
+        .filter(Boolean)
+        .sort((a, b) => a.getTime() - b.getTime());
+      
+      if (allDates.length === 0) {
+        console.log('No valid dates found in filtered data');
+        return [];
+      }
+      
+      const startDate = allDates[0];
+      const endDate = allDates[allDates.length - 1];
+      completeDateRange = generateDateRange(startDate, endDate);
+      console.log(`Using data-based range: ${startDate.toISOString()} to ${endDate.toISOString()} (${completeDateRange.length} days)`);
     }
-    
-    const startDate = allDates[0];
-    const endDate = allDates[allDates.length - 1];
-    const completeDateRange = generateDateRange(startDate, endDate);
-    
-    console.log(`Generated complete date range from ${startDate.toISOString()} to ${endDate.toISOString()} (${completeDateRange.length} days)`);
     
     if (viewMode === "campaign") {
       const campaigns = Array.from(new Set(filteredData
@@ -456,7 +466,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
 
-        // Fill missing dates with zero values
+        // Fill missing dates with zero values using the complete date range
         const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
 
         const totals = {
@@ -579,7 +589,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         };
       }).filter(Boolean);
     }
-  }, [filteredData, viewMode, extractAdvertiserName]);
+  }, [filteredData, viewMode, extractAdvertiserName, dateRange]);
 
   useEffect(() => {
     console.log(`CampaignSparkCharts generated ${chartData.length} chart items`);
