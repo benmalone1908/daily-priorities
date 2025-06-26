@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -67,17 +66,16 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
     return processedData;
   }
   
-  const dataByDate = new Map();
+  // If no data, return empty array
+  if (processedData.length === 0 || allDates.length === 0) return processedData;
   
   // Create a map of existing data by date string
+  const dataByDate = new Map();
   processedData.forEach(item => {
     if (item.date) {
       dataByDate.set(item.date, item);
     }
   });
-  
-  // If no data, return empty array
-  if (processedData.length === 0 || allDates.length === 0) return processedData;
   
   // Find the actual range of dates that have data
   const datesWithData = processedData

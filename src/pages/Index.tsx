@@ -68,17 +68,17 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 // Helper function to fill missing dates with zero values for aggregated data
 const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]): any[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-  const dataByDate = new Map();
+  
+  // If no data, return empty array
+  if (timeSeriesData.length === 0 || allDates.length === 0) return timeSeriesData;
   
   // Create a map of existing data by date string
+  const dataByDate = new Map();
   timeSeriesData.forEach(item => {
     if (item.date) {
       dataByDate.set(item.date, item);
     }
   });
-  
-  // If no data, return empty array
-  if (timeSeriesData.length === 0) return [];
   
   // Find the actual range of dates that have data
   const datesWithData = timeSeriesData
