@@ -47,6 +47,56 @@ interface ModalData {
   data: any[];
 }
 
+// Helper function to generate all dates in a range
+const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
+  const dates: Date[] = [];
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dates;
+};
+
+// Helper function to fill missing dates with zero values
+const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
+  const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const dataByDate = new Map();
+  
+  // Create a map of existing data by date string
+  timeSeriesData.forEach(item => {
+    if (item.rawDate) {
+      const dateKey = item.rawDate.toISOString().split('T')[0];
+      dataByDate.set(dateKey, item);
+    }
+  });
+  
+  // Generate complete time series with zero values for missing dates
+  return allDates.map(date => {
+    const dateKey = date.toISOString().split('T')[0];
+    const existingData = dataByDate.get(dateKey);
+    
+    if (existingData) {
+      return existingData;
+    } else {
+      // Return zero values for missing dates
+      return {
+        date: dateFormat.format(date),
+        rawDate: date,
+        impressions: 0,
+        clicks: 0,
+        transactions: 0,
+        revenue: 0,
+        spend: 0,
+        ctr: 0,
+        roas: 0
+      };
+    }
+  });
+};
+
 const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: CampaignSparkChartsProps) => {
   const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
@@ -319,6 +369,24 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
 
     console.log(`Generating chart data from ${filteredData.length} rows`);
     
+    // Calculate the date range for filling missing dates
+    const allDates = filteredData
+      .filter(row => row.DATE !== 'Totals')
+      .map(row => parseDateString(row.DATE))
+      .filter(Boolean)
+      .sort((a, b) => a.getTime() - b.getTime());
+    
+    if (allDates.length === 0) {
+      console.log('No valid dates found in filtered data');
+      return [];
+    }
+    
+    const startDate = allDates[0];
+    const endDate = allDates[allDates.length - 1];
+    const completeDateRange = generateDateRange(startDate, endDate);
+    
+    console.log(`Generated complete date range from ${startDate.toISOString()} to ${endDate.toISOString()} (${completeDateRange.length} days)`);
+    
     if (viewMode === "campaign") {
       const campaigns = Array.from(new Set(filteredData
         .filter(row => row.DATE !== 'Totals')
@@ -351,7 +419,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         
         const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         
-        const timeSeriesData = campaignRows.map(row => {
+        const rawTimeSeriesData = campaignRows.map(row => {
           try {
             const parsedDate = parseDateString(row.DATE);
             if (!parsedDate) {
@@ -384,16 +452,19 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           }
         }).filter(Boolean);
 
-        if (timeSeriesData.length === 0) {
+        if (rawTimeSeriesData.length === 0) {
           return null;
         }
 
+        // Fill missing dates with zero values
+        const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
+
         const totals = {
-          impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
-          clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
-          transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
-          revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
-          spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
+          impressions: rawTimeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+          clicks: rawTimeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+          transactions: rawTimeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+          revenue: rawTimeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+          spend: rawTimeSeriesData.reduce((sum, row) => sum + row.spend, 0),
         };
         
         const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
@@ -451,7 +522,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
         const dates = Array.from(dateGroups.keys()).sort();
         
-        const timeSeriesData = dates.map(dateString => {
+        const rawTimeSeriesData = dates.map(dateString => {
           try {
             const dateRows = dateGroups.get(dateString) || [];
             const date = new Date(`${dateString}T12:00:00Z`);
@@ -481,16 +552,19 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           }
         }).filter(Boolean);
         
-        if (timeSeriesData.length === 0) {
+        if (rawTimeSeriesData.length === 0) {
           return null;
         }
         
+        // Fill missing dates with zero values for advertiser view too
+        const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
+        
         const totals = {
-          impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
-          clicks: timeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
-          transactions: timeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
-          revenue: timeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
-          spend: timeSeriesData.reduce((sum, row) => sum + row.spend, 0),
+          impressions: rawTimeSeriesData.reduce((sum, row) => sum + row.impressions, 0),
+          clicks: rawTimeSeriesData.reduce((sum, row) => sum + row.clicks, 0),
+          transactions: rawTimeSeriesData.reduce((sum, row) => sum + row.transactions, 0),
+          revenue: rawTimeSeriesData.reduce((sum, row) => sum + row.revenue, 0),
+          spend: rawTimeSeriesData.reduce((sum, row) => sum + row.spend, 0),
         };
         
         const avgCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
