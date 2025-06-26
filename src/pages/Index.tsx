@@ -67,18 +67,23 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 
 // Helper function to fill missing dates with zero values for aggregated data
 const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]): any[] => {
-  const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  console.log('fillMissingDatesForAggregated: Input data length:', timeSeriesData.length);
+  console.log('fillMissingDatesForAggregated: Sample input data:', timeSeriesData.slice(0, 3));
   
   // If no data, return empty array
   if (timeSeriesData.length === 0 || allDates.length === 0) return timeSeriesData;
   
-  // Create a map of existing data by date string
+  // Create a map of existing data by date string - use the same format as aggregated data
   const dataByDate = new Map();
   timeSeriesData.forEach(item => {
     if (item.date) {
+      console.log('fillMissingDatesForAggregated: Mapping existing data for date:', item.date);
       dataByDate.set(item.date, item);
     }
   });
+  
+  console.log('fillMissingDatesForAggregated: Created map with', dataByDate.size, 'entries');
+  console.log('fillMissingDatesForAggregated: Map keys:', Array.from(dataByDate.keys()));
   
   // Find the actual range of dates that have data
   const datesWithData = timeSeriesData
@@ -92,17 +97,23 @@ const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]):
   const lastDataDate = datesWithData[datesWithData.length - 1]!;
   
   // Generate complete time series only within the data range
+  // Use the same date format as the aggregated data (M/D/YYYY)
   const result = [];
   for (const date of allDates) {
     if (date >= firstDataDate && date <= lastDataDate) {
-      const dateStr = dateFormat.format(date);
+      // Format date as M/D/YYYY to match aggregated data format
+      const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+      console.log('fillMissingDatesForAggregated: Checking date:', dateStr);
+      
       const existingData = dataByDate.get(dateStr);
       
       if (existingData) {
         // Use existing data as-is
+        console.log('fillMissingDatesForAggregated: Found existing data for', dateStr, ':', existingData);
         result.push(existingData);
       } else {
         // Fill gap with zero values
+        console.log('fillMissingDatesForAggregated: Filling gap for', dateStr);
         result.push({
           date: dateStr,
           IMPRESSIONS: 0,
@@ -116,6 +127,9 @@ const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]):
       }
     }
   }
+  
+  console.log('fillMissingDatesForAggregated: Final result length:', result.length);
+  console.log('fillMissingDatesForAggregated: Sample final result:', result.slice(0, 3));
     
   return result;
 };
