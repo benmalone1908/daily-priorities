@@ -60,7 +60,7 @@ const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
   return dates;
 };
 
-// FIXED: Helper function to fill missing dates with zero values
+// FIXED: Helper function to fill missing dates with null values for proper gap visualization
 const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dataByDate = new Map();
@@ -79,7 +79,7 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
   
   console.log(`FIXED: fillMissingDates - Processing ${allDates.length} dates, existing data has ${timeSeriesData.length} entries`);
   
-  // Generate complete time series with zero values for missing dates
+  // Generate complete time series with null values for missing dates (creates gaps)
   const result = allDates.map(date => {
     // Use the same consistent date key format
     const year = date.getFullYear();
@@ -92,22 +92,22 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
     if (existingData) {
       return existingData;
     } else {
-      // Return zero values for missing dates
+      // Return null values for missing dates to create visual gaps
       return {
         date: dateFormat.format(date),
         rawDate: date,
-        impressions: 0,
-        clicks: 0,
-        transactions: 0,
-        revenue: 0,
-        spend: 0,
-        ctr: 0,
-        roas: 0
+        impressions: null,
+        clicks: null,
+        transactions: null,
+        revenue: null,
+        spend: null,
+        ctr: null,
+        roas: null
       };
     }
   });
   
-  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries (${result.filter(r => r.impressions === 0).length} with zeros)`);
+  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries (${result.filter(r => r.impressions === null).length} with gaps)`);
   return result;
 };
 
@@ -484,8 +484,8 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
 
-        // FIXED: Fill missing dates with zero values using the complete date range
-        // This ensures gaps are properly filled with zeros
+        // FIXED: Fill missing dates with null values using the complete date range
+        // This ensures gaps are properly filled with nulls
         console.log(`FIXED: Filling missing dates for ${campaign} with ${completeDateRange.length} total dates`);
         console.log(`FIXED: ${campaign} has ${rawTimeSeriesData.length} actual data points`);
         
@@ -600,7 +600,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
           return null;
         }
         
-        // Fill missing dates with zero values for advertiser view too
+        // Fill missing dates with null values for advertiser view too
         const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
         
         const totals = {
@@ -920,6 +920,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${impressionsId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -946,6 +947,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${clicksId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -972,6 +974,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${ctrId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -998,6 +1001,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${transactionsId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -1024,6 +1028,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${revenueId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -1050,6 +1055,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                           fill={`url(#${roasId})`}
                           dot={false}
                           isAnimationActive={false}
+                          connectNulls={false}
                         />
                       </AreaChart>
                     </ResponsiveContainer>

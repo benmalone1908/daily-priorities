@@ -24,7 +24,7 @@ const SparkChartModal = ({
   valueFormatter
 }: SparkChartModalProps) => {
   const formatTooltipValue = (value: any) => {
-    if (value === null || value === undefined) return "N/A";
+    if (value === null || value === undefined) return "No data";
     return valueFormatter(value);
   };
 
@@ -76,11 +76,12 @@ const SparkChartModal = ({
               <Tooltip 
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
+                    const value = payload[0].value;
                     return (
                       <div className="bg-white p-3 border rounded shadow-lg">
                         <p className="text-sm font-medium">{label}</p>
                         <p className="text-sm" style={{ color: payload[0].color }}>
-                          {`${title}: ${formatTooltipValue(payload[0].value)}`}
+                          {`${title}: ${formatTooltipValue(value)}`}
                         </p>
                       </div>
                     );
@@ -95,6 +96,7 @@ const SparkChartModal = ({
                 fillOpacity={1}
                 fill={`url(#${gradientId})`}
                 strokeWidth={2}
+                connectNulls={false}
               />
             </AreaChart>
           </ResponsiveContainer>
