@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
@@ -41,6 +40,84 @@ interface ModalData {
   data: any[];
 }
 
+// Helper function to get complete date range from data
+const getCompleteDateRange = (data: any[]): Date[] => {
+  const dates = data
+    .map(row => row.DATE)
+    .filter(date => date && date !== 'Totals')
+    .map(dateStr => parseDateString(dateStr))
+    .filter(Boolean) as Date[];
+    
+  if (dates.length === 0) return [];
+  
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
+  
+  const result = [];
+  const current = new Date(minDate);
+  
+  while (current <= maxDate) {
+    result.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return result;
+};
+
+// Helper function to fill missing dates with zero values for aggregated data
+const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]): any[] => {
+  const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const dataByDate = new Map();
+  
+  // Create a map of existing data by date string
+  timeSeriesData.forEach(item => {
+    if (item.date) {
+      dataByDate.set(item.date, item);
+    }
+  });
+  
+  // If no data, return empty array
+  if (timeSeriesData.length === 0) return [];
+  
+  // Find the actual range of dates that have data
+  const datesWithData = timeSeriesData
+    .map(item => parseDateString(item.date))
+    .filter(Boolean)
+    .sort((a, b) => a!.getTime() - b!.getTime());
+    
+  if (datesWithData.length === 0) return timeSeriesData;
+  
+  const firstDataDate = datesWithData[0]!;
+  const lastDataDate = datesWithData[datesWithData.length - 1]!;
+  
+  // Generate complete time series, filling gaps with zero values between first and last data points
+  const result = allDates
+    .filter(date => date >= firstDataDate && date <= lastDataDate)
+    .map(date => {
+      const dateStr = dateFormat.format(date);
+      const existingData = dataByDate.get(dateStr);
+      
+      if (existingData) {
+        return existingData;
+      } else {
+        // Return zero values for missing dates to create trend line that goes to zero
+        return {
+          date: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          TRANSACTIONS: 0,
+          SPEND: 0,
+          CTR: 0,
+          ROAS: 0
+        };
+      }
+    });
+    
+  return result;
+};
+
 // Improved Aggregated Spark Charts component that matches the campaign row style
 const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   const { showAggregatedSparkCharts } = useCampaignFilter();
@@ -54,6 +131,9 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   if (!showAggregatedSparkCharts || !data || data.length === 0) {
     return null;
   }
+
+  // Get complete date range for filling gaps
+  const completeDateRange = useMemo(() => getCompleteDateRange(data), [data]);
 
   // Group data by date for time series
   const timeSeriesData = useMemo(() => {
@@ -81,14 +161,17 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
       dateGroups[dateStr].SPEND += Number(row.SPEND) || 0;
     });
     
-    return Object.values(dateGroups).sort((a: any, b: any) => {
+    const rawData = Object.values(dateGroups).sort((a: any, b: any) => {
       try {
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       } catch (err) {
         return 0;
       }
     });
-  }, [data]);
+    
+    // Fill missing dates with zero values for continuous trend lines
+    return fillMissingDatesForAggregated(rawData, completeDateRange);
+  }, [data, completeDateRange]);
   
   // Calculate totals
   const totals = useMemo(() => {
@@ -251,6 +334,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
                 fill={`url(#${gradientId})`} 
                 dot={false}
                 isAnimationActive={false}
+                connectNulls={true}
               />
             </AreaChart>
           </ResponsiveContainer>

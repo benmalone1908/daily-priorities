@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +13,7 @@ import {
   Tooltip, 
   Legend 
 } from "recharts";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, parseDateString } from "@/lib/utils";
 import SparkChartModal from "./SparkChartModal";
 
 interface CombinedMetricsChartProps {
@@ -22,6 +23,96 @@ interface CombinedMetricsChartProps {
   onTabChange?: (tab: string) => void;
   initialTab?: string;
 }
+
+// Helper function to get complete date range from data
+const getCompleteDateRange = (data: any[]): Date[] => {
+  const dates = data
+    .map(row => row.DATE || row.DAY_OF_WEEK)
+    .filter(date => date)
+    .map(dateStr => {
+      // Handle day of week data differently
+      if (/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(dateStr)) {
+        return null; // Don't process day of week data for date ranges
+      }
+      return parseDateString(dateStr);
+    })
+    .filter(Boolean) as Date[];
+    
+  if (dates.length === 0) return [];
+  
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
+  
+  const result = [];
+  const current = new Date(minDate);
+  
+  while (current <= maxDate) {
+    result.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return result;
+};
+
+// Helper function to fill missing dates with zero values for combo chart
+const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[] => {
+  const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  
+  // Check if we're dealing with day of week data
+  const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
+  
+  // Don't fill gaps for day of week data
+  if (isDayOfWeekData) {
+    return processedData;
+  }
+  
+  const dataByDate = new Map();
+  
+  // Create a map of existing data by date string
+  processedData.forEach(item => {
+    if (item.date) {
+      dataByDate.set(item.date, item);
+    }
+  });
+  
+  // If no data, return empty array
+  if (processedData.length === 0 || allDates.length === 0) return processedData;
+  
+  // Find the actual range of dates that have data
+  const datesWithData = processedData
+    .map(item => parseDateString(item.date))
+    .filter(Boolean)
+    .sort((a, b) => a!.getTime() - b!.getTime());
+    
+  if (datesWithData.length === 0) return processedData;
+  
+  const firstDataDate = datesWithData[0]!;
+  const lastDataDate = datesWithData[datesWithData.length - 1]!;
+  
+  // Generate complete time series, filling gaps with zero values between first and last data points
+  const result = allDates
+    .filter(date => date >= firstDataDate && date <= lastDataDate)
+    .map(date => {
+      const dateStr = dateFormat.format(date);
+      const existingData = dataByDate.get(dateStr);
+      
+      if (existingData) {
+        return existingData;
+      } else {
+        // Return zero values for missing dates to create trend line that goes to zero
+        return {
+          date: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          TRANSACTIONS: 0,
+          REVENUE: 0
+        };
+      }
+    });
+    
+  return result;
+};
 
 const CombinedMetricsChart = ({ 
   data, 
@@ -72,6 +163,9 @@ const CombinedMetricsChart = ({
     );
   }
 
+  // Get complete date range for filling gaps
+  const completeDateRange = getCompleteDateRange(data);
+
   // Process data to ensure we have all required fields
   const processedData = data
     .filter(item => item && (item.DATE || item.DAY_OF_WEEK)) // Allow both DATE and DAY_OF_WEEK as valid keys
@@ -86,16 +180,19 @@ const CombinedMetricsChart = ({
   // Check if we're dealing with day of week data
   const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
   
+  // Fill missing dates with zero values for continuous trend lines (only for date-based data)
+  const filledData = fillMissingDatesForCombo(processedData, completeDateRange);
+  
   // Only sort if we're dealing with dates, not days of week
-  const sortedData = !isDayOfWeekData && processedData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
-    ? processedData.sort((a, b) => {
+  const sortedData = !isDayOfWeekData && filledData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
+    ? filledData.sort((a, b) => {
         try {
           return new Date(a.date).getTime() - new Date(b.date).getTime();
         } catch (e) {
           return 0;
         }
       })
-    : processedData; // For day of week, maintain original order
+    : filledData; // For day of week, maintain original order
 
   console.log(`CombinedMetricsChart: Processed data length: ${sortedData.length}, isDayOfWeekData: ${isDayOfWeekData}`);
 
@@ -166,6 +263,7 @@ const CombinedMetricsChart = ({
                   yAxisId="right"
                   name="Clicks"
                   dot={false}
+                  connectNulls={true}
                 />
               </ComposedChart>
             </ResponsiveContainer>
@@ -211,6 +309,7 @@ const CombinedMetricsChart = ({
                   yAxisId="left"
                   name="Transactions"
                   dot={false}
+                  connectNulls={true}
                 />
                 <Bar
                   dataKey="REVENUE"
