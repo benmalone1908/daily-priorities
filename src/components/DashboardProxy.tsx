@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
 import CombinedMetricsChart from "./CombinedMetricsChart";
-import { ChartToggle } from "./ChartToggle";
+import { ChartModeSelector } from "./ChartModeSelector";
+import { CustomMetricSelector } from "./CustomMetricSelector";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { CalendarDays, Calendar } from "lucide-react";
 
@@ -43,16 +44,17 @@ interface DashboardProxyProps {
 
 // Wrapper component for passing props to Dashboard
 const DashboardProxy = (props: DashboardProxyProps) => {
-  const [isAttributionChart, setIsAttributionChart] = useState(false);
+  const [chartMode, setChartMode] = useState<"display" | "attribution" | "custom">("display");
   const [activeTab, setActiveTab] = useState("display");
   const [viewByDate, setViewByDate] = useState(true);
+  const [customBarMetric, setCustomBarMetric] = useState("IMPRESSIONS");
+  const [customLineMetric, setCustomLineMetric] = useState("CLICKS");
 
-  // Enhanced toggle handler that properly updates both the toggle state and active tab
-  const handleToggleChange = (value: boolean) => {
-    console.log(`DashboardProxy: Toggle changed to ${value}, setting activeTab to ${value ? "attribution" : "display"}`);
-    setIsAttributionChart(value);
-    const newTab = value ? "attribution" : "display";
-    setActiveTab(newTab);
+  // Enhanced mode handler that properly updates both the mode and active tab
+  const handleModeChange = (mode: "display" | "attribution" | "custom") => {
+    console.log(`DashboardProxy: Chart mode changed to ${mode}, setting activeTab to ${mode}`);
+    setChartMode(mode);
+    setActiveTab(mode);
   };
   
   // Create a DateView component for the date/day toggle
@@ -76,14 +78,22 @@ const DashboardProxy = (props: DashboardProxyProps) => {
     </div>
   );
 
-  // Create our own chart toggle component with the proper state
-  const chartToggle = (
-    <div className="flex items-center">
+  // Create our chart controls component with the proper state
+  const chartControls = (
+    <div className="flex items-center space-x-4">
       <DateViewToggle />
-      <ChartToggle 
-        isAttributionChart={isAttributionChart} 
-        setIsAttributionChart={handleToggleChange} 
+      <ChartModeSelector 
+        mode={chartMode} 
+        onModeChange={handleModeChange} 
       />
+      {chartMode === "custom" && (
+        <CustomMetricSelector
+          barMetric={customBarMetric}
+          lineMetric={customLineMetric}
+          onBarMetricChange={setCustomBarMetric}
+          onLineMetricChange={setCustomLineMetric}
+        />
+      )}
     </div>
   );
   
@@ -124,12 +134,14 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         onWeeklyCampaignsChange={props.onWeeklyCampaignsChange}
         useGlobalFilters={props.useGlobalFilters}
         hideCharts={props.hideCharts}
-        chartToggleComponent={chartToggle}
+        chartToggleComponent={chartControls}
         activeTab={activeTab}
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
         hideChartTitle={true}
         contractTermsData={props.contractTermsData}
+        customBarMetric={customBarMetric}
+        customLineMetric={customLineMetric}
       />
     </div>
   );

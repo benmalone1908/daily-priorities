@@ -32,44 +32,36 @@ interface DashboardProps {
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
   selectedRevenueAgencies?: string[];
-  // Add these missing props to match what we're passing from DashboardProxy
   selectedMetricsAdvertisers?: string[];
   selectedMetricsAgencies?: string[];
   onMetricsCampaignsChange?: (selected: string[]) => void;
   onRevenueCampaignsChange?: (selected: string[]) => void;
   onRevenueAdvertisersChange?: (selected: string[]) => void;
   onRevenueAgenciesChange?: (selected: string[]) => void;
-  // Add these missing handler props
   onMetricsAdvertisersChange?: (selected: string[]) => void;
   onMetricsAgenciesChange?: (selected: string[]) => void;
   sortedCampaignOptions?: string[];
   sortedAdvertiserOptions?: string[];
   sortedAgencyOptions?: string[];
-  formattedCampaignOptions?: Option[]; // Add this property
-  formattedAdvertiserOptions?: Option[]; // Add this property
-  formattedAgencyOptions?: Option[]; // Add this property
+  formattedCampaignOptions?: Option[];
+  formattedAdvertiserOptions?: Option[];
+  formattedAgencyOptions?: Option[];
   aggregatedMetricsData?: any[];
   agencyToAdvertisersMap?: Record<string, Set<string>>;
   agencyToCampaignsMap?: Record<string, Set<string>>;
   advertiserToCampaignsMap?: Record<string, Set<string>>;
-  selectedWeeklyCampaigns?: string[]; // Updated to array for multiple selections
-  onWeeklyCampaignsChange?: (selected: string[]) => void; // Updated handler for array of selections
-  // Add the useGlobalFilters prop to fix the TypeScript error
+  selectedWeeklyCampaigns?: string[];
+  onWeeklyCampaignsChange?: (selected: string[]) => void;
   useGlobalFilters?: boolean;
-  // Add hideCharts prop to fix the TypeScript error
   hideCharts?: string[];
-  // Add chartToggleComponent prop to fix the TypeScript error
   chartToggleComponent?: React.ReactNode;
-  // Add activeTab prop to fix the current TypeScript error
   activeTab?: string;
-  // Add onChartTabChange prop
   onChartTabChange?: (tab: string) => void;
-  // Add viewByDate prop to fix the current TypeScript error
   viewByDate?: boolean;
-  // Add hideChartTitle prop to fix the TypeScript error
   hideChartTitle?: boolean;
-  // Add contractTermsData prop to fix the TypeScript error
   contractTermsData?: any[];
+  customBarMetric?: string;
+  customLineMetric?: string;
 }
 
 interface WeeklyData {
@@ -230,43 +222,36 @@ const Dashboard = ({
   selectedRevenueCampaigns = [],
   selectedRevenueAdvertisers = [],
   selectedRevenueAgencies = [],
-  // Update the props destructuring to include the new props
   selectedMetricsAdvertisers = [],
   selectedMetricsAgencies = [],
   onMetricsCampaignsChange,
   onRevenueCampaignsChange,
   onRevenueAdvertisersChange,
   onRevenueAgenciesChange,
-  // Add the new handler props
   onMetricsAdvertisersChange,
   onMetricsAgenciesChange,
   sortedCampaignOptions = [],
   sortedAdvertiserOptions = [],
   sortedAgencyOptions = [],
-  formattedCampaignOptions = [], // Add default value
-  formattedAdvertiserOptions = [], // Add default value
-  formattedAgencyOptions = [], // Add default value
+  formattedCampaignOptions = [],
+  formattedAdvertiserOptions = [],
+  formattedAgencyOptions = [],
   aggregatedMetricsData,
   agencyToAdvertisersMap = {},
   agencyToCampaignsMap = {},
   advertiserToCampaignsMap = {},
-  selectedWeeklyCampaigns = [], // Changed from selectedWeeklyCampaign to array with default empty array
-  onWeeklyCampaignsChange, // Changed to match array handler type
-  // Add useGlobalFilters to the destructured props with a default value of false
+  selectedWeeklyCampaigns = [],
+  onWeeklyCampaignsChange,
   useGlobalFilters = false,
   hideCharts = [],
-  // Add chartToggleComponent to the destructured props
   chartToggleComponent,
-  // Add activeTab to the destructured props with a default value
   activeTab = "display",
-  // Add onChartTabChange to the destructured props
   onChartTabChange,
-  // Add viewByDate to the destructured props with a default value
   viewByDate = true,
-  // Add hideChartTitle prop to fix the TypeScript error
   hideChartTitle = false,
-  // Add contractTermsData prop to fix the TypeScript error
-  contractTermsData
+  contractTermsData,
+  customBarMetric = "IMPRESSIONS",
+  customLineMetric = "CLICKS"
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1082,8 +1067,12 @@ const Dashboard = ({
   // Prepare combined data for CombinedMetricsChart component
   const combinedChartData = useMemo(() => {
     // Use either metrics or revenue data based on active tab, respecting the current view modes
+    if (activeTab === "custom") {
+      // For custom mode, we might want to use all available data
+      return viewByDate ? getAggregatedData(data) : getAggregatedDataByDayOfWeek(data);
+    }
     return activeTab === "display" ? processedMetricsData : processedRevenueData;
-  }, [activeTab, processedMetricsData, processedRevenueData]);
+  }, [activeTab, processedMetricsData, processedRevenueData, data, viewByDate]);
 
   // Handler for CombinedMetricsChart tab changes
   const handleCombinedChartTabChange = (tab: string) => {
@@ -1151,6 +1140,8 @@ const Dashboard = ({
           chartToggleComponent={chartToggleComponent}
           onTabChange={handleCombinedChartTabChange}
           initialTab={activeTab}
+          customBarMetric={customBarMetric}
+          customLineMetric={customLineMetric}
         />
       )}
 
