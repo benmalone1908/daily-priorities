@@ -248,8 +248,8 @@ const CombinedMetricsChart = ({
       return (
         <ComposedChart data={sortedData}>
           <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-          <YAxis yAxisId="left" tickFormatter={formatNumber} tick={{ fontSize: 10 }} />
-          <YAxis yAxisId="right" orientation="right" tickFormatter={formatNumber} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="left" tickFormatter={(value) => formatNumber(value)} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatNumber(value)} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
             formatter={(value, name) => {
@@ -290,7 +290,7 @@ const CombinedMetricsChart = ({
       return (
         <ComposedChart data={sortedData}>
           <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-          <YAxis yAxisId="left" tickFormatter={formatNumber} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="left" tickFormatter={(value) => formatNumber(value)} tick={{ fontSize: 10 }} />
           <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `$${formatNumber(value)}`} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
@@ -337,8 +337,8 @@ const CombinedMetricsChart = ({
       return (
         <ComposedChart data={sortedData}>
           <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-          <YAxis yAxisId="left" tickFormatter={barFormatter} tick={{ fontSize: 10 }} />
-          <YAxis yAxisId="right" orientation="right" tickFormatter={lineFormatter} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="left" tickFormatter={(value) => barFormatter(value)} tick={{ fontSize: 10 }} />
+          <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => lineFormatter(value)} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
             formatter={(value, name) => {
