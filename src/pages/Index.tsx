@@ -787,7 +787,13 @@ const DashboardContent = ({
         {/* Bottom row: Tabs and Controls */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-1 py-3">
           <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className={`grid w-full ${pacingData.length > 0 ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsList className={`grid w-full ${
+              pacingData.length > 0 && (pacingData.length > 0 || contractTermsData.length > 0) 
+                ? 'grid-cols-5' 
+                : pacingData.length > 0 || (pacingData.length > 0 || contractTermsData.length > 0)
+                  ? 'grid-cols-4'
+                  : 'grid-cols-3'
+            }`}>
               <TabsTrigger value="dashboard">
                 <LayoutDashboard className="mr-2" size={16} />
                 Dashboard
@@ -796,10 +802,12 @@ const DashboardContent = ({
                 <ChartLine className="mr-2" size={16} />
                 Trends
               </TabsTrigger>
-              <TabsTrigger value="health">
-                <Activity className="mr-2" size={16} />
-                Health
-              </TabsTrigger>
+              {(pacingData.length > 0 || contractTermsData.length > 0) && (
+                <TabsTrigger value="health">
+                  <Activity className="mr-2" size={16} />
+                  Health
+                </TabsTrigger>
+              )}
               {pacingData.length > 0 && (
                 <TabsTrigger value="pacing">
                   <Target className="mr-2" size={16} />
@@ -896,14 +904,16 @@ const DashboardContent = ({
           />
         </TabsContent>
         
-        <TabsContent value="health" className="mt-0">
-          {/* Campaign Health tab content */}
-          <CampaignHealthTab 
-            data={globalFilteredData}
-            pacingData={pacingData}
-            contractTermsData={contractTermsData}
-          />
-        </TabsContent>
+        {(pacingData.length > 0 || contractTermsData.length > 0) && (
+          <TabsContent value="health" className="mt-0">
+            {/* Campaign Health tab content */}
+            <CampaignHealthTab 
+              data={globalFilteredData}
+              pacingData={pacingData}
+              contractTermsData={contractTermsData}
+            />
+          </TabsContent>
+        )}
         
         {pacingData.length > 0 && (
           <TabsContent value="pacing" className="mt-0">
