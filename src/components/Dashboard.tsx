@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CombinedMetricsChart from "./CombinedMetricsChart";
 import { MultiSelect } from "./MultiSelect";
-import { formatNumber, formatCurrency } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
@@ -184,23 +184,9 @@ const Dashboard = ({
             <CardContent>
               <CombinedMetricsChart
                 data={chartData}
-                selectedCampaigns={selectedMetricsCampaigns}
-                selectedAdvertisers={selectedMetricsAdvertisers}
-                selectedAgencies={selectedMetricsAgencies}
-                onCampaignsChange={onMetricsCampaignsChange}
-                onAdvertisersChange={onMetricsAdvertisersChange}
-                onAgenciesChange={onMetricsAgenciesChange}
-                campaignOptions={formattedCampaignOptions}
-                advertiserOptions={formattedAdvertiserOptions}
-                agencyOptions={formattedAgencyOptions}
-                agencyToAdvertisersMap={agencyToAdvertisersMap}
-                agencyToCampaignsMap={agencyToCampaignsMap}
-                advertiserToCampaignsMap={advertiserToCampaignsMap}
-                chartType="metrics"
-                activeTab={activeTab}
+                title="Campaign Metrics Over Time"
                 onTabChange={onChartTabChange}
-                viewByDate={viewByDate}
-                useGlobalFilters={useGlobalFilters}
+                initialTab={activeTab}
                 customBarMetric={customBarMetric}
                 customLineMetric={customLineMetric}
               />
@@ -221,23 +207,9 @@ const Dashboard = ({
             <CardContent>
               <CombinedMetricsChart
                 data={revenueData}
-                selectedCampaigns={selectedRevenueCampaigns}
-                selectedAdvertisers={selectedRevenueAdvertisers}
-                selectedAgencies={selectedRevenueAgencies}
-                onCampaignsChange={onRevenueCampaignsChange}
-                onAdvertisersChange={onRevenueAdvertisersChange}
-                onAgenciesChange={onRevenueAgenciesChange}
-                campaignOptions={formattedCampaignOptions}
-                advertiserOptions={formattedAdvertiserOptions}
-                agencyOptions={formattedAgencyOptions}
-                agencyToAdvertisersMap={agencyToAdvertisersMap}
-                agencyToCampaignsMap={agencyToCampaignsMap}
-                advertiserToCampaignsMap={advertiserToCampaignsMap}
-                chartType="revenue"
-                activeTab={activeTab}
+                title="Revenue Attribution Over Time"
                 onTabChange={onChartTabChange}
-                viewByDate={viewByDate}
-                useGlobalFilters={useGlobalFilters}
+                initialTab={activeTab}
                 customBarMetric={customBarMetric}
                 customLineMetric={customLineMetric}
               />
