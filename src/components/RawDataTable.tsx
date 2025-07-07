@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -400,7 +401,10 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         columns = ['CAMPAIGN ORDER NAME', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser') {
         columns = ['AGENCY', 'ADVERTISER', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      } else if (view === 'advertiser-by-day') {
+        columns = ['ADVERTISER', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else {
+        // aggregate view
         columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       }
       
