@@ -34,7 +34,7 @@ interface RawDataTableProps {
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
-  const [view, setView] = useState<"daily" | "aggregate" | "advertiser">("daily");
+  const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
@@ -150,6 +150,51 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           ROAS: roas
         };
       });
+    } else if (view === "advertiser-by-day") {
+      // Advertiser by Day view - group by advertiser and date
+      const advertiserDateGroups: Record<string, any> = {};
+
+      filteredData.forEach(row => {
+        const campaignName = row["CAMPAIGN ORDER NAME"];
+        const advertiser = extractAdvertiserFromCampaign(campaignName);
+        const date = row.DATE;
+        const key = `${advertiser}|${date}`;
+        
+        if (!advertiserDateGroups[key]) {
+          advertiserDateGroups[key] = {
+            "ADVERTISER": advertiser,
+            "DATE": date,
+            IMPRESSIONS: 0,
+            CLICKS: 0,
+            TRANSACTIONS: 0,
+            REVENUE: 0,
+            SPEND: 0
+          };
+        }
+        
+        advertiserDateGroups[key].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        advertiserDateGroups[key].CLICKS += Number(row.CLICKS) || 0;
+        advertiserDateGroups[key].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+        advertiserDateGroups[key].REVENUE += Number(row.REVENUE) || 0;
+        advertiserDateGroups[key].SPEND += Number(row.SPEND) || 0;
+      });
+      
+      // Convert to array and calculate CTR and ROAS based on aggregated values
+      return Object.values(advertiserDateGroups).map(advertiserDay => {
+        const ctr = advertiserDay.IMPRESSIONS > 0 
+          ? (advertiserDay.CLICKS / advertiserDay.IMPRESSIONS) * 100 
+          : 0;
+          
+        const roas = advertiserDay.SPEND > 0 
+          ? advertiserDay.REVENUE / advertiserDay.SPEND 
+          : 0;
+          
+        return {
+          ...advertiserDay,
+          CTR: ctr,
+          ROAS: roas
+        };
+      });
     } else {
       // Advertiser view - group by agency then advertiser
       const agencyGroups: Record<string, Record<string, any>> = {};
@@ -232,7 +277,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         }
       }
       
-      // Secondary sort by Campaign Name if primary sort values are equal
+      // Secondary sort based on view type
       if (view === "advertiser") {
         // For advertiser view, secondary sort by agency then advertiser
         if (sortColumn !== "AGENCY") {
@@ -242,6 +287,16 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           const aAdvertiser = a["ADVERTISER"];
           const bAdvertiser = b["ADVERTISER"];
           return aAdvertiser.localeCompare(bAdvertiser);
+        }
+      } else if (view === "advertiser-by-day") {
+        // For advertiser-by-day view, secondary sort by advertiser then date
+        if (sortColumn !== "ADVERTISER") {
+          const aAdvertiser = a["ADVERTISER"];
+          const bAdvertiser = b["ADVERTISER"];
+          if (aAdvertiser !== bAdvertiser) return aAdvertiser.localeCompare(bAdvertiser);
+          const aDate = a["DATE"];
+          const bDate = b["DATE"];
+          return aDate.localeCompare(bDate);
         }
       } else if (sortColumn !== "CAMPAIGN ORDER NAME") {
         const aCampaign = a["CAMPAIGN ORDER NAME"];
@@ -308,7 +363,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   };
   
   // Handle view change
-  const handleViewChange = (newView: "daily" | "aggregate" | "advertiser") => {
+  const handleViewChange = (newView: "daily" | "aggregate" | "advertiser" | "advertiser-by-day") => {
     setView(newView);
     setPage(1); // Reset to first page when view changes
     
@@ -317,6 +372,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       setSortColumn("CAMPAIGN ORDER NAME");
     } else if (newView === 'advertiser' && (sortColumn === 'DATE' || sortColumn === 'CAMPAIGN ORDER NAME')) {
       setSortColumn("AGENCY");
+    } else if (newView === 'advertiser-by-day' && sortColumn === 'CAMPAIGN ORDER NAME') {
+      setSortColumn("ADVERTISER");
     }
   };
   
@@ -507,6 +564,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           >
             Advertiser View
           </Button>
+          <Button 
+            onClick={() => handleViewChange("advertiser-by-day")}
+            variant={view === "advertiser-by-day" ? "default" : "outline"}
+            size="sm"
+          >
+            Advertiser by Day
+          </Button>
           
           <Button
             onClick={exportToCsv}
@@ -563,6 +627,28 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   >
                     Advertiser
                     {sortColumn === "ADVERTISER" && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </TableHead>
+                </>
+              ) : view === "advertiser-by-day" ? (
+                <>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-1 w-[30%]"
+                    onClick={() => handleSort("ADVERTISER")}
+                  >
+                    Advertiser
+                    {sortColumn === "ADVERTISER" && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </TableHead>
+                  
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-1 text-right"
+                    onClick={() => handleSort("DATE")}
+                  >
+                    Date
+                    {sortColumn === "DATE" && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </TableHead>
@@ -700,6 +786,30 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                       ))}
                     </CollapsibleContent>
                   </Collapsible>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-1">
+                    No data available
+                  </TableCell>
+                </TableRow>
+              )
+            ) : view === "advertiser-by-day" ? (
+              (paginatedData as any[]).length > 0 ? (
+                (paginatedData as any[]).map((row, index) => (
+                  <TableRow key={`${row.ADVERTISER}-${row.DATE}-${index}`} className="text-xs">
+                    <TableCell className="font-medium py-1 px-1 break-words" title={row.ADVERTISER}>
+                      {row.ADVERTISER}
+                    </TableCell>
+                    <TableCell className="py-1 px-1 text-right">{formatColumnValue(row, "DATE")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CLICKS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "CTR")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "REVENUE")}</TableCell>
+                    <TableCell className="text-right py-1 px-1">{formatColumnValue(row, "SPEND")}</TableCell>
+                    <TableCell className="text-right py-1 px-1 pr-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                  </TableRow>
                 ))
               ) : (
                 <TableRow>
