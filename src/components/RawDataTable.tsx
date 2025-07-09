@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { normalizeDate } from "@/lib/utils";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
@@ -35,6 +35,7 @@ interface RawDataTableProps {
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
+  const { isTestCampaign } = useCampaignFilter();
   const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -42,10 +43,15 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [expandedAgencies, setExpandedAgencies] = useState<Set<string>>(new Set());
   
-  // Filter out 'Totals' rows since we're creating our own aggregations
+  // Filter out 'Totals' rows and test campaigns
   const filteredData = useMemo(() => {
-    return data.filter(row => row.DATE !== 'Totals');
-  }, [data]);
+    return data.filter(row => {
+      if (row.DATE === 'Totals') return false;
+      const campaignName = row["CAMPAIGN ORDER NAME"];
+      if (!campaignName) return true;
+      return !isTestCampaign(campaignName);
+    });
+  }, [data, isTestCampaign]);
 
   // Extract agency from campaign name (simplified version)
   const extractAgencyFromCampaign = (campaignName: string) => {
