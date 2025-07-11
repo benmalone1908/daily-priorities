@@ -173,18 +173,20 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         };
       });
     } else if (view === "advertiser-by-day") {
-      // Advertiser by Day view - group by advertiser and date
+      // Advertiser by Day view - group by advertiser, agency, and date
       const advertiserDateGroups: Record<string, any> = {};
 
       filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         const advertiser = extractAdvertiserFromCampaign(campaignName);
+        const agency = extractAgencyFromCampaign(campaignName);
         const date = row.DATE;
-        const key = `${advertiser}|${date}`;
+        const key = `${advertiser}|${agency}|${date}`;
         
         if (!advertiserDateGroups[key]) {
           advertiserDateGroups[key] = {
             "ADVERTISER": advertiser,
+            "AGENCY": agency,
             "DATE": date,
             IMPRESSIONS: 0,
             CLICKS: 0,
@@ -310,11 +312,14 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           return aAgency.localeCompare(bAgency);
         }
       } else if (view === "advertiser-by-day") {
-        // For advertiser-by-day view, secondary sort by advertiser then date
+        // For advertiser-by-day view, secondary sort by advertiser, then agency, then date
         if (sortColumn !== "ADVERTISER") {
           const aAdvertiser = a["ADVERTISER"];
           const bAdvertiser = b["ADVERTISER"];
           if (aAdvertiser !== bAdvertiser) return aAdvertiser.localeCompare(bAdvertiser);
+          const aAgency = a["AGENCY"];
+          const bAgency = b["AGENCY"];
+          if (aAgency !== bAgency) return aAgency.localeCompare(bAgency);
           const aDate = a["DATE"];
           const bDate = b["DATE"];
           return aDate.localeCompare(bDate);
@@ -359,10 +364,10 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     // If switching views, keep the same sort column if it exists in both views
     if (newView === 'aggregate' && sortColumn === 'DATE') {
       setSortColumn("CAMPAIGN ORDER NAME");
-    } else if (newView === 'advertiser' && (sortColumn === 'DATE' || sortColumn === 'CAMPAIGN ORDER NAME')) {
+    } else if ((newView === 'advertiser' || newView === 'advertiser-by-day') && (sortColumn === 'DATE' || sortColumn === 'CAMPAIGN ORDER NAME')) {
       setSortColumn("ADVERTISER");
-    } else if (newView === 'advertiser-by-day' && sortColumn === 'CAMPAIGN ORDER NAME') {
-      setSortColumn("ADVERTISER");
+    } else if ((newView === 'daily' || newView === 'aggregate') && (sortColumn === 'ADVERTISER' || sortColumn === 'AGENCY')) {
+      setSortColumn("CAMPAIGN ORDER NAME");
     }
   };
   
@@ -379,7 +384,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       } else if (view === 'advertiser') {
         columns = ['ADVERTISER', 'AGENCY', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser-by-day') {
-        columns = ['ADVERTISER', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+        columns = ['ADVERTISER', 'AGENCY', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else {
         // aggregate view
         columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
@@ -615,7 +620,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               ) : view === "advertiser-by-day" ? (
                 <>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[15%]"
                     onClick={() => handleSort("ADVERTISER")}
                   >
                     Advertiser
@@ -625,7 +630,17 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   </TableHead>
                   
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[10%]"
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[15%]"
+                    onClick={() => handleSort("AGENCY")}
+                  >
+                    Agency
+                    {sortColumn === "AGENCY" && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </TableHead>
+                  
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[8%]"
                     onClick={() => handleSort("DATE")}
                   >
                     Date
@@ -661,7 +676,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '12%' : view === "advertiser-by-day" ? '8%' : '10%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '12%' : '10%' }}
                 onClick={() => handleSort("IMPRESSIONS")}
               >
                 Impressions
@@ -672,7 +687,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '10%' : '8%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '10%' : '8%' }}
                 onClick={() => handleSort("CLICKS")}
               >
                 Clicks
@@ -683,7 +698,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '10%' : '8%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '10%' : '8%' }}
                 onClick={() => handleSort("CTR")}
               >
                 CTR
@@ -694,7 +709,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '10%' : '8%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '10%' : '8%' }}
                 onClick={() => handleSort("TRANSACTIONS")}
               >
                 Transactions
@@ -705,7 +720,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '12%' : '10%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '12%' : '10%' }}
                 onClick={() => handleSort("REVENUE")}
               >
                 Revenue
@@ -716,7 +731,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '12%' : '10%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '12%' : '10%' }}
                 onClick={() => handleSort("SPEND")}
               >
                 Spend
@@ -727,7 +742,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" ? '10%' : '8%' }}
+                style={{ width: (view === "advertiser" || view === "advertiser-by-day") ? '10%' : '8%' }}
                 onClick={() => handleSort("ROAS")}
               >
                 ROAS
@@ -767,9 +782,12 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             ) : view === "advertiser-by-day" ? (
               paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
-                  <TableRow key={`${row.ADVERTISER}-${row.DATE}-${index}`} className="text-xs">
+                  <TableRow key={`${row.ADVERTISER}-${row.AGENCY}-${row.DATE}-${index}`} className="text-xs">
                     <TableCell className="font-medium py-1 px-3 truncate" title={row.ADVERTISER}>
                       {row.ADVERTISER}
+                    </TableCell>
+                    <TableCell className="py-1 px-3 truncate" title={row.AGENCY}>
+                      {row.AGENCY}
                     </TableCell>
                     <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
@@ -783,7 +801,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-1">
+                  <TableCell colSpan={10} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
