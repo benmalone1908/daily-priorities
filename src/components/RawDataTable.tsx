@@ -25,7 +25,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { normalizeDate } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
@@ -53,7 +52,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     });
   }, [data, isTestCampaign]);
 
-  // Extract agency from campaign name (simplified version)
+  // Extract agency from campaign name (improved version)
   const extractAgencyFromCampaign = (campaignName: string) => {
     console.log('Campaign name for agency extraction:', campaignName);
     const match = campaignName.match(/:\s*([A-Z]+):/);
@@ -87,10 +86,18 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     // Extract the part after the second colon
     const parts = campaignName.split(':');
     if (parts.length >= 3) {
-      const advertiserPart = parts[2].trim();
-      // Extract the advertiser name (before the first dash or underscore)
-      const advertiserMatch = advertiserPart.match(/^([^-_]+)/);
-      const result = advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+      let advertiserPart = parts[2].trim();
+      
+      // Remove common prefixes and suffixes
+      advertiserPart = advertiserPart.replace(/^(PPC|SEM|SEO|Social|Display|Video|Search|Shopping)\s*[-_]\s*/i, '');
+      
+      // Extract the advertiser name (before the first dash, underscore, or common separators)
+      const advertiserMatch = advertiserPart.match(/^([^-_|]+)/);
+      let result = advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+      
+      // Clean up common suffixes
+      result = result.replace(/\s+(Campaign|Campaigns|Ads?|Marketing|Promo|Promotion)$/i, '');
+      
       console.log('Extracted advertiser:', result, 'from part:', advertiserPart);
       return result;
     }
@@ -778,45 +785,45 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           <TableBody>
             {view === "advertiser" ? (
               Object.keys(paginatedData as Record<string, any[]>).length > 0 ? (
-                Object.entries(paginatedData as Record<string, any[]>).map(([agency, advertisers]) => (
-                  <Collapsible key={agency} open={expandedAgencies.has(agency)} onOpenChange={() => toggleAgency(agency)}>
-                    <CollapsibleTrigger asChild>
-                      <TableRow className="cursor-pointer hover:bg-muted/25 font-medium bg-muted/10">
-                        <TableCell colSpan={9} className="py-2 px-3">
-                          <div className="flex items-center">
-                            {expandedAgencies.has(agency) ? (
-                              <ChevronDown className="h-4 w-4 mr-2" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 mr-2" />
-                            )}
-                            <span className="font-semibold">{agency}</span>
-                            <span className="ml-2 text-sm text-muted-foreground">({advertisers.length} advertisers)</span>
-                          </div>
+                Object.entries(paginatedData as Record<string, any[]>).map(([agency, advertisers]) => [
+                  // Agency header row
+                  <TableRow 
+                    key={`agency-${agency}`}
+                    className="cursor-pointer hover:bg-muted/25 font-medium bg-muted/10"
+                    onClick={() => toggleAgency(agency)}
+                  >
+                    <TableCell colSpan={9} className="py-2 px-3">
+                      <div className="flex items-center">
+                        {expandedAgencies.has(agency) ? (
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 mr-2" />
+                        )}
+                        <span className="font-semibold">{agency}</span>
+                        <span className="ml-2 text-sm text-muted-foreground">({advertisers.length} advertisers)</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>,
+                  // Advertiser rows (conditionally rendered)
+                  ...(expandedAgencies.has(agency) ? advertisers.map((advertiserRow, index) => {
+                    console.log('Rendering advertiser row:', advertiserRow);
+                    return (
+                      <TableRow key={`${agency}-${advertiserRow.ADVERTISER}-${index}`} className="text-xs">
+                        <TableCell className="py-1 px-3 pl-8 text-muted-foreground truncate">{advertiserRow.AGENCY}</TableCell>
+                        <TableCell className="font-medium py-1 px-3 truncate" title={advertiserRow.ADVERTISER}>
+                          {advertiserRow.ADVERTISER}
                         </TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "IMPRESSIONS")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CLICKS")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CTR")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "TRANSACTIONS")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "REVENUE")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "SPEND")}</TableCell>
+                        <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "ROAS")}</TableCell>
                       </TableRow>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {advertisers.map((advertiserRow, index) => {
-                        console.log('Rendering advertiser row:', advertiserRow);
-                        return (
-                          <TableRow key={`${agency}-${advertiserRow.ADVERTISER}-${index}`} className="text-xs">
-                            <TableCell className="py-1 px-3 pl-8 text-muted-foreground truncate">{advertiserRow.AGENCY}</TableCell>
-                            <TableCell className="font-medium py-1 px-3 truncate" title={advertiserRow.ADVERTISER}>
-                              {advertiserRow.ADVERTISER}
-                            </TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "IMPRESSIONS")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CLICKS")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CTR")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "TRANSACTIONS")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "REVENUE")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "SPEND")}</TableCell>
-                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "ROAS")}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))
+                    );
+                  }) : [])
+                ]).flat()
               ) : (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-1">
