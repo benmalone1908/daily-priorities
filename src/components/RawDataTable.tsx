@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -58,12 +59,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     const match = campaignName.match(/:\s*([A-Z]+):/);
     if (match) {
       const abbreviation = match[1];
-      // Map abbreviations to full names
+      // Map abbreviations to full names - Updated to include OG and SM rebrand
       const agencyMap: Record<string, string> = {
         'MJ': 'MediaJel',
         '2RS': 'Two Rivers',
-        'SM': 'SM Services',
+        'SM': 'Orangellow',
         'NP': 'Noble People',
+        'OG': 'Orangellow',
         'TF': 'Tact Firm',
         'TRN': 'Terrayn',
         'BLO': 'Be Local One',
