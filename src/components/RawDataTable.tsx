@@ -593,7 +593,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               {view === "advertiser" ? (
                 <>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[15%]"
                     onClick={() => handleSort("ADVERTISER")}
                   >
                     Advertiser
@@ -603,7 +603,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   </TableHead>
                   
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[15%]"
                     onClick={() => handleSort("AGENCY")}
                   >
                     Agency
@@ -661,7 +661,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               <TableHead 
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" || view === "advertiser-by-day" ? '8%' : '10%' }}
+                style={{ width: view === "advertiser" ? '12%' : view === "advertiser-by-day" ? '8%' : '10%' }}
                 onClick={() => handleSort("IMPRESSIONS")}
               >
                 Impressions
@@ -671,7 +671,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '10%' : '8%' }}
                 onClick={() => handleSort("CLICKS")}
               >
                 Clicks
@@ -681,7 +682,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '10%' : '8%' }}
                 onClick={() => handleSort("CTR")}
               >
                 CTR
@@ -691,7 +693,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '10%' : '8%' }}
                 onClick={() => handleSort("TRANSACTIONS")}
               >
                 Transactions
@@ -701,7 +704,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[10%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '12%' : '10%' }}
                 onClick={() => handleSort("REVENUE")}
               >
                 Revenue
@@ -711,7 +715,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[10%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '12%' : '10%' }}
                 onClick={() => handleSort("SPEND")}
               >
                 Spend
@@ -721,7 +726,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
+                style={{ width: view === "advertiser" ? '10%' : '8%' }}
                 onClick={() => handleSort("ROAS")}
               >
                 ROAS
