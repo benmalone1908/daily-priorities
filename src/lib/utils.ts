@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -37,21 +36,27 @@ export function parseDateString(dateStr: string): Date | null {
     // Standardize the date string
     const cleanDateStr = dateStr.trim();
     
-    // Handle MM/DD/YYYY format
+    // Handle MM/DD/YYYY or MM/DD/YY format
     if (cleanDateStr.includes('/')) {
       const parts = cleanDateStr.split('/');
       if (parts.length !== 3) {
-        console.warn(`Invalid date format: ${cleanDateStr} - expected MM/DD/YYYY`);
+        console.warn(`Invalid date format: ${cleanDateStr} - expected MM/DD/YYYY or MM/DD/YY`);
         return null;
       }
       
       const month = parseInt(parts[0], 10);
       const day = parseInt(parts[1], 10);
-      const year = parseInt(parts[2], 10);
+      let year = parseInt(parts[2], 10);
       
       if (isNaN(month) || isNaN(day) || isNaN(year)) {
         console.warn(`Invalid date parts: month=${parts[0]}, day=${parts[1]}, year=${parts[2]}`);
         return null;
+      }
+      
+      // Handle 2-digit years - assume 2000s
+      if (year < 100) {
+        year += 2000;
+        console.log(`Converted 2-digit year ${parts[2]} to ${year}`);
       }
       
       if (month < 1 || month > 12) {
