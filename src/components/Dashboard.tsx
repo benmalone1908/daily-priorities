@@ -1066,13 +1066,14 @@ const Dashboard = ({
 
   // Prepare combined data for CombinedMetricsChart component
   const combinedChartData = useMemo(() => {
-    // Use either metrics or revenue data based on active tab, respecting the current view modes
+    // For custom mode, use the same filtered data approach as other modes
     if (activeTab === "custom") {
-      // For custom mode, we might want to use all available data
-      return viewByDate ? getAggregatedData(data) : getAggregatedDataByDayOfWeek(data);
+      // Use metricsData for custom mode to respect filters, fallback to data if not available
+      const dataToUse = metricsData || data;
+      return viewByDate ? getAggregatedData(dataToUse) : getAggregatedDataByDayOfWeek(dataToUse);
     }
     return activeTab === "display" ? processedMetricsData : processedRevenueData;
-  }, [activeTab, processedMetricsData, processedRevenueData, data, viewByDate]);
+  }, [activeTab, processedMetricsData, processedRevenueData, metricsData, data, viewByDate]);
 
   // Handler for CombinedMetricsChart tab changes
   const handleCombinedChartTabChange = (tab: string) => {
