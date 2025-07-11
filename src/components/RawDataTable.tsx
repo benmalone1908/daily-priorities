@@ -616,46 +616,70 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         </div>
       </div>
       
-      <div className="rounded-md border overflow-x-auto">
-        <Table className="min-w-full">
-          <TableHeader>
-            <TableRow className="text-xs">
-              {view === "advertiser" ? (
-                <>
+      <div className="w-full overflow-x-auto">
+        <div className="min-w-full">
+          <Table className="w-full table-fixed">
+            <TableHeader>
+              <TableRow className="text-xs">
+                {view === "advertiser" ? (
+                  <>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                      onClick={() => handleSort("AGENCY")}
+                    >
+                      Agency
+                      {sortColumn === "AGENCY" && (
+                        <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </TableHead>
+                    
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                      onClick={() => handleSort("ADVERTISER")}
+                    >
+                      Advertiser
+                      {sortColumn === "ADVERTISER" && (
+                        <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </TableHead>
+                  </>
+                ) : view === "advertiser-by-day" ? (
+                  <>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
+                      onClick={() => handleSort("ADVERTISER")}
+                    >
+                      Advertiser
+                      {sortColumn === "ADVERTISER" && (
+                        <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </TableHead>
+                    
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-1/8"
+                      onClick={() => handleSort("DATE")}
+                    >
+                      Date
+                      {sortColumn === "DATE" && (
+                        <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </TableHead>
+                  </>
+                ) : (
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 min-w-[200px]"
-                    onClick={() => handleSort("AGENCY")}
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/3"
+                    onClick={() => handleSort("CAMPAIGN ORDER NAME")}
                   >
-                    Agency
-                    {sortColumn === "AGENCY" && (
+                    Campaign Name
+                    {sortColumn === "CAMPAIGN ORDER NAME" && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </TableHead>
-                  
+                )}
+                
+                {view === "daily" && (
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 min-w-[200px]"
-                    onClick={() => handleSort("ADVERTISER")}
-                  >
-                    Advertiser
-                    {sortColumn === "ADVERTISER" && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </TableHead>
-                </>
-              ) : view === "advertiser-by-day" ? (
-                <>
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 min-w-[200px]"
-                    onClick={() => handleSort("ADVERTISER")}
-                  >
-                    Advertiser
-                    {sortColumn === "ADVERTISER" && (
-                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </TableHead>
-                  
-                  <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right min-w-[100px]"
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-1/8"
                     onClick={() => handleSort("DATE")}
                   >
                     Date
@@ -663,203 +687,181 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </TableHead>
-                </>
-              ) : (
+                )}
+                
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 min-w-[300px]"
-                  onClick={() => handleSort("CAMPAIGN ORDER NAME")}
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/8"
+                  onClick={() => handleSort("IMPRESSIONS")}
                 >
-                  Campaign Name
-                  {sortColumn === "CAMPAIGN ORDER NAME" && (
+                  Impressions
+                  {sortColumn === "IMPRESSIONS" && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </TableHead>
-              )}
-              
-              {view === "daily" && (
+                
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right min-w-[100px]"
-                  onClick={() => handleSort("DATE")}
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/12"
+                  onClick={() => handleSort("CLICKS")}
                 >
-                  Date
-                  {sortColumn === "DATE" && (
+                  Clicks
+                  {sortColumn === "CLICKS" && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </TableHead>
-              )}
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[100px]"
-                onClick={() => handleSort("IMPRESSIONS")}
-              >
-                Impressions
-                {sortColumn === "IMPRESSIONS" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[80px]"
-                onClick={() => handleSort("CLICKS")}
-              >
-                Clicks
-                {sortColumn === "CLICKS" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[80px]"
-                onClick={() => handleSort("CTR")}
-              >
-                CTR
-                {sortColumn === "CTR" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[100px]"
-                onClick={() => handleSort("TRANSACTIONS")}
-              >
-                Transactions
-                {sortColumn === "TRANSACTIONS" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[100px]"
-                onClick={() => handleSort("REVENUE")}
-              >
-                Revenue
-                {sortColumn === "REVENUE" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[100px]"
-                onClick={() => handleSort("SPEND")}
-              >
-                Spend
-                {sortColumn === "SPEND" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-              
-              <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 min-w-[80px]"
-                onClick={() => handleSort("ROAS")}
-              >
-                ROAS
-                {sortColumn === "ROAS" && (
-                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {view === "advertiser" ? (
-              Object.keys(paginatedData as Record<string, any[]>).length > 0 ? (
-                Object.entries(paginatedData as Record<string, any[]>).map(([agency, advertisers]) => (
-                  <Collapsible key={agency} open={expandedAgencies.has(agency)} onOpenChange={() => toggleAgency(agency)}>
-                    <CollapsibleTrigger asChild>
-                      <TableRow className="cursor-pointer hover:bg-muted/25 font-medium bg-muted/10">
-                        <TableCell colSpan={9} className="py-2 px-3">
-                          <div className="flex items-center">
-                            {expandedAgencies.has(agency) ? (
-                              <ChevronDown className="h-4 w-4 mr-2" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 mr-2" />
-                            )}
-                            <span className="font-semibold">{agency}</span>
-                            <span className="ml-2 text-sm text-muted-foreground">({advertisers.length} advertisers)</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {advertisers.map((advertiser, index) => (
-                        <TableRow key={`${agency}-${advertiser.ADVERTISER}-${index}`} className="text-xs">
-                          <TableCell className="py-1 px-3 pl-8 text-muted-foreground">{agency}</TableCell>
-                          <TableCell className="font-medium py-1 px-3" title={advertiser.ADVERTISER}>
-                            {advertiser.ADVERTISER}
+                
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/12"
+                  onClick={() => handleSort("CTR")}
+                >
+                  CTR
+                  {sortColumn === "CTR" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+                
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/12"
+                  onClick={() => handleSort("TRANSACTIONS")}
+                >
+                  Transactions
+                  {sortColumn === "TRANSACTIONS" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+                
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/8"
+                  onClick={() => handleSort("REVENUE")}
+                >
+                  Revenue
+                  {sortColumn === "REVENUE" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+                
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/8"
+                  onClick={() => handleSort("SPEND")}
+                >
+                  Spend
+                  {sortColumn === "SPEND" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+                
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-1/12"
+                  onClick={() => handleSort("ROAS")}
+                >
+                  ROAS
+                  {sortColumn === "ROAS" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {view === "advertiser" ? (
+                Object.keys(paginatedData as Record<string, any[]>).length > 0 ? (
+                  Object.entries(paginatedData as Record<string, any[]>).map(([agency, advertisers]) => (
+                    <Collapsible key={agency} open={expandedAgencies.has(agency)} onOpenChange={() => toggleAgency(agency)}>
+                      <CollapsibleTrigger asChild>
+                        <TableRow className="cursor-pointer hover:bg-muted/25 font-medium bg-muted/10">
+                          <TableCell colSpan={9} className="py-2 px-3">
+                            <div className="flex items-center">
+                              {expandedAgencies.has(agency) ? (
+                                <ChevronDown className="h-4 w-4 mr-2" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 mr-2" />
+                              )}
+                              <span className="font-semibold">{agency}</span>
+                              <span className="ml-2 text-sm text-muted-foreground">({advertisers.length} advertisers)</span>
+                            </div>
                           </TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "IMPRESSIONS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CLICKS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CTR")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "TRANSACTIONS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "REVENUE")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "SPEND")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "ROAS")}</TableCell>
                         </TableRow>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-1">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )
-            ) : view === "advertiser-by-day" ? (
-              (paginatedData as any[]).length > 0 ? (
-                (paginatedData as any[]).map((row, index) => (
-                  <TableRow key={`${row.ADVERTISER}-${row.DATE}-${index}`} className="text-xs">
-                    <TableCell className="font-medium py-1 px-3 break-words" title={row.ADVERTISER}>
-                      {row.ADVERTISER}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        {advertisers.map((advertiser, index) => (
+                          <TableRow key={`${agency}-${advertiser.ADVERTISER}-${index}`} className="text-xs">
+                            <TableCell className="py-1 px-3 pl-8 text-muted-foreground truncate">{agency}</TableCell>
+                            <TableCell className="font-medium py-1 px-3 truncate" title={advertiser.ADVERTISER}>
+                              {advertiser.ADVERTISER}
+                            </TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "IMPRESSIONS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CLICKS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CTR")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "TRANSACTIONS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "REVENUE")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "SPEND")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "ROAS")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-1">
+                      No data available
                     </TableCell>
-                    <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-1">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )
-            ) : (
-              (paginatedData as any[]).length > 0 ? (
-                (paginatedData as any[]).map((row, index) => (
-                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
-                    <TableCell className="font-medium py-1 px-3 break-words" title={row["CAMPAIGN ORDER NAME"]}>
-                      {row["CAMPAIGN ORDER NAME"]}
-                    </TableCell>
-                    
-                    {view === "daily" && (
+                )
+              ) : view === "advertiser-by-day" ? (
+                (paginatedData as any[]).length > 0 ? (
+                  (paginatedData as any[]).map((row, index) => (
+                    <TableRow key={`${row.ADVERTISER}-${row.DATE}-${index}`} className="text-xs">
+                      <TableCell className="font-medium py-1 px-3 truncate" title={row.ADVERTISER}>
+                        {row.ADVERTISER}
+                      </TableCell>
                       <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
-                    )}
-                    
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
-                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-1">
+                      No data available
+                    </TableCell>
                   </TableRow>
-                ))
+                )
               ) : (
-                <TableRow>
-                  <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )
-            )}
-          </TableBody>
-        </Table>
+                (paginatedData as any[]).length > 0 ? (
+                  (paginatedData as any[]).map((row, index) => (
+                    <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
+                      <TableCell className="font-medium py-1 px-3 truncate" title={row["CAMPAIGN ORDER NAME"]}>
+                        {row["CAMPAIGN ORDER NAME"]}
+                      </TableCell>
+                      
+                      {view === "daily" && (
+                        <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
+                      )}
+                      
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
+                      <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
+                      No data available
+                    </TableCell>
+                  </TableRow>
+                )
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
       
       {/* Pagination */}
