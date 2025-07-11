@@ -55,6 +55,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
 
   // Extract agency from campaign name (simplified version)
   const extractAgencyFromCampaign = (campaignName: string) => {
+    console.log('Campaign name for agency extraction:', campaignName);
     const match = campaignName.match(/:\s*([A-Z]+):/);
     if (match) {
       const abbreviation = match[1];
@@ -72,21 +73,28 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         'WWX': 'Wunderworx',
         'NLMC': 'NLMC',
       };
-      return agencyMap[abbreviation] || abbreviation;
+      const result = agencyMap[abbreviation] || abbreviation;
+      console.log('Extracted agency:', result, 'from abbreviation:', abbreviation);
+      return result;
     }
+    console.log('No agency match found, returning Unknown Agency');
     return 'Unknown Agency';
   };
 
-  // Extract advertiser from campaign name (simplified version)
+  // Extract advertiser from campaign name (improved version)
   const extractAdvertiserFromCampaign = (campaignName: string) => {
+    console.log('Campaign name for advertiser extraction:', campaignName);
     // Extract the part after the second colon
     const parts = campaignName.split(':');
     if (parts.length >= 3) {
       const advertiserPart = parts[2].trim();
-      // Extract the advertiser name (before the first dash)
-      const advertiserMatch = advertiserPart.match(/^([^-]+)/);
-      return advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+      // Extract the advertiser name (before the first dash or underscore)
+      const advertiserMatch = advertiserPart.match(/^([^-_]+)/);
+      const result = advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+      console.log('Extracted advertiser:', result, 'from part:', advertiserPart);
+      return result;
     }
+    console.log('No advertiser match found, returning Unknown Advertiser');
     return 'Unknown Advertiser';
   };
 
@@ -204,13 +212,15 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         };
       });
     } else {
-      // Advertiser view - group by agency then advertiser
+      // Advertiser view - group by agency then advertiser (FIXED)
       const agencyGroups: Record<string, Record<string, any>> = {};
 
       filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         const agency = extractAgencyFromCampaign(campaignName);
         const advertiser = extractAdvertiserFromCampaign(campaignName);
+        
+        console.log('Processing row - Campaign:', campaignName, 'Agency:', agency, 'Advertiser:', advertiser);
         
         if (!agencyGroups[agency]) {
           agencyGroups[agency] = {};
@@ -235,6 +245,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         agencyGroups[agency][advertiser].SPEND += Number(row.SPEND) || 0;
       });
       
+      console.log('Agency groups structure:', agencyGroups);
+      
       // Convert to flat array with agency and advertiser info
       const result: any[] = [];
       Object.entries(agencyGroups).forEach(([agency, advertisers]) => {
@@ -255,6 +267,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         });
       });
       
+      console.log('Final result for advertiser view:', result);
       return result;
     }
   }, [filteredData, view]);
@@ -329,6 +342,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       groups[agency].push(row);
     });
     
+    console.log('Grouped by agency:', groups);
     return groups;
   }, [sortedData, view]);
 
@@ -617,14 +631,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       </div>
       
       <div className="w-full overflow-x-auto">
-        <Table className="w-full">
+        <Table className="w-full table-fixed">
           <TableHeader>
             <TableRow className="text-xs">
               {view === "advertiser" ? (
                 <>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3"
-                    style={{ width: '25%' }}
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
                     onClick={() => handleSort("AGENCY")}
                   >
                     Agency
@@ -634,8 +647,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   </TableHead>
                   
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3"
-                    style={{ width: '25%' }}
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
                     onClick={() => handleSort("ADVERTISER")}
                   >
                     Advertiser
@@ -647,8 +659,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               ) : view === "advertiser-by-day" ? (
                 <>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3"
-                    style={{ width: '25%' }}
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-1/4"
                     onClick={() => handleSort("ADVERTISER")}
                   >
                     Advertiser
@@ -658,8 +669,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                   </TableHead>
                   
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right"
-                    style={{ width: '10%' }}
+                    className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[10%]"
                     onClick={() => handleSort("DATE")}
                   >
                     Date
@@ -683,8 +693,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               
               {view === "daily" && (
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right"
-                  style={{ width: '10%' }}
+                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[10%]"
                   onClick={() => handleSort("DATE")}
                 >
                   Date
@@ -706,8 +715,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: view === "advertiser" || view === "advertiser-by-day" ? '8%' : '8%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
                 onClick={() => handleSort("CLICKS")}
               >
                 Clicks
@@ -717,8 +725,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: '8%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
                 onClick={() => handleSort("CTR")}
               >
                 CTR
@@ -728,8 +735,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: '8%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
                 onClick={() => handleSort("TRANSACTIONS")}
               >
                 Transactions
@@ -739,8 +745,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: '10%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[10%]"
                 onClick={() => handleSort("REVENUE")}
               >
                 Revenue
@@ -750,8 +755,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: '10%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[10%]"
                 onClick={() => handleSort("SPEND")}
               >
                 Spend
@@ -761,8 +765,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               </TableHead>
               
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3"
-                style={{ width: '8%' }}
+                className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[8%]"
                 onClick={() => handleSort("ROAS")}
               >
                 ROAS
@@ -793,21 +796,24 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                       </TableRow>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      {advertisers.map((advertiser, index) => (
-                        <TableRow key={`${agency}-${advertiser.ADVERTISER}-${index}`} className="text-xs">
-                          <TableCell className="py-1 px-3 pl-8 text-muted-foreground overflow-hidden text-ellipsis">{agency}</TableCell>
-                          <TableCell className="font-medium py-1 px-3 overflow-hidden text-ellipsis" title={advertiser.ADVERTISER}>
-                            {advertiser.ADVERTISER}
-                          </TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "IMPRESSIONS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CLICKS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "CTR")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "TRANSACTIONS")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "REVENUE")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "SPEND")}</TableCell>
-                          <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiser, "ROAS")}</TableCell>
-                        </TableRow>
-                      ))}
+                      {advertisers.map((advertiserRow, index) => {
+                        console.log('Rendering advertiser row:', advertiserRow);
+                        return (
+                          <TableRow key={`${agency}-${advertiserRow.ADVERTISER}-${index}`} className="text-xs">
+                            <TableCell className="py-1 px-3 pl-8 text-muted-foreground truncate">{advertiserRow.AGENCY}</TableCell>
+                            <TableCell className="font-medium py-1 px-3 truncate" title={advertiserRow.ADVERTISER}>
+                              {advertiserRow.ADVERTISER}
+                            </TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "IMPRESSIONS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CLICKS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "CTR")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "TRANSACTIONS")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "REVENUE")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "SPEND")}</TableCell>
+                            <TableCell className="text-right py-1 px-3">{formatColumnValue(advertiserRow, "ROAS")}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </CollapsibleContent>
                   </Collapsible>
                 ))
@@ -822,7 +828,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               (paginatedData as any[]).length > 0 ? (
                 (paginatedData as any[]).map((row, index) => (
                   <TableRow key={`${row.ADVERTISER}-${row.DATE}-${index}`} className="text-xs">
-                    <TableCell className="font-medium py-1 px-3 overflow-hidden text-ellipsis" title={row.ADVERTISER}>
+                    <TableCell className="font-medium py-1 px-3 truncate" title={row.ADVERTISER}>
                       {row.ADVERTISER}
                     </TableCell>
                     <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
@@ -846,7 +852,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               (paginatedData as any[]).length > 0 ? (
                 (paginatedData as any[]).map((row, index) => (
                   <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
-                    <TableCell className="font-medium py-1 px-3 overflow-hidden text-ellipsis" title={row["CAMPAIGN ORDER NAME"]}>
+                    <TableCell className="font-medium py-1 px-3 truncate" title={row["CAMPAIGN ORDER NAME"]}>
                       {row["CAMPAIGN ORDER NAME"]}
                     </TableCell>
                     
