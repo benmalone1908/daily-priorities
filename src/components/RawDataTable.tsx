@@ -26,7 +26,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { normalizeDate } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
@@ -51,27 +51,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     });
   }, [data, isTestCampaign]);
 
-  // Extract agency from campaign name (improved version)
+  // Extract agency from campaign name using centralized mapping
   const extractAgencyFromCampaign = (campaignName: string) => {
     console.log('Campaign name for agency extraction:', campaignName);
-    const match = campaignName.match(/:\s*([A-Z]+):/);
+    const match = campaignName.match(/:\s*([A-Z0-9]+):/);
     if (match) {
       const abbreviation = match[1];
-      // Map abbreviations to full names - Updated to include OG and SM rebrand
-      const agencyMap: Record<string, string> = {
-        'MJ': 'MediaJel',
-        '2RS': 'Two Rivers',
-        'SM': 'Orangellow',
-        'NP': 'Noble People',
-        'OG': 'Orangellow',
-        'TF': 'Tact Firm',
-        'TRN': 'Terrayn',
-        'BLO': 'Be Local One',
-        'HRB': 'Herb.co',
-        'WWX': 'Wunderworx',
-        'NLMC': 'NLMC',
-      };
-      const result = agencyMap[abbreviation] || abbreviation;
+      const result = AGENCY_MAPPING[abbreviation] || 'Unknown Agency';
       console.log('Extracted agency:', result, 'from abbreviation:', abbreviation);
       return result;
     }
