@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -54,7 +55,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   // Extract agency from campaign name using centralized mapping
   const extractAgencyFromCampaign = (campaignName: string) => {
     console.log('Campaign name for agency extraction:', campaignName);
-    const match = campaignName.match(/:\s*([A-Z0-9]+):/);
+    // Updated regex to handle special characters like & in agency abbreviations
+    const match = campaignName.match(/:\s*([A-Z0-9&]+):/);
     if (match) {
       const abbreviation = match[1];
       const result = AGENCY_MAPPING[abbreviation] || 'Unknown Agency';
