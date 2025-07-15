@@ -7,6 +7,7 @@ export const AGENCY_MAPPING: Record<string, string> = {
   '6D': '6 Degrees Media',
   'BLO': 'Be Local One',
   'CB': 'Crystal Bol',
+  'DJ': 'DispoJoy',
   'FLD': 'Fieldtest',
   'HD': 'Highday',
   'HG': 'Happy Greens',
