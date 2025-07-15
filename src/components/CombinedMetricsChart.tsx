@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -175,6 +174,25 @@ const CombinedMetricsChart = ({
     }
   };
 
+  // Custom tooltip formatter function
+  const formatTooltipValue = (value: any, name: string) => {
+    const numValue = Number(value);
+    if (isNaN(numValue)) return [value, name];
+    
+    switch (name) {
+      case "IMPRESSIONS":
+        return [numValue.toLocaleString(), "Impressions"];
+      case "CLICKS":
+        return [numValue.toLocaleString(), "Clicks"];
+      case "TRANSACTIONS":
+        return [numValue.toLocaleString(), "Transactions"];
+      case "REVENUE":
+        return [`$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue"];
+      default:
+        return [numValue.toLocaleString(), name];
+    }
+  };
+
   // Effect to sync with initialTab prop changes
   useEffect(() => {
     if (initialTab !== activeTab) {
@@ -252,11 +270,7 @@ const CombinedMetricsChart = ({
           <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatNumber(value)} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
-            formatter={(value, name) => {
-              if (name === "IMPRESSIONS") return [formatNumber(value as number), "Impressions"];
-              if (name === "CLICKS") return [formatNumber(value as number), "Clicks"];
-              return [value, name];
-            }}
+            formatter={formatTooltipValue}
             contentStyle={{ 
               backgroundColor: "rgba(255, 255, 255, 0.95)", 
               border: "1px solid #eee",
@@ -294,11 +308,7 @@ const CombinedMetricsChart = ({
           <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `$${formatNumber(value)}`} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
-            formatter={(value, name) => {
-              if (name === "TRANSACTIONS") return [formatNumber(value as number), "Transactions"];
-              if (name === "REVENUE") return [`$${formatNumber(value as number)}`, "Revenue"];
-              return [value, name];
-            }}
+            formatter={formatTooltipValue}
             contentStyle={{ 
               backgroundColor: "rgba(255, 255, 255, 0.95)", 
               border: "1px solid #eee",
@@ -341,11 +351,7 @@ const CombinedMetricsChart = ({
           <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => lineFormatter(value)} tick={{ fontSize: 10 }} />
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <Tooltip 
-            formatter={(value, name) => {
-              if (name === customBarMetric) return [barFormatter(value as number), barLabel];
-              if (name === customLineMetric) return [lineFormatter(value as number), lineLabel];
-              return [value, name];
-            }}
+            formatter={formatTooltipValue}
             contentStyle={{ 
               backgroundColor: "rgba(255, 255, 255, 0.95)", 
               border: "1px solid #eee",
