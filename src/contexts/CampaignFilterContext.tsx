@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define the agency mapping
@@ -5,6 +6,7 @@ export const AGENCY_MAPPING: Record<string, string> = {
   '2RS': 'Two Rivers',
   '6D': '6 Degrees Media',
   'BLO': 'Be Local One',
+  'CB': 'Crystal Bol',
   'FLD': 'Fieldtest',
   'HD': 'Highday',
   'HG': 'Happy Greens',
@@ -46,9 +48,21 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     if (!campaignName) return false;
     
     const lowerCaseName = campaignName.toLowerCase();
-    return lowerCaseName.includes('test') || 
-           lowerCaseName.includes('demo') || 
-           lowerCaseName.includes('draft');
+    
+    // Check for test/demo/draft keywords
+    if (lowerCaseName.includes('test') || 
+        lowerCaseName.includes('demo') || 
+        lowerCaseName.includes('draft')) {
+      return true;
+    }
+    
+    // Check for TST agency abbreviation
+    const { abbreviation } = extractAgencyInfo(campaignName);
+    if (abbreviation === 'TST') {
+      return true;
+    }
+    
+    return false;
   };
 
   // Helper function to extract agency information from campaign name
@@ -151,8 +165,8 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       return extracted;
     }
     
-    // Try with the expanded agency prefixes regex - Updated to include OG
-    const agencyPrefixes = "SM|2RS|6D|BLO|FLD|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TF|TRN|W&T|WWX";
+    // Try with the expanded agency prefixes regex - Updated to include CB
+    const agencyPrefixes = "SM|2RS|6D|BLO|CB|FLD|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TF|TRN|W&T|WWX";
     const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
     
     const match = campaignName.match(regex);
