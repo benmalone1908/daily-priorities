@@ -179,15 +179,22 @@ const CombinedMetricsChart = ({
     const numValue = Number(value);
     if (isNaN(numValue)) return [value, name];
     
+    // Handle revenue formatting with dollar signs and cents
+    if (name === "REVENUE" || name === "Revenue" || name.toLowerCase().includes("revenue")) {
+      return [`$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue"];
+    }
+    
+    // Handle other metrics with comma formatting
     switch (name) {
       case "IMPRESSIONS":
+      case "Impressions":
         return [numValue.toLocaleString(), "Impressions"];
       case "CLICKS":
+      case "Clicks":
         return [numValue.toLocaleString(), "Clicks"];
       case "TRANSACTIONS":
+      case "Transactions":
         return [numValue.toLocaleString(), "Transactions"];
-      case "REVENUE":
-        return [`$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue"];
       default:
         return [numValue.toLocaleString(), name];
     }
