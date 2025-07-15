@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -27,7 +26,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { normalizeDate } from "@/lib/utils";
-import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
@@ -35,7 +34,7 @@ interface RawDataTableProps {
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
-  const { isTestCampaign } = useCampaignFilter();
+  const { isTestCampaign, extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
   const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -51,46 +50,6 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       return !isTestCampaign(campaignName);
     });
   }, [data, isTestCampaign]);
-
-  // Extract agency from campaign name using centralized mapping
-  const extractAgencyFromCampaign = (campaignName: string) => {
-    console.log('Campaign name for agency extraction:', campaignName);
-    // Updated regex to handle special characters like & in agency abbreviations
-    const match = campaignName.match(/:\s*([A-Z0-9&]+):/);
-    if (match) {
-      const abbreviation = match[1];
-      const result = AGENCY_MAPPING[abbreviation] || 'Unknown Agency';
-      console.log('Extracted agency:', result, 'from abbreviation:', abbreviation);
-      return result;
-    }
-    console.log('No agency match found, returning Unknown Agency');
-    return 'Unknown Agency';
-  };
-
-  // Extract advertiser from campaign name (improved version)
-  const extractAdvertiserFromCampaign = (campaignName: string) => {
-    console.log('Campaign name for advertiser extraction:', campaignName);
-    // Extract the part after the second colon
-    const parts = campaignName.split(':');
-    if (parts.length >= 3) {
-      let advertiserPart = parts[2].trim();
-      
-      // Remove common prefixes and suffixes
-      advertiserPart = advertiserPart.replace(/^(PPC|SEM|SEO|Social|Display|Video|Search|Shopping)\s*[-_]\s*/i, '');
-      
-      // Extract the advertiser name (before the first dash, underscore, or common separators)
-      const advertiserMatch = advertiserPart.match(/^([^-_|]+)/);
-      let result = advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
-      
-      // Clean up common suffixes
-      result = result.replace(/\s+(Campaign|Campaigns|Ads?|Marketing|Promo|Promotion)$/i, '');
-      
-      console.log('Extracted advertiser:', result, 'from part:', advertiserPart);
-      return result;
-    }
-    console.log('No advertiser match found, returning Unknown Advertiser');
-    return 'Unknown Advertiser';
-  };
 
   // Process data based on view type
   const processedData = useMemo(() => {
@@ -161,20 +120,31 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         };
       });
     } else if (view === "advertiser-by-day") {
-      // Advertiser by Day view - group by advertiser, agency, and date
+      // Advertiser by Day view - group by advertiser, agency, and date using centralized functions
       const advertiserDateGroups: Record<string, any> = {};
 
       filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
-        const advertiser = extractAdvertiserFromCampaign(campaignName);
-        const agency = extractAgencyFromCampaign(campaignName);
+        const advertiser = extractAdvertiserName(campaignName);
+        const agencyInfo = extractAgencyInfo(campaignName);
+        const agency = agencyInfo.agency;
         const date = row.DATE;
         const key = `${advertiser}|${agency}|${date}`;
         
+        // Add console logging to identify problematic campaigns
+        if (!advertiser || advertiser === "" || !agency || agency === "") {
+          console.log('Advertiser-by-day: Campaign with missing info:', {
+            campaignName,
+            advertiser,
+            agency: agencyInfo.agency,
+            abbreviation: agencyInfo.abbreviation
+          });
+        }
+        
         if (!advertiserDateGroups[key]) {
           advertiserDateGroups[key] = {
-            "ADVERTISER": advertiser,
-            "AGENCY": agency,
+            "ADVERTISER": advertiser || "Unknown Advertiser",
+            "AGENCY": agency || "Unknown Agency",
             "DATE": date,
             IMPRESSIONS: 0,
             CLICKS: 0,
@@ -208,21 +178,30 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         };
       });
     } else {
-      // Advertiser view - group by advertiser, create flat list
+      // Advertiser view - group by advertiser using centralized functions
       const advertiserGroups: Record<string, any> = {};
 
       filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
-        const agency = extractAgencyFromCampaign(campaignName);
-        const advertiser = extractAdvertiserFromCampaign(campaignName);
+        const advertiser = extractAdvertiserName(campaignName);
+        const agencyInfo = extractAgencyInfo(campaignName);
+        const agency = agencyInfo.agency;
         const key = `${advertiser}|${agency}`;
         
-        console.log('Processing row - Campaign:', campaignName, 'Agency:', agency, 'Advertiser:', advertiser);
+        // Add console logging to identify problematic campaigns
+        if (!advertiser || advertiser === "" || !agency || agency === "") {
+          console.log('Advertiser view: Campaign with missing info:', {
+            campaignName,
+            advertiser,
+            agency: agencyInfo.agency,
+            abbreviation: agencyInfo.abbreviation
+          });
+        }
         
         if (!advertiserGroups[key]) {
           advertiserGroups[key] = {
-            "ADVERTISER": advertiser,
-            "AGENCY": agency,
+            "ADVERTISER": advertiser || "Unknown Advertiser",
+            "AGENCY": agency || "Unknown Agency",
             IMPRESSIONS: 0,
             CLICKS: 0,
             TRANSACTIONS: 0,
@@ -237,8 +216,6 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         advertiserGroups[key].REVENUE += Number(row.REVENUE) || 0;
         advertiserGroups[key].SPEND += Number(row.SPEND) || 0;
       });
-      
-      console.log('Advertiser groups structure:', advertiserGroups);
       
       // Convert to flat array with calculated CTR and ROAS
       const result = Object.values(advertiserGroups).map(advertiser => {
@@ -257,10 +234,9 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         };
       });
       
-      console.log('Final result for advertiser view:', result);
       return result;
     }
-  }, [filteredData, view]);
+  }, [filteredData, view, extractAdvertiserName, extractAgencyInfo]);
   
   // Sort function with primary and secondary sorting
   const sortedData = useMemo(() => {
