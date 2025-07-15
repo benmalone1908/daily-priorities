@@ -165,7 +165,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       return extracted;
     }
     
-    // Try with the expanded agency prefixes regex - Updated to include CB
+    // Try with the expanded agency prefixes regex - Updated to include 6D
     const agencyPrefixes = "SM|2RS|6D|BLO|CB|FLD|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TF|TRN|W&T|WWX";
     const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
     
