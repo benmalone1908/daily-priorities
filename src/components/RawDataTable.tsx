@@ -25,17 +25,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { DateRange } from "react-day-picker";
-import DateRangePicker from "@/components/DateRangePicker";
 import { normalizeDate } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
   useGlobalFilters?: boolean;
-  primaryDateRange?: DateRange;
+  primaryDateRange?: any; // Temporarily use any instead of DateRange
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawDataTableProps) => {
@@ -46,7 +42,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [enableComparison, setEnableComparison] = useState(false);
-  const [comparisonDateRange, setComparisonDateRange] = useState<DateRange | undefined>(undefined);
+  const [comparisonDateRange, setComparisonDateRange] = useState<any>(undefined); // Temporarily use any
   
   // Filter out 'Totals' rows and test campaigns
   const filteredData = useMemo(() => {
@@ -59,7 +55,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
   }, [data, isTestCampaign]);
 
   // Helper function to filter data by date range
-  const filterDataByDateRange = (data: any[], dateRange?: DateRange) => {
+  const filterDataByDateRange = (data: any[], dateRange?: any) => {
     if (!dateRange?.from || !dateRange?.to) return data;
     
     // Convert dates to YYYY-MM-DD format to match the data
@@ -740,41 +736,35 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         </div>
       </div>
 
-      {/* Date Comparison Controls - Only show for aggregate and advertiser views */}
-      {(view === "aggregate" || view === "advertiser") && (
+      {/* Date Comparison Controls - Temporarily disabled to fix React error */}
+      {false && (view === "aggregate" || view === "advertiser") && (
         <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
           <div className="flex items-center space-x-2">
-            <Switch
+            <input
+              type="checkbox"
               id="enable-comparison"
               checked={enableComparison}
-              onCheckedChange={(checked) => {
-                setEnableComparison(checked);
-                if (!checked) {
+              onChange={(e) => {
+                setEnableComparison(e.target.checked);
+                if (!e.target.checked) {
                   setComparisonDateRange(undefined);
                 }
-                setPage(1); // Reset to first page when enabling/disabling comparison
+                setPage(1);
               }}
             />
-            <Label htmlFor="enable-comparison" className="text-sm font-medium">
+            <label htmlFor="enable-comparison" className="text-sm font-medium">
               Compare date ranges
-            </Label>
+            </label>
           </div>
           
           {enableComparison && (
             <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">
+              <label className="text-sm text-muted-foreground">
                 Select comparison date range:
-              </Label>
-              <DateRangePicker
-                dateRange={comparisonDateRange}
-                onDateRangeChange={setComparisonDateRange}
-                className="max-w-md"
-              />
-              {comparisonDateRange?.from && comparisonDateRange?.to && (
-                <p className="text-xs text-muted-foreground">
-                  Comparing primary period vs {comparisonDateRange.from.toLocaleDateString()} - {comparisonDateRange.to.toLocaleDateString()}
-                </p>
-              )}
+              </label>
+              <div className="text-sm text-muted-foreground">
+                Date picker temporarily disabled
+              </div>
             </div>
           )}
         </div>
