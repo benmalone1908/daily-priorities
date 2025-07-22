@@ -62,13 +62,21 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
   const filterDataByDateRange = (data: any[], dateRange?: DateRange) => {
     if (!dateRange?.from || !dateRange?.to) return data;
     
+    // Convert dates to YYYY-MM-DD format to match the data
     const fromStr = dateRange.from.toISOString().split('T')[0];
     const toStr = dateRange.to.toISOString().split('T')[0];
     
-    return data.filter(row => {
-      const rowDate = row.DATE;
-      return rowDate >= fromStr && rowDate <= toStr;
+    console.log('Filtering data with date range:', { fromStr, toStr });
+    console.log('Sample data dates:', data.slice(0, 3).map(row => ({ date: row.DATE, campaign: row["CAMPAIGN ORDER NAME"] })));
+    
+    const filtered = data.filter(row => {
+      const rowDate = normalizeDate(row.DATE); // Use the existing normalizeDate function
+      const result = rowDate >= fromStr && rowDate <= toStr;
+      return result;
     });
+    
+    console.log(`Filtered ${filtered.length} rows from ${data.length} total rows`);
+    return filtered;
   };
 
   // Helper function to process data for a specific date range
