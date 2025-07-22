@@ -1,5 +1,4 @@
 
-import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -11,10 +10,4 @@ window.addEventListener('error', (event) => {
 
 // Enable React strict mode for better debugging
 const root = createRoot(document.getElementById("root")!);
-console.log('Main.tsx: React available before render:', !!React);
-console.log('Main.tsx: App component:', App);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+root.render(<App />);

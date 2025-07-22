@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -8,8 +9,6 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { FileDown } from "lucide-react";
 import { 
   Pagination, 
@@ -28,25 +27,20 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { normalizeDate } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
-import DateRangePicker from "@/components/DateRangePicker";
-import { DateRange } from "react-day-picker";
+import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
   useGlobalFilters?: boolean;
-  primaryDateRange?: DateRange;
 }
 
-const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawDataTableProps) => {
-  const { isTestCampaign, extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
+const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
+  const { isTestCampaign } = useCampaignFilter();
   const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [enableComparison, setEnableComparison] = useState(false);
-  const [comparisonDateRange, setComparisonDateRange] = useState<DateRange | undefined>(undefined);
   
   // Filter out 'Totals' rows and test campaigns
   const filteredData = useMemo(() => {
@@ -58,32 +52,51 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
     });
   }, [data, isTestCampaign]);
 
-  // Helper function to filter data by date range
-  const filterDataByDateRange = (data: any[], dateRange?: any) => {
-    if (!dateRange?.from || !dateRange?.to) return data;
-    
-    // Convert dates to YYYY-MM-DD format to match the data
-    const fromStr = dateRange.from.toISOString().split('T')[0];
-    const toStr = dateRange.to.toISOString().split('T')[0];
-    
-    console.log('Filtering data with date range:', { fromStr, toStr });
-    console.log('Sample data dates:', data.slice(0, 3).map(row => ({ date: row.DATE, campaign: row["CAMPAIGN ORDER NAME"] })));
-    
-    const filtered = data.filter(row => {
-      const rowDate = normalizeDate(row.DATE); // Use the existing normalizeDate function
-      const result = rowDate >= fromStr && rowDate <= toStr;
+  // Extract agency from campaign name using centralized mapping
+  const extractAgencyFromCampaign = (campaignName: string) => {
+    console.log('Campaign name for agency extraction:', campaignName);
+    // Updated regex to handle special characters like & in agency abbreviations
+    const match = campaignName.match(/:\s*([A-Z0-9&]+):/);
+    if (match) {
+      const abbreviation = match[1];
+      const result = AGENCY_MAPPING[abbreviation] || 'Unknown Agency';
+      console.log('Extracted agency:', result, 'from abbreviation:', abbreviation);
       return result;
-    });
-    
-    console.log(`Filtered ${filtered.length} rows from ${data.length} total rows`);
-    return filtered;
+    }
+    console.log('No agency match found, returning Unknown Agency');
+    return 'Unknown Agency';
   };
 
-  // Helper function to process data for a specific date range
-  const processDataForDateRange = (data: any[], suffix = '') => {
+  // Extract advertiser from campaign name (improved version)
+  const extractAdvertiserFromCampaign = (campaignName: string) => {
+    console.log('Campaign name for advertiser extraction:', campaignName);
+    // Extract the part after the second colon
+    const parts = campaignName.split(':');
+    if (parts.length >= 3) {
+      let advertiserPart = parts[2].trim();
+      
+      // Remove common prefixes and suffixes
+      advertiserPart = advertiserPart.replace(/^(PPC|SEM|SEO|Social|Display|Video|Search|Shopping)\s*[-_]\s*/i, '');
+      
+      // Extract the advertiser name (before the first dash, underscore, or common separators)
+      const advertiserMatch = advertiserPart.match(/^([^-_|]+)/);
+      let result = advertiserMatch ? advertiserMatch[1].trim() : advertiserPart;
+      
+      // Clean up common suffixes
+      result = result.replace(/\s+(Campaign|Campaigns|Ads?|Marketing|Promo|Promotion)$/i, '');
+      
+      console.log('Extracted advertiser:', result, 'from part:', advertiserPart);
+      return result;
+    }
+    console.log('No advertiser match found, returning Unknown Advertiser');
+    return 'Unknown Advertiser';
+  };
+
+  // Process data based on view type
+  const processedData = useMemo(() => {
     if (view === "daily") {
       // In daily view, calculate CTR and ROAS for each row based on that day's metrics
-      return data.map(row => {
+      return filteredData.map(row => {
         const impressions = Number(row.IMPRESSIONS) || 0;
         const clicks = Number(row.CLICKS) || 0;
         const revenue = Number(row.REVENUE) || 0;
@@ -110,7 +123,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
       // Aggregate view - group by campaign
       const campaignGroups: Record<string, any> = {};
 
-      data.forEach(row => {
+      filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         
         if (!campaignGroups[campaignName]) {
@@ -120,8 +133,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0,
-            PERIOD: suffix || 'Current'
+            SPEND: 0
           };
         }
         
@@ -149,38 +161,26 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         };
       });
     } else if (view === "advertiser-by-day") {
-      // Advertiser by Day view - group by advertiser, agency, and date using centralized functions
+      // Advertiser by Day view - group by advertiser, agency, and date
       const advertiserDateGroups: Record<string, any> = {};
 
-      data.forEach(row => {
+      filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
-        const advertiser = extractAdvertiserName(campaignName);
-        const agencyInfo = extractAgencyInfo(campaignName);
-        const agency = agencyInfo.agency;
+        const advertiser = extractAdvertiserFromCampaign(campaignName);
+        const agency = extractAgencyFromCampaign(campaignName);
         const date = row.DATE;
         const key = `${advertiser}|${agency}|${date}`;
         
-        // Add console logging to identify problematic campaigns
-        if (!advertiser || advertiser === "" || !agency || agency === "") {
-          console.log('Advertiser-by-day: Campaign with missing info:', {
-            campaignName,
-            advertiser,
-            agency: agencyInfo.agency,
-            abbreviation: agencyInfo.abbreviation
-          });
-        }
-        
         if (!advertiserDateGroups[key]) {
           advertiserDateGroups[key] = {
-            "ADVERTISER": advertiser || "Unknown Advertiser",
-            "AGENCY": agency || "Unknown Agency",
+            "ADVERTISER": advertiser,
+            "AGENCY": agency,
             "DATE": date,
             IMPRESSIONS: 0,
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0,
-            PERIOD: suffix || 'Current'
+            SPEND: 0
           };
         }
         
@@ -208,36 +208,26 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         };
       });
     } else {
-      // Advertiser view - group by advertiser using centralized functions
+      // Advertiser view - group by advertiser, create flat list
       const advertiserGroups: Record<string, any> = {};
 
-      data.forEach(row => {
+      filteredData.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
-        const advertiser = extractAdvertiserName(campaignName);
-        const agencyInfo = extractAgencyInfo(campaignName);
-        const agency = agencyInfo.agency;
+        const agency = extractAgencyFromCampaign(campaignName);
+        const advertiser = extractAdvertiserFromCampaign(campaignName);
         const key = `${advertiser}|${agency}`;
         
-        // Add console logging to identify problematic campaigns
-        if (!advertiser || advertiser === "" || !agency || agency === "") {
-          console.log('Advertiser view: Campaign with missing info:', {
-            campaignName,
-            advertiser,
-            agency: agencyInfo.agency,
-            abbreviation: agencyInfo.abbreviation
-          });
-        }
+        console.log('Processing row - Campaign:', campaignName, 'Agency:', agency, 'Advertiser:', advertiser);
         
         if (!advertiserGroups[key]) {
           advertiserGroups[key] = {
-            "ADVERTISER": advertiser || "Unknown Advertiser",
-            "AGENCY": agency || "Unknown Agency",
+            "ADVERTISER": advertiser,
+            "AGENCY": agency,
             IMPRESSIONS: 0,
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0,
-            PERIOD: suffix || 'Current'
+            SPEND: 0
           };
         }
         
@@ -247,6 +237,8 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         advertiserGroups[key].REVENUE += Number(row.REVENUE) || 0;
         advertiserGroups[key].SPEND += Number(row.SPEND) || 0;
       });
+      
+      console.log('Advertiser groups structure:', advertiserGroups);
       
       // Convert to flat array with calculated CTR and ROAS
       const result = Object.values(advertiserGroups).map(advertiser => {
@@ -265,159 +257,10 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         };
       });
       
+      console.log('Final result for advertiser view:', result);
       return result;
     }
-  };
-
-  // Process data based on view type and comparison settings
-  const processedData = useMemo(() => {
-    // For daily view, comparison doesn't make sense, so just return regular data
-    if (view === "daily") {
-      return processDataForDateRange(filteredData);
-    }
-
-    // For aggregate and advertiser views, handle comparison if enabled
-    if (enableComparison && comparisonDateRange?.from && comparisonDateRange?.to && (view === "aggregate" || view === "advertiser")) {
-      // Filter data for primary period (using primaryDateRange if available, otherwise all data)
-      const primaryData = primaryDateRange ? filterDataByDateRange(filteredData, primaryDateRange) : filteredData;
-      const comparisonData = filterDataByDateRange(filteredData, comparisonDateRange);
-      
-      // Process both datasets
-      const primaryProcessed = processDataForDateRange(primaryData, 'Primary');
-      const comparisonProcessed = processDataForDateRange(comparisonData, 'Comparison');
-      
-      // Combine both datasets - each entity will appear twice
-      const combined = [];
-      
-      if (view === "aggregate") {
-        // For campaigns, match by campaign name
-        const campaignMap = new Map();
-        
-        primaryProcessed.forEach(row => {
-          const key = row["CAMPAIGN ORDER NAME"];
-          if (!campaignMap.has(key)) {
-            campaignMap.set(key, []);
-          }
-          campaignMap.get(key).push({ ...row, PERIOD: 'Primary' });
-        });
-        
-        comparisonProcessed.forEach(row => {
-          const key = row["CAMPAIGN ORDER NAME"];
-          if (!campaignMap.has(key)) {
-            campaignMap.set(key, []);
-          }
-          campaignMap.get(key).push({ ...row, PERIOD: 'Comparison' });
-        });
-        
-        // Flatten the map and ensure both periods exist for each campaign
-        campaignMap.forEach((periods, campaignName) => {
-          const primaryPeriod = periods.find(p => p.PERIOD === 'Primary');
-          const comparisonPeriod = periods.find(p => p.PERIOD === 'Comparison');
-          
-          if (primaryPeriod) {
-            combined.push(primaryPeriod);
-          }
-          if (comparisonPeriod) {
-            combined.push(comparisonPeriod);
-          }
-          
-          // If only one period exists, create a zero-value row for the missing period
-          if (primaryPeriod && !comparisonPeriod) {
-            combined.push({
-              "CAMPAIGN ORDER NAME": campaignName,
-              IMPRESSIONS: 0,
-              CLICKS: 0,
-              TRANSACTIONS: 0,
-              REVENUE: 0,
-              SPEND: 0,
-              CTR: 0,
-              ROAS: 0,
-              PERIOD: 'Comparison'
-            });
-          } else if (comparisonPeriod && !primaryPeriod) {
-            combined.push({
-              "CAMPAIGN ORDER NAME": campaignName,
-              IMPRESSIONS: 0,
-              CLICKS: 0,
-              TRANSACTIONS: 0,
-              REVENUE: 0,
-              SPEND: 0,
-              CTR: 0,
-              ROAS: 0,
-              PERIOD: 'Primary'
-            });
-          }
-        });
-      } else if (view === "advertiser") {
-        // For advertisers, match by advertiser + agency
-        const advertiserMap = new Map();
-        
-        primaryProcessed.forEach(row => {
-          const key = `${row.ADVERTISER}|${row.AGENCY}`;
-          if (!advertiserMap.has(key)) {
-            advertiserMap.set(key, []);
-          }
-          advertiserMap.get(key).push({ ...row, PERIOD: 'Primary' });
-        });
-        
-        comparisonProcessed.forEach(row => {
-          const key = `${row.ADVERTISER}|${row.AGENCY}`;
-          if (!advertiserMap.has(key)) {
-            advertiserMap.set(key, []);
-          }
-          advertiserMap.get(key).push({ ...row, PERIOD: 'Comparison' });
-        });
-        
-        // Flatten the map and ensure both periods exist for each advertiser
-        advertiserMap.forEach((periods, key) => {
-          const [advertiser, agency] = key.split('|');
-          const primaryPeriod = periods.find(p => p.PERIOD === 'Primary');
-          const comparisonPeriod = periods.find(p => p.PERIOD === 'Comparison');
-          
-          if (primaryPeriod) {
-            combined.push(primaryPeriod);
-          }
-          if (comparisonPeriod) {
-            combined.push(comparisonPeriod);
-          }
-          
-          // If only one period exists, create a zero-value row for the missing period
-          if (primaryPeriod && !comparisonPeriod) {
-            combined.push({
-              ADVERTISER: advertiser,
-              AGENCY: agency,
-              IMPRESSIONS: 0,
-              CLICKS: 0,
-              TRANSACTIONS: 0,
-              REVENUE: 0,
-              SPEND: 0,
-              CTR: 0,
-              ROAS: 0,
-              PERIOD: 'Comparison'
-            });
-          } else if (comparisonPeriod && !primaryPeriod) {
-            combined.push({
-              ADVERTISER: advertiser,
-              AGENCY: agency,
-              IMPRESSIONS: 0,
-              CLICKS: 0,
-              TRANSACTIONS: 0,
-              REVENUE: 0,
-              SPEND: 0,
-              CTR: 0,
-              ROAS: 0,
-              PERIOD: 'Primary'
-            });
-          }
-        });
-      }
-      
-      return combined;
-    } else {
-      // No comparison, return regular processed data
-      return processDataForDateRange(filteredData);
-    }
-  }, [filteredData, view, extractAdvertiserName, extractAgencyInfo, enableComparison, comparisonDateRange, primaryDateRange]);
+  }, [filteredData, view]);
   
   // Sort function with primary and secondary sorting
   const sortedData = useMemo(() => {
@@ -527,16 +370,12 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
       if (view === 'daily') {
         columns = ['CAMPAIGN ORDER NAME', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser') {
-        columns = ['ADVERTISER', 'AGENCY'];
-        if (enableComparison) columns.push('PERIOD');
-        columns.push(...['IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS']);
+        columns = ['ADVERTISER', 'AGENCY', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser-by-day') {
         columns = ['ADVERTISER', 'AGENCY', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else {
         // aggregate view
-        columns = ['CAMPAIGN ORDER NAME'];
-        if (enableComparison) columns.push('PERIOD');
-        columns.push(...['IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS']);
+        columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       }
       
       // Generate CSV header row
@@ -739,40 +578,6 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
           </Select>
         </div>
       </div>
-
-      {/* Date Comparison Controls */}
-      {(view === "aggregate" || view === "advertiser") && (
-        <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="enable-comparison"
-              checked={enableComparison}
-              onCheckedChange={(checked) => {
-                setEnableComparison(checked);
-                if (!checked) {
-                  setComparisonDateRange(undefined);
-                }
-                setPage(1);
-              }}
-            />
-            <Label htmlFor="enable-comparison" className="text-sm font-medium">
-              Compare date ranges
-            </Label>
-          </div>
-          
-          {enableComparison && (
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
-                Select comparison date range:
-              </label>
-              <DateRangePicker
-                dateRange={comparisonDateRange}
-                onDateRangeChange={setComparisonDateRange}
-              />
-            </div>
-          )}
-        </div>
-      )}
       
       <div className="w-full overflow-x-auto">
         <Table className="w-full table-fixed">
@@ -852,18 +657,6 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
                 >
                   Date
                   {sortColumn === "DATE" && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </TableHead>
-              )}
-              
-              {enableComparison && (view === "aggregate" || view === "advertiser") && (
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-center w-[8%]"
-                  onClick={() => handleSort("PERIOD")}
-                >
-                  Period
-                  {sortColumn === "PERIOD" && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </TableHead>
@@ -951,20 +744,13 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
             {view === "advertiser" ? (
               paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
-                  <TableRow key={`${row.ADVERTISER}-${row.AGENCY}-${row.PERIOD || 'current'}-${index}`} className="text-xs">
+                  <TableRow key={`${row.ADVERTISER}-${row.AGENCY}-${index}`} className="text-xs">
                     <TableCell className="font-medium py-1 px-3 truncate" title={row.ADVERTISER}>
                       {row.ADVERTISER}
                     </TableCell>
                     <TableCell className="py-1 px-3 truncate" title={row.AGENCY}>
                       {row.AGENCY}
                     </TableCell>
-                    {enableComparison && (
-                      <TableCell className="text-center py-1 px-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${row.PERIOD === 'Primary' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
-                          {row.PERIOD || 'Current'}
-                        </span>
-                      </TableCell>
-                    )}
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
@@ -976,7 +762,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={enableComparison ? 10 : 9} className="text-center py-1">
+                  <TableCell colSpan={9} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
@@ -1011,21 +797,13 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
             ) : (
               paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
-                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.PERIOD || 'current'}-${row.DATE || index}`} className="text-xs">
+                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
                     <TableCell className="font-medium py-1 px-3 truncate" title={row["CAMPAIGN ORDER NAME"]}>
                       {row["CAMPAIGN ORDER NAME"]}
                     </TableCell>
                     
                     {view === "daily" && (
                       <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
-                    )}
-                    
-                    {enableComparison && view === "aggregate" && (
-                      <TableCell className="text-center py-1 px-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${row.PERIOD === 'Primary' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
-                          {row.PERIOD || 'Current'}
-                        </span>
-                      </TableCell>
                     )}
                     
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
@@ -1039,7 +817,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={view === "daily" ? 9 : (enableComparison && view === "aggregate" ? 9 : 8)} className="text-center py-1">
+                  <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
