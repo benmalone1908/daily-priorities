@@ -8,6 +8,8 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { FileDown } from "lucide-react";
 import { 
   Pagination, 
@@ -27,11 +29,13 @@ import {
 } from "@/components/ui/select";
 import { normalizeDate } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import DateRangePicker from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 interface RawDataTableProps {
   data: any[];
   useGlobalFilters?: boolean;
-  primaryDateRange?: any; // Temporarily use any instead of DateRange
+  primaryDateRange?: DateRange;
 }
 
 const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawDataTableProps) => {
@@ -42,7 +46,7 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [enableComparison, setEnableComparison] = useState(false);
-  const [comparisonDateRange, setComparisonDateRange] = useState<any>(undefined); // Temporarily use any
+  const [comparisonDateRange, setComparisonDateRange] = useState<DateRange | undefined>(undefined);
   
   // Filter out 'Totals' rows and test campaigns
   const filteredData = useMemo(() => {
@@ -736,25 +740,24 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
         </div>
       </div>
 
-      {/* Date Comparison Controls - Temporarily disabled to fix React error */}
-      {false && (view === "aggregate" || view === "advertiser") && (
+      {/* Date Comparison Controls */}
+      {(view === "aggregate" || view === "advertiser") && (
         <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
           <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+            <Switch
               id="enable-comparison"
               checked={enableComparison}
-              onChange={(e) => {
-                setEnableComparison(e.target.checked);
-                if (!e.target.checked) {
+              onCheckedChange={(checked) => {
+                setEnableComparison(checked);
+                if (!checked) {
                   setComparisonDateRange(undefined);
                 }
                 setPage(1);
               }}
             />
-            <label htmlFor="enable-comparison" className="text-sm font-medium">
+            <Label htmlFor="enable-comparison" className="text-sm font-medium">
               Compare date ranges
-            </label>
+            </Label>
           </div>
           
           {enableComparison && (
@@ -762,9 +765,10 @@ const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawD
               <label className="text-sm text-muted-foreground">
                 Select comparison date range:
               </label>
-              <div className="text-sm text-muted-foreground">
-                Date picker temporarily disabled
-              </div>
+              <DateRangePicker
+                dateRange={comparisonDateRange}
+                onDateRangeChange={setComparisonDateRange}
+              />
             </div>
           )}
         </div>
