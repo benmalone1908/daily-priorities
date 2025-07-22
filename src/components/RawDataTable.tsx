@@ -25,21 +25,28 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { DateRange } from "react-day-picker";
+import DateRangePicker from "@/components/DateRangePicker";
 import { normalizeDate } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
   useGlobalFilters?: boolean;
+  primaryDateRange?: DateRange;
 }
 
-const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
+const RawDataTable = ({ data, useGlobalFilters = false, primaryDateRange }: RawDataTableProps) => {
   const { isTestCampaign, extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
   const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [enableComparison, setEnableComparison] = useState(false);
+  const [comparisonDateRange, setComparisonDateRange] = useState<DateRange | undefined>(undefined);
   
   // Filter out 'Totals' rows and test campaigns
   const filteredData = useMemo(() => {
@@ -51,11 +58,24 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     });
   }, [data, isTestCampaign]);
 
-  // Process data based on view type
-  const processedData = useMemo(() => {
+  // Helper function to filter data by date range
+  const filterDataByDateRange = (data: any[], dateRange?: DateRange) => {
+    if (!dateRange?.from || !dateRange?.to) return data;
+    
+    const fromStr = dateRange.from.toISOString().split('T')[0];
+    const toStr = dateRange.to.toISOString().split('T')[0];
+    
+    return data.filter(row => {
+      const rowDate = row.DATE;
+      return rowDate >= fromStr && rowDate <= toStr;
+    });
+  };
+
+  // Helper function to process data for a specific date range
+  const processDataForDateRange = (data: any[], suffix = '') => {
     if (view === "daily") {
       // In daily view, calculate CTR and ROAS for each row based on that day's metrics
-      return filteredData.map(row => {
+      return data.map(row => {
         const impressions = Number(row.IMPRESSIONS) || 0;
         const clicks = Number(row.CLICKS) || 0;
         const revenue = Number(row.REVENUE) || 0;
@@ -82,7 +102,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       // Aggregate view - group by campaign
       const campaignGroups: Record<string, any> = {};
 
-      filteredData.forEach(row => {
+      data.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         
         if (!campaignGroups[campaignName]) {
@@ -92,7 +112,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0
+            SPEND: 0,
+            PERIOD: suffix || 'Current'
           };
         }
         
@@ -123,7 +144,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       // Advertiser by Day view - group by advertiser, agency, and date using centralized functions
       const advertiserDateGroups: Record<string, any> = {};
 
-      filteredData.forEach(row => {
+      data.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         const advertiser = extractAdvertiserName(campaignName);
         const agencyInfo = extractAgencyInfo(campaignName);
@@ -150,7 +171,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0
+            SPEND: 0,
+            PERIOD: suffix || 'Current'
           };
         }
         
@@ -181,7 +203,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       // Advertiser view - group by advertiser using centralized functions
       const advertiserGroups: Record<string, any> = {};
 
-      filteredData.forEach(row => {
+      data.forEach(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"];
         const advertiser = extractAdvertiserName(campaignName);
         const agencyInfo = extractAgencyInfo(campaignName);
@@ -206,7 +228,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             CLICKS: 0,
             TRANSACTIONS: 0,
             REVENUE: 0,
-            SPEND: 0
+            SPEND: 0,
+            PERIOD: suffix || 'Current'
           };
         }
         
@@ -236,7 +259,157 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       
       return result;
     }
-  }, [filteredData, view, extractAdvertiserName, extractAgencyInfo]);
+  };
+
+  // Process data based on view type and comparison settings
+  const processedData = useMemo(() => {
+    // For daily view, comparison doesn't make sense, so just return regular data
+    if (view === "daily") {
+      return processDataForDateRange(filteredData);
+    }
+
+    // For aggregate and advertiser views, handle comparison if enabled
+    if (enableComparison && comparisonDateRange?.from && comparisonDateRange?.to && (view === "aggregate" || view === "advertiser")) {
+      // Filter data for primary period (using primaryDateRange if available, otherwise all data)
+      const primaryData = primaryDateRange ? filterDataByDateRange(filteredData, primaryDateRange) : filteredData;
+      const comparisonData = filterDataByDateRange(filteredData, comparisonDateRange);
+      
+      // Process both datasets
+      const primaryProcessed = processDataForDateRange(primaryData, 'Primary');
+      const comparisonProcessed = processDataForDateRange(comparisonData, 'Comparison');
+      
+      // Combine both datasets - each entity will appear twice
+      const combined = [];
+      
+      if (view === "aggregate") {
+        // For campaigns, match by campaign name
+        const campaignMap = new Map();
+        
+        primaryProcessed.forEach(row => {
+          const key = row["CAMPAIGN ORDER NAME"];
+          if (!campaignMap.has(key)) {
+            campaignMap.set(key, []);
+          }
+          campaignMap.get(key).push({ ...row, PERIOD: 'Primary' });
+        });
+        
+        comparisonProcessed.forEach(row => {
+          const key = row["CAMPAIGN ORDER NAME"];
+          if (!campaignMap.has(key)) {
+            campaignMap.set(key, []);
+          }
+          campaignMap.get(key).push({ ...row, PERIOD: 'Comparison' });
+        });
+        
+        // Flatten the map and ensure both periods exist for each campaign
+        campaignMap.forEach((periods, campaignName) => {
+          const primaryPeriod = periods.find(p => p.PERIOD === 'Primary');
+          const comparisonPeriod = periods.find(p => p.PERIOD === 'Comparison');
+          
+          if (primaryPeriod) {
+            combined.push(primaryPeriod);
+          }
+          if (comparisonPeriod) {
+            combined.push(comparisonPeriod);
+          }
+          
+          // If only one period exists, create a zero-value row for the missing period
+          if (primaryPeriod && !comparisonPeriod) {
+            combined.push({
+              "CAMPAIGN ORDER NAME": campaignName,
+              IMPRESSIONS: 0,
+              CLICKS: 0,
+              TRANSACTIONS: 0,
+              REVENUE: 0,
+              SPEND: 0,
+              CTR: 0,
+              ROAS: 0,
+              PERIOD: 'Comparison'
+            });
+          } else if (comparisonPeriod && !primaryPeriod) {
+            combined.push({
+              "CAMPAIGN ORDER NAME": campaignName,
+              IMPRESSIONS: 0,
+              CLICKS: 0,
+              TRANSACTIONS: 0,
+              REVENUE: 0,
+              SPEND: 0,
+              CTR: 0,
+              ROAS: 0,
+              PERIOD: 'Primary'
+            });
+          }
+        });
+      } else if (view === "advertiser") {
+        // For advertisers, match by advertiser + agency
+        const advertiserMap = new Map();
+        
+        primaryProcessed.forEach(row => {
+          const key = `${row.ADVERTISER}|${row.AGENCY}`;
+          if (!advertiserMap.has(key)) {
+            advertiserMap.set(key, []);
+          }
+          advertiserMap.get(key).push({ ...row, PERIOD: 'Primary' });
+        });
+        
+        comparisonProcessed.forEach(row => {
+          const key = `${row.ADVERTISER}|${row.AGENCY}`;
+          if (!advertiserMap.has(key)) {
+            advertiserMap.set(key, []);
+          }
+          advertiserMap.get(key).push({ ...row, PERIOD: 'Comparison' });
+        });
+        
+        // Flatten the map and ensure both periods exist for each advertiser
+        advertiserMap.forEach((periods, key) => {
+          const [advertiser, agency] = key.split('|');
+          const primaryPeriod = periods.find(p => p.PERIOD === 'Primary');
+          const comparisonPeriod = periods.find(p => p.PERIOD === 'Comparison');
+          
+          if (primaryPeriod) {
+            combined.push(primaryPeriod);
+          }
+          if (comparisonPeriod) {
+            combined.push(comparisonPeriod);
+          }
+          
+          // If only one period exists, create a zero-value row for the missing period
+          if (primaryPeriod && !comparisonPeriod) {
+            combined.push({
+              ADVERTISER: advertiser,
+              AGENCY: agency,
+              IMPRESSIONS: 0,
+              CLICKS: 0,
+              TRANSACTIONS: 0,
+              REVENUE: 0,
+              SPEND: 0,
+              CTR: 0,
+              ROAS: 0,
+              PERIOD: 'Comparison'
+            });
+          } else if (comparisonPeriod && !primaryPeriod) {
+            combined.push({
+              ADVERTISER: advertiser,
+              AGENCY: agency,
+              IMPRESSIONS: 0,
+              CLICKS: 0,
+              TRANSACTIONS: 0,
+              REVENUE: 0,
+              SPEND: 0,
+              CTR: 0,
+              ROAS: 0,
+              PERIOD: 'Primary'
+            });
+          }
+        });
+      }
+      
+      return combined;
+    } else {
+      // No comparison, return regular processed data
+      return processDataForDateRange(filteredData);
+    }
+  }, [filteredData, view, extractAdvertiserName, extractAgencyInfo, enableComparison, comparisonDateRange, primaryDateRange]);
   
   // Sort function with primary and secondary sorting
   const sortedData = useMemo(() => {
@@ -346,12 +519,16 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       if (view === 'daily') {
         columns = ['CAMPAIGN ORDER NAME', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser') {
-        columns = ['ADVERTISER', 'AGENCY', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+        columns = ['ADVERTISER', 'AGENCY'];
+        if (enableComparison) columns.push('PERIOD');
+        columns.push(...['IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS']);
       } else if (view === 'advertiser-by-day') {
         columns = ['ADVERTISER', 'AGENCY', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else {
         // aggregate view
-        columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+        columns = ['CAMPAIGN ORDER NAME'];
+        if (enableComparison) columns.push('PERIOD');
+        columns.push(...['IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS']);
       }
       
       // Generate CSV header row
@@ -554,6 +731,46 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           </Select>
         </div>
       </div>
+
+      {/* Date Comparison Controls - Only show for aggregate and advertiser views */}
+      {(view === "aggregate" || view === "advertiser") && (
+        <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="enable-comparison"
+              checked={enableComparison}
+              onCheckedChange={(checked) => {
+                setEnableComparison(checked);
+                if (!checked) {
+                  setComparisonDateRange(undefined);
+                }
+                setPage(1); // Reset to first page when enabling/disabling comparison
+              }}
+            />
+            <Label htmlFor="enable-comparison" className="text-sm font-medium">
+              Compare date ranges
+            </Label>
+          </div>
+          
+          {enableComparison && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">
+                Select comparison date range:
+              </Label>
+              <DateRangePicker
+                dateRange={comparisonDateRange}
+                onDateRangeChange={setComparisonDateRange}
+                className="max-w-md"
+              />
+              {comparisonDateRange?.from && comparisonDateRange?.to && (
+                <p className="text-xs text-muted-foreground">
+                  Comparing primary period vs {comparisonDateRange.from.toLocaleDateString()} - {comparisonDateRange.to.toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="w-full overflow-x-auto">
         <Table className="w-full table-fixed">
@@ -633,6 +850,18 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                 >
                   Date
                   {sortColumn === "DATE" && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </TableHead>
+              )}
+              
+              {enableComparison && (view === "aggregate" || view === "advertiser") && (
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-center w-[8%]"
+                  onClick={() => handleSort("PERIOD")}
+                >
+                  Period
+                  {sortColumn === "PERIOD" && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </TableHead>
@@ -720,13 +949,20 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             {view === "advertiser" ? (
               paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
-                  <TableRow key={`${row.ADVERTISER}-${row.AGENCY}-${index}`} className="text-xs">
+                  <TableRow key={`${row.ADVERTISER}-${row.AGENCY}-${row.PERIOD || 'current'}-${index}`} className="text-xs">
                     <TableCell className="font-medium py-1 px-3 truncate" title={row.ADVERTISER}>
                       {row.ADVERTISER}
                     </TableCell>
                     <TableCell className="py-1 px-3 truncate" title={row.AGENCY}>
                       {row.AGENCY}
                     </TableCell>
+                    {enableComparison && (
+                      <TableCell className="text-center py-1 px-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${row.PERIOD === 'Primary' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                          {row.PERIOD || 'Current'}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
@@ -738,7 +974,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-1">
+                  <TableCell colSpan={enableComparison ? 10 : 9} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
@@ -773,13 +1009,21 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             ) : (
               paginatedData.length > 0 ? (
                 paginatedData.map((row, index) => (
-                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.DATE || index}`} className="text-xs">
+                  <TableRow key={`${row["CAMPAIGN ORDER NAME"]}-${row.PERIOD || 'current'}-${row.DATE || index}`} className="text-xs">
                     <TableCell className="font-medium py-1 px-3 truncate" title={row["CAMPAIGN ORDER NAME"]}>
                       {row["CAMPAIGN ORDER NAME"]}
                     </TableCell>
                     
                     {view === "daily" && (
                       <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "DATE")}</TableCell>
+                    )}
+                    
+                    {enableComparison && view === "aggregate" && (
+                      <TableCell className="text-center py-1 px-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${row.PERIOD === 'Primary' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                          {row.PERIOD || 'Current'}
+                        </span>
+                      </TableCell>
                     )}
                     
                     <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
@@ -793,7 +1037,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={view === "daily" ? 9 : 8} className="text-center py-1">
+                  <TableCell colSpan={view === "daily" ? 9 : (enableComparison && view === "aggregate" ? 9 : 8)} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
