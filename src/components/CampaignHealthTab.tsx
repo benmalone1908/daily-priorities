@@ -145,7 +145,7 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
       {/* Health Scoring Legend */}
       <Card className="p-4">
         <h3 className="text-lg font-semibold mb-3">Health Score Methodology</h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div>
             <div className="font-medium">ROAS (40%)</div>
             <div className="text-muted-foreground">Return on Ad Spend</div>
@@ -159,11 +159,7 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
             <div className="text-muted-foreground">Recent delivery pace</div>
           </div>
           <div>
-            <div className="font-medium">CTR (10%)</div>
-            <div className="text-muted-foreground">Click-through rate</div>
-          </div>
-          <div>
-            <div className="font-medium">Overspend Risk (5%)</div>
+            <div className="font-medium">Overspend Risk (15%)</div>
             <div className="text-muted-foreground">Budget tracking</div>
           </div>
         </div>
