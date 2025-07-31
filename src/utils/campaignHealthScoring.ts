@@ -733,13 +733,12 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     console.log(`Overspend score: ${overspendScore}`);
   }
   
-  // Calculate final health score with weights
+  // Calculate final health score with weights (CTR removed, overspend increased from 5% to 15%)
   const healthScore = 
     (roasScore * 0.40) +
     (deliveryPacingScore * 0.30) +
     (burnRateScore * 0.15) +
-    (ctrScore * 0.10) +
-    (overspendScore * 0.05);
+    (overspendScore * 0.15);
   
   const pace = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
   

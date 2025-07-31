@@ -765,6 +765,33 @@ const DashboardContent = ({
     setSelectedCampaigns(selected);
   };
 
+  // Filter pacing data based on global filters
+  const getFilteredPacingData = (pacingData: any[], selectedAgencies: string[], selectedAdvertisers: string[], selectedCampaigns: string[]) => {
+    let filtered = pacingData;
+    
+    if (selectedAgencies.length > 0) {
+      filtered = filtered.filter(row => {
+        const campaignName = row.Campaign || "";
+        const { agency } = extractAgencyInfo(campaignName);
+        return selectedAgencies.includes(agency);
+      });
+    }
+    
+    if (selectedAdvertisers.length > 0) {
+      filtered = filtered.filter(row => {
+        const campaignName = row.Campaign || "";
+        const advertiser = extractAdvertiserName(campaignName);
+        return selectedAdvertisers.includes(advertiser);
+      });
+    }
+    
+    if (selectedCampaigns.length > 0) {
+      filtered = filtered.filter(row => selectedCampaigns.includes(row.Campaign || ""));
+    }
+    
+    return filtered;
+  };
+
   return (
     <>
       {/* Two-row header layout */}
@@ -918,8 +945,8 @@ const DashboardContent = ({
         {pacingData.length > 0 && (
           <TabsContent value="pacing" className="mt-0">
             <div className="mb-4 animate-fade-in">
-              <PacingMetrics data={pacingData} />
-              <PacingTable data={pacingData} />
+              <PacingMetrics data={getFilteredPacingData(pacingData, selectedAgencies, selectedAdvertisers, selectedCampaigns)} />
+              <PacingTable data={getFilteredPacingData(pacingData, selectedAgencies, selectedAdvertisers, selectedCampaigns)} />
             </div>
           </TabsContent>
         )}
