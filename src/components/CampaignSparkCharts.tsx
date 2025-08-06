@@ -656,6 +656,14 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
   };
 
   const handleChartClick = (itemName: string, metricType: MetricType, timeSeriesData: any[]) => {
+    console.log(`handleChartClick - ${itemName} - ${metricType}:`, {
+      dataLength: timeSeriesData.length,
+      sampleData: timeSeriesData.slice(0, 5),
+      metricValues: timeSeriesData.map(d => d[metricType]).slice(0, 10),
+      nullCount: timeSeriesData.filter(d => d[metricType] === null).length,
+      zeroCount: timeSeriesData.filter(d => d[metricType] === 0).length
+    });
+    
     setModalData({
       isOpen: true,
       itemName,

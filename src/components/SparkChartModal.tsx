@@ -23,6 +23,15 @@ const SparkChartModal = ({
   gradientId,
   valueFormatter
 }: SparkChartModalProps) => {
+  // Debug: Log the data being passed to the modal
+  console.log(`SparkChartModal - ${title}:`, {
+    dataLength: data.length,
+    dataKey,
+    sampleData: data.slice(0, 3),
+    nullValues: data.filter(d => d[dataKey] === null).length,
+    zeroValues: data.filter(d => d[dataKey] === 0).length
+  });
+
   const formatTooltipValue = (value: any) => {
     if (value === null || value === undefined) return "No data";
     if (value === 0) return "0 (Campaign paused)";
@@ -97,7 +106,7 @@ const SparkChartModal = ({
                 fillOpacity={1}
                 fill={`url(#${gradientId})`}
                 strokeWidth={2}
-                connectNulls={true}
+                connectNulls={false}
               />
             </AreaChart>
           </ResponsiveContainer>
