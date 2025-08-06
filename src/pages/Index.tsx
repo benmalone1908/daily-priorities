@@ -290,11 +290,34 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   const formatROAS = (value: number): string => value.toFixed(2);
   
   const handleChartClick = (metricType: MetricType, title: string) => {
+    // Transform the data to include calculated CTR and ROAS fields
+    let transformedData = timeSeriesData;
+    
+    if (metricType === "ctr") {
+      transformedData = timeSeriesData.map(d => ({
+        ...d, 
+        CTR: d.IMPRESSIONS > 0 ? (d.CLICKS / d.IMPRESSIONS) * 100 : 0
+      }));
+    } else if (metricType === "roas") {
+      transformedData = timeSeriesData.map(d => ({
+        ...d, 
+        ROAS: d.SPEND > 0 ? d.REVENUE / d.SPEND : 0
+      }));
+    }
+    
+    console.log(`handleChartClick for ${metricType}:`, {
+      metricType,
+      originalDataLength: timeSeriesData.length,
+      transformedDataLength: transformedData.length,
+      sampleOriginal: timeSeriesData.slice(0, 2),
+      sampleTransformed: transformedData.slice(0, 2)
+    });
+    
     setModalData({
       isOpen: true,
       title: `All Campaigns - ${title}`,
       metricType,
-      data: timeSeriesData
+      data: transformedData
     });
   };
 
