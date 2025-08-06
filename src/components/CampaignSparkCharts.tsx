@@ -111,6 +111,7 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
         return existingData;
       } else {
         // Return zero values for missing dates to create trend line that goes to zero
+        // CTR and ROAS should be null for days with no data to avoid showing 0% or 0x in charts
         return {
           date: dateFormat.format(date),
           rawDate: date,
@@ -119,8 +120,8 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
           transactions: 0,
           revenue: 0,
           spend: 0,
-          ctr: 0,
-          roas: 0
+          ctr: null,
+          roas: null
         };
       }
     });
