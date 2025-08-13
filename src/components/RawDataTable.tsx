@@ -36,7 +36,7 @@ interface RawDataTableProps {
 
 const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
   const { isTestCampaign } = useCampaignFilter();
-  const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day">("daily");
+  const [view, setView] = useState<"daily" | "aggregate" | "advertiser" | "advertiser-by-day" | "daily-totals">("daily");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
@@ -207,6 +207,47 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           ROAS: roas
         };
       });
+    } else if (view === "daily-totals") {
+      // Daily totals view - group by date only, totaling all campaigns for each day
+      const dailyGroups: Record<string, any> = {};
+
+      filteredData.forEach(row => {
+        const date = row.DATE;
+        
+        if (!dailyGroups[date]) {
+          dailyGroups[date] = {
+            "DATE": date,
+            IMPRESSIONS: 0,
+            CLICKS: 0,
+            TRANSACTIONS: 0,
+            REVENUE: 0,
+            SPEND: 0
+          };
+        }
+        
+        dailyGroups[date].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
+        dailyGroups[date].CLICKS += Number(row.CLICKS) || 0;
+        dailyGroups[date].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
+        dailyGroups[date].REVENUE += Number(row.REVENUE) || 0;
+        dailyGroups[date].SPEND += Number(row.SPEND) || 0;
+      });
+      
+      // Convert to array and calculate CTR and ROAS based on aggregated values
+      return Object.values(dailyGroups).map(dailyTotal => {
+        const ctr = dailyTotal.IMPRESSIONS > 0 
+          ? (dailyTotal.CLICKS / dailyTotal.IMPRESSIONS) * 100 
+          : 0;
+          
+        const roas = dailyTotal.SPEND > 0 
+          ? dailyTotal.REVENUE / dailyTotal.SPEND 
+          : 0;
+          
+        return {
+          ...dailyTotal,
+          CTR: ctr,
+          ROAS: roas
+        };
+      });
     } else {
       // Advertiser view - group by advertiser, create flat list
       const advertiserGroups: Record<string, any> = {};
@@ -312,6 +353,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           const bDate = b["DATE"];
           return aDate.localeCompare(bDate);
         }
+      } else if (view === "daily-totals") {
+        // For daily-totals view, secondary sort by date
+        if (sortColumn !== "DATE") {
+          const aDate = a["DATE"];
+          const bDate = b["DATE"];
+          return aDate.localeCompare(bDate);
+        }
       } else if (sortColumn !== "CAMPAIGN ORDER NAME") {
         const aCampaign = a["CAMPAIGN ORDER NAME"];
         const bCampaign = b["CAMPAIGN ORDER NAME"];
@@ -345,7 +393,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   };
   
   // Handle view change
-  const handleViewChange = (newView: "daily" | "aggregate" | "advertiser" | "advertiser-by-day") => {
+  const handleViewChange = (newView: "daily" | "aggregate" | "advertiser" | "advertiser-by-day" | "daily-totals") => {
     setView(newView);
     setPage(1); // Reset to first page when view changes
     
@@ -356,6 +404,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       setSortColumn("ADVERTISER");
     } else if ((newView === 'daily' || newView === 'aggregate') && (sortColumn === 'ADVERTISER' || sortColumn === 'AGENCY')) {
       setSortColumn("CAMPAIGN ORDER NAME");
+    } else if (newView === 'daily-totals' && (sortColumn === 'CAMPAIGN ORDER NAME' || sortColumn === 'ADVERTISER' || sortColumn === 'AGENCY')) {
+      setSortColumn("DATE");
     }
   };
   
@@ -373,6 +423,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         columns = ['ADVERTISER', 'AGENCY', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else if (view === 'advertiser-by-day') {
         columns = ['ADVERTISER', 'AGENCY', 'DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
+      } else if (view === 'daily-totals') {
+        columns = ['DATE', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
       } else {
         // aggregate view
         columns = ['CAMPAIGN ORDER NAME', 'IMPRESSIONS', 'CLICKS', 'CTR', 'TRANSACTIONS', 'REVENUE', 'SPEND', 'ROAS'];
@@ -545,6 +597,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           >
             Advertiser by Day
           </Button>
+          <Button 
+            onClick={() => handleViewChange("daily-totals")}
+            variant={view === "daily-totals" ? "default" : "outline"}
+            size="sm"
+          >
+            Daily Totals
+          </Button>
           
           <Button
             onClick={exportToCsv}
@@ -635,20 +694,30 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                     {sortColumn === "DATE" && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
-                  </TableHead>
-                </>
-              ) : (
-                <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 py-1 px-3"
-                  style={{ width: view === "daily" ? '30%' : '35%' }}
-                  onClick={() => handleSort("CAMPAIGN ORDER NAME")}
-                >
-                  Campaign Name
-                  {sortColumn === "CAMPAIGN ORDER NAME" && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </TableHead>
-              )}
+                   </TableHead>
+                 </>
+               ) : view === "daily-totals" ? (
+                 <TableHead 
+                   className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[15%]"
+                   onClick={() => handleSort("DATE")}
+                 >
+                   Date
+                   {sortColumn === "DATE" && (
+                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                   )}
+                 </TableHead>
+               ) : (
+                 <TableHead 
+                   className="cursor-pointer hover:bg-muted/50 py-1 px-3"
+                   style={{ width: view === "daily" ? '30%' : '35%' }}
+                   onClick={() => handleSort("CAMPAIGN ORDER NAME")}
+                 >
+                   Campaign Name
+                   {sortColumn === "CAMPAIGN ORDER NAME" && (
+                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                   )}
+                 </TableHead>
+               )}
               
               {view === "daily" && (
                 <TableHead 
@@ -790,6 +859,27 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               ) : (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-1">
+                    No data available
+                  </TableCell>
+                </TableRow>
+              )
+              ) : view === "daily-totals" ? (
+              paginatedData.length > 0 ? (
+                paginatedData.map((row, index) => (
+                  <TableRow key={`daily-total-${row.DATE}-${index}`} className="text-xs">
+                    <TableCell className="py-1 px-3 text-right font-medium">{formatColumnValue(row, "DATE")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
+                    <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-1">
                     No data available
                   </TableCell>
                 </TableRow>
