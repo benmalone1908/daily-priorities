@@ -320,6 +320,26 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           if (aValue !== bValue) return bValue - aValue;
         }
       } 
+      // Handle date values specially
+      else if (sortColumn === 'DATE' && typeof aValue === 'string' && typeof bValue === 'string') {
+        // Parse dates for proper chronological sorting
+        const parseDate = (dateStr: string) => {
+          // Handle formats like "8/6/25" or "08/06/25"
+          const [month, day, year] = dateStr.split('/');
+          // Assume 2-digit years are 20XX
+          const fullYear = year.length === 2 ? `20${year}` : year;
+          return new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
+        };
+        
+        const dateA = parseDate(aValue);
+        const dateB = parseDate(bValue);
+        
+        if (sortDirection === 'asc') {
+          if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
+        } else {
+          if (dateA.getTime() !== dateB.getTime()) return dateB.getTime() - dateA.getTime();
+        }
+      }
       // Handle string values
       else if (typeof aValue === 'string' && typeof bValue === 'string') {
         if (sortDirection === 'asc') {
