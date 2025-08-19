@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Pagination, 
   PaginationContent, 
@@ -41,16 +43,33 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("CAMPAIGN ORDER NAME");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [includeAttributionOnly, setIncludeAttributionOnly] = useState(true);
   
-  // Filter out 'Totals' rows and test campaigns
+  // Filter out 'Totals' rows, test campaigns, and optionally attribution-only campaigns
   const filteredData = useMemo(() => {
     return data.filter(row => {
       if (row.DATE === 'Totals') return false;
       const campaignName = row["CAMPAIGN ORDER NAME"];
       if (!campaignName) return true;
-      return !isTestCampaign(campaignName);
+      
+      // Filter out test campaigns
+      if (isTestCampaign(campaignName)) return false;
+      
+      // Filter out attribution-only campaigns if toggle is off
+      if (!includeAttributionOnly) {
+        const impressions = Number(row.IMPRESSIONS) || 0;
+        const revenue = Number(row.REVENUE) || 0;
+        const transactions = Number(row.TRANSACTIONS) || 0;
+        
+        // If campaign has zero impressions but has attribution data (revenue or transactions)
+        if (impressions === 0 && (revenue > 0 || transactions > 0)) {
+          return false;
+        }
+      }
+      
+      return true;
     });
-  }, [data, isTestCampaign]);
+  }, [data, isTestCampaign, includeAttributionOnly]);
 
   // Extract agency from campaign name using centralized mapping
   const extractAgencyFromCampaign = (campaignName: string) => {
@@ -636,8 +655,20 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           </Button>
         </div>
         
-        <div className="flex items-center gap-2 text-sm">
-          <span>Rows per page:</span>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={includeAttributionOnly}
+              onCheckedChange={setIncludeAttributionOnly}
+              id="include-attribution"
+            />
+            <Label htmlFor="include-attribution" className="text-sm">
+              Include attribution-only
+            </Label>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
           <Select 
             value={rowsPerPage.toString()} 
             onValueChange={(value) => {
@@ -655,6 +686,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               <SelectItem value="100">100</SelectItem>
             </SelectContent>
           </Select>
+          </div>
         </div>
       </div>
       
