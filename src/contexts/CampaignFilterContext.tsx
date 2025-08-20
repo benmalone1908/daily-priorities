@@ -73,6 +73,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     if (!campaignName) return { agency: "", abbreviation: "" };
     
     console.log(`Extracting agency from: "${campaignName}"`);
+    console.log('Available agency mappings:', Object.keys(AGENCY_MAPPING));
     
     // Special case for the campaigns with Partner-PRP or PRP-Pend Oreille
     if (campaignName.includes('2001943:Partner-PRP') || campaignName.includes('2001943: PRP-Pend Oreille')) {
