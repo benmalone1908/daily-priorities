@@ -14,7 +14,7 @@ export const AGENCY_MAPPING: Record<string, string> = {
   'HG': 'Happy Greens',
   'HRB': 'Herb.co',
   'LP': 'Lettuce Print',
-  'MJ': 'MediaJel',
+  'MJ': 'MediaJel Direct',
   'NLMC': 'NLMC',
   'NP': 'Noble People',
   'OG': 'Orangellow',
