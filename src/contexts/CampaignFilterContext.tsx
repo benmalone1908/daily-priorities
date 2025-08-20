@@ -7,7 +7,9 @@ export const AGENCY_MAPPING: Record<string, string> = {
   '6D': '6 Degrees Media',
   'BLO': 'Be Local One',
   'CB': 'Crystal Bol',
+  'FDD': 'Fat Dawgs Digital',
   'FLD': 'Fieldtest',
+  'FLWR': 'The Flowery',
   'HD': 'Highday',
   'HG': 'Happy Greens',
   'HRB': 'Herb.co',
@@ -18,6 +20,7 @@ export const AGENCY_MAPPING: Record<string, string> = {
   'OG': 'Orangellow',
   'PRP': 'Propaganda Creative',
   'SM': 'Orangellow',
+  'TCC': 'Tulip City Creative',
   'TF': 'Tact Firm',
   'TRN': 'Terrayn',
   'W&T': 'Water & Trees',
@@ -165,8 +168,8 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       return extracted;
     }
     
-    // Try with the expanded agency prefixes regex - Updated to include 6D
-    const agencyPrefixes = "SM|2RS|6D|BLO|CB|FLD|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TF|TRN|W&T|WWX";
+    // Try with the expanded agency prefixes regex - Updated to include new agencies
+    const agencyPrefixes = "SM|2RS|6D|BLO|CB|FDD|FLD|FLWR|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TCC|TF|TRN|W&T|WWX";
     const regex = new RegExp(`(${agencyPrefixes}):\\s+(.*?)(?=-)`, 'i');
     
     const match = campaignName.match(regex);
