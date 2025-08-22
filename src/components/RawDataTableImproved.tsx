@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -28,8 +27,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { normalizeDate, parseDateString } from "@/lib/utils";
-import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { parseDateString } from "@/lib/utils";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 
 interface RawDataTableProps {
   data: any[];
@@ -39,7 +38,7 @@ interface RawDataTableProps {
 type GroupingLevel = "campaign" | "advertiser" | "agency";
 type TimeAggregation = "daily" | "weekly" | "monthly" | "total";
 
-const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
+const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
   const { isTestCampaign, extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
   const [groupingLevel, setGroupingLevel] = useState<GroupingLevel>("campaign");
   const [timeAggregation, setTimeAggregation] = useState<TimeAggregation>("daily");
@@ -103,12 +102,6 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   // Helper function to get calendar month key (keeping for reference)
   const getMonthKey = (date: Date) => {
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-  };
-
-  // Helper function to calculate period-over-period comparison
-  const calculateComparison = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
   };
 
   // Process data with new 2-axis methodology
@@ -200,7 +193,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     });
     
     // Step 2: Convert to array and calculate metrics
-    const result = Object.values(groups).map(group => {
+    let result = Object.values(groups).map(group => {
       const ctr = group.IMPRESSIONS > 0 ? (group.CLICKS / group.IMPRESSIONS) * 100 : 0;
       const roas = group.SPEND > 0 ? group.REVENUE / group.SPEND : 0;
       
@@ -210,11 +203,64 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         ROAS: roas
       };
     });
+
+    // Step 3: Add period-over-period comparison data if enabled and not total aggregation
+    if (showComparisons && timeAggregation !== 'total') {
+      result = result.map(currentPeriod => {
+        // Find the previous period for the same group
+        let previousPeriod = null;
+        
+        if (timeAggregation === 'daily') {
+          // For daily, find the previous day
+          const currentDate = new Date(currentPeriod.timeKey);
+          const previousDate = new Date(currentDate);
+          previousDate.setDate(previousDate.getDate() - 1);
+          const previousDateStr = `${(previousDate.getMonth() + 1).toString().padStart(2, '0')}/${previousDate.getDate().toString().padStart(2, '0')}/${previousDate.getFullYear().toString().slice(-2)}`;
+          
+          previousPeriod = result.find(p => 
+            p.groupKey === currentPeriod.groupKey && 
+            p.timeKey === previousDateStr
+          );
+        } else if (timeAggregation === 'weekly' || timeAggregation === 'monthly') {
+          // For rolling periods, find the previous period by parsing the date range
+          const timeKeyParts = currentPeriod.timeKey.split(' - ');
+          if (timeKeyParts.length === 2) {
+            const currentStart = new Date(timeKeyParts[0]);
+            const periodDays = timeAggregation === 'weekly' ? 7 : 30;
+            
+            const previousStart = new Date(currentStart);
+            previousStart.setDate(previousStart.getDate() - periodDays);
+            
+            const previousEnd = new Date(previousStart);
+            previousEnd.setDate(previousEnd.getDate() + (periodDays - 1));
+            
+            const formatDate = (date: Date) => {
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const day = date.getDate().toString().padStart(2, '0');
+              const year = date.getFullYear().toString().slice(-2);
+              return `${month}/${day}/${year}`;
+            };
+            
+            const previousTimeKey = `${formatDate(previousStart)} - ${formatDate(previousEnd)}`;
+            
+            previousPeriod = result.find(p => 
+              p.groupKey === currentPeriod.groupKey && 
+              p.timeKey === previousTimeKey
+            );
+          }
+        }
+        
+        return {
+          ...currentPeriod,
+          previousPeriod: previousPeriod || null
+        };
+      });
+    }
     
     return result;
-  }, [filteredData, groupingLevel, timeAggregation, extractAdvertiserName, extractAgencyInfo]);
+  }, [filteredData, groupingLevel, timeAggregation, showComparisons, extractAdvertiserName, extractAgencyInfo]);
   
-  // Sort function with primary and secondary sorting
+  // Sort function
   const sortedData = useMemo(() => {
     if (!processedData) return [];
     
@@ -231,26 +277,6 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           if (aValue !== bValue) return bValue - aValue;
         }
       } 
-      // Handle date values specially
-      else if (sortColumn === 'DATE' && typeof aValue === 'string' && typeof bValue === 'string') {
-        // Parse dates for proper chronological sorting
-        const parseDate = (dateStr: string) => {
-          // Handle formats like "8/6/25" or "08/06/25"
-          const [month, day, year] = dateStr.split('/');
-          // Assume 2-digit years are 20XX
-          const fullYear = year.length === 2 ? `20${year}` : year;
-          return new Date(parseInt(fullYear), parseInt(month) - 1, parseInt(day));
-        };
-        
-        const dateA = parseDate(aValue);
-        const dateB = parseDate(bValue);
-        
-        if (sortDirection === 'asc') {
-          if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
-        } else {
-          if (dateA.getTime() !== dateB.getTime()) return dateB.getTime() - dateA.getTime();
-        }
-      }
       // Handle string values
       else if (typeof aValue === 'string' && typeof bValue === 'string') {
         if (sortDirection === 'asc') {
@@ -260,8 +286,8 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         }
       }
       
-      // Secondary sort based on grouping level
-      if (sortColumn !== "groupKey" && sortColumn !== "timeKey") {
+      // Secondary sort by groupKey then timeKey
+      if (sortColumn !== "groupKey") {
         const aGroup = a.groupKey;
         const bGroup = b.groupKey;
         if (aGroup !== bGroup) return aGroup.localeCompare(bGroup);
@@ -284,7 +310,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     return sortedData.slice(startIndex, startIndex + rowsPerPage);
   }, [sortedData, page, rowsPerPage]);
   
-  // Total number of pages based on selected rows per page
+  // Total number of pages
   const totalPages = useMemo(() => {
     return Math.ceil(sortedData.length / rowsPerPage);
   }, [sortedData, rowsPerPage]);
@@ -297,14 +323,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       setSortColumn(column);
       setSortDirection('asc');
     }
-    setPage(1); // Reset to first page when sort changes
+    setPage(1);
   };
   
   // Handle grouping level change
   const handleGroupingChange = (newGrouping: GroupingLevel) => {
     setGroupingLevel(newGrouping);
     setPage(1);
-    // Reset sort column to groupKey when changing grouping
     setSortColumn("groupKey");
   };
   
@@ -314,10 +339,9 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     setPage(1);
   };
   
-  // Generate and download CSV
+  // Export CSV
   const exportToCsv = () => {
     try {
-      // Get all data (not just current page)
       const csvData = sortedData;
       
       // Define columns based on grouping level and time aggregation
@@ -349,7 +373,6 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           } else if (typeof value === 'number') {
             return value.toString();
           } else if (typeof value === 'string' && value.includes(',')) {
-            // Escape strings containing commas with quotes
             return `"${value}"`;
           }
           return value || '';
@@ -374,6 +397,13 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     }
   };
   
+  // Format value based on column type
+  // Helper function to calculate period-over-period comparison
+  const calculateComparison = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
   // Format value with optional period comparison
   const formatColumnValue = (row: any, column: string, showComparison: boolean = false) => {
     if (!row) return '';
@@ -383,9 +413,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     
     switch (column) {
       case 'groupKey':
-        return value || 'N/A';
       case 'timeKey':
-        // For rolling periods, the timeKey already contains the formatted date range
         return value || 'N/A';
       case 'CTR':
         formattedValue = `${typeof value === 'number' ? value.toFixed(3) : '0.000'}%`;
@@ -506,48 +534,62 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      {/* Main Controls Row */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="flex flex-wrap items-center gap-4">
-          {/* Grouping Level Selector */}
+          {/* Primary Controls */}
           <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Group by:</Label>
+            <Label className="text-xs text-muted-foreground">Group by:</Label>
             <Select value={groupingLevel} onValueChange={handleGroupingChange}>
-              <SelectTrigger className="h-8 w-[120px]">
+              <SelectTrigger className="h-8 w-[120px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="campaign">Campaign</SelectItem>
-                <SelectItem value="advertiser">Advertiser</SelectItem>
-                <SelectItem value="agency">Agency</SelectItem>
+                <SelectItem value="campaign" className="text-xs">Campaign</SelectItem>
+                <SelectItem value="advertiser" className="text-xs">Advertiser</SelectItem>
+                <SelectItem value="agency" className="text-xs">Agency</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
-          {/* Time Aggregation Selector */}
           <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">Time:</Label>
+            <Label className="text-xs text-muted-foreground">Time:</Label>
             <Select value={timeAggregation} onValueChange={handleTimeAggregationChange}>
-              <SelectTrigger className="h-8 w-[100px]">
+              <SelectTrigger className="h-8 w-[140px] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">7-Day Rolling</SelectItem>
-                <SelectItem value="monthly">30-Day Rolling</SelectItem>
-                <SelectItem value="total">Total</SelectItem>
+                <SelectItem value="daily" className="text-xs">Daily</SelectItem>
+                <SelectItem value="weekly" className="text-xs">7-Day Rolling</SelectItem>
+                <SelectItem value="monthly" className="text-xs">30-Day Rolling</SelectItem>
+                <SelectItem value="total" className="text-xs">Total</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          
-          {/* Period Comparison Toggle */}
+        </div>
+
+        {/* Secondary Controls */}
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch
               checked={showComparisons}
               onCheckedChange={setShowComparisons}
+              disabled={timeAggregation === 'total'}
               id="show-comparisons"
             />
-            <Label htmlFor="show-comparisons" className="text-sm">
+            <Label htmlFor="show-comparisons" className="text-xs text-muted-foreground">
               Show Comparisons
+            </Label>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={includeAttributionOnly}
+              onCheckedChange={setIncludeAttributionOnly}
+              id="include-attribution"
+            />
+            <Label htmlFor="include-attribution" className="text-xs text-muted-foreground">
+              Include attribution-only
             </Label>
           </div>
           
@@ -555,44 +597,11 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
             onClick={exportToCsv}
             variant="outline"
             size="sm"
+            className="ml-2 text-xs"
           >
             <FileDown className="h-4 w-4 mr-2" />
-            Export CSV
+            Export
           </Button>
-        </div>
-        
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={includeAttributionOnly}
-              onCheckedChange={setIncludeAttributionOnly}
-              id="include-attribution"
-            />
-            <Label htmlFor="include-attribution" className="text-sm">
-              Include attribution-only
-            </Label>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-          <Select 
-            value={rowsPerPage.toString()} 
-            onValueChange={(value) => {
-              setRowsPerPage(Number(value));
-              setPage(1); // Reset to first page when changing rows per page
-            }}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder="10" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-          </div>
         </div>
       </div>
       
@@ -601,8 +610,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
           <TableHeader>
             <TableRow className="text-xs">
               <TableHead 
-                className="cursor-pointer hover:bg-muted/50 py-1 px-3"
-                style={{ width: timeAggregation === 'total' ? '35%' : '25%' }}
+                className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[25%]"
                 onClick={() => handleSort("groupKey")}
               >
                 {groupingLevel === "campaign" ? "Campaign" : 
@@ -612,13 +620,14 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
                 )}
               </TableHead>
               
-              {timeAggregation !== 'total' && (
+              {timeAggregation !== "total" && (
                 <TableHead 
                   className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[15%]"
                   onClick={() => handleSort("timeKey")}
                 >
-                  {timeAggregation === 'daily' ? 'Date' : 
-                   timeAggregation === 'weekly' ? '7-Day Period' : '30-Day Period'}
+                  {timeAggregation === "daily" ? "Date" :
+                   timeAggregation === "weekly" ? "7-Day Period" :
+                   timeAggregation === "monthly" ? "30-Day Period" : "Period"}
                   {sortColumn === "timeKey" && (
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
@@ -701,27 +710,25 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
               paginatedData.map((row, index) => (
                 <TableRow key={`${row.groupKey}-${row.timeKey || 'total'}-${index}`} className="text-xs">
                   <TableCell className="font-medium py-1 px-3 truncate" title={row.groupKey}>
-                    {formatColumnValue(row, "groupKey")}
+                    {row.groupKey}
                   </TableCell>
                   
-                  {timeAggregation !== 'total' && (
-                    <TableCell className="py-1 px-3 text-right">
-                      {formatColumnValue(row, "timeKey")}
-                    </TableCell>
+                  {timeAggregation !== "total" && (
+                    <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "timeKey")}</TableCell>
                   )}
                   
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND")}</TableCell>
-                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS")}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "IMPRESSIONS", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CLICKS", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "CTR", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "TRANSACTIONS", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "REVENUE", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "SPEND", showComparisons)}</TableCell>
+                  <TableCell className="text-right py-1 px-3">{formatColumnValue(row, "ROAS", showComparisons)}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={timeAggregation === 'total' ? 8 : 9} className="text-center py-1">
+                <TableCell colSpan={timeAggregation === "total" ? 8 : 9} className="text-center py-1">
                   No data available
                 </TableCell>
               </TableRow>
@@ -753,11 +760,35 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         </Pagination>
       )}
       
-      <div className="text-sm text-muted-foreground text-center">
-        Showing {paginatedData.length} of {sortedData.length} results
+      {/* Bottom Controls */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-2 border-t">
+        <div className="text-sm text-muted-foreground">
+          Showing {paginatedData.length} of {sortedData.length} results
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <Select 
+            value={rowsPerPage.toString()} 
+            onValueChange={(value) => {
+              setRowsPerPage(Number(value));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
 };
 
-export default RawDataTable;
+export default RawDataTableImproved;

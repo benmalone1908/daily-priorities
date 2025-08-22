@@ -19,7 +19,7 @@ import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, Do
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
-import RawDataTable from "@/components/RawDataTable";
+import RawDataTableImproved from "@/components/RawDataTableImproved";
 import PacingFileUpload from "@/components/PacingFileUpload";
 import PacingTable from "@/components/PacingTable";
 import PacingMetrics from "@/components/PacingMetrics";
@@ -978,7 +978,7 @@ const DashboardContent = ({
           {/* Raw Data tab content */}
           <div className="mb-4 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4">Campaign Data</h3>
-            <RawDataTable 
+            <RawDataTableImproved 
               data={globalFilteredData}
               useGlobalFilters={true}
             />
