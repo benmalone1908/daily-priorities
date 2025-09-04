@@ -139,7 +139,12 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
         case "advertiser":
           const advertiser = extractAdvertiserName(campaignName);
           const { agency } = extractAgencyInfo(campaignName);
-          groupKey = `${advertiser} (${agency})`;
+          // Create a normalized key for aggregation but preserve original for display
+          const normalizedAdvertiser = advertiser
+            .trim()
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+          groupKey = `${normalizedAdvertiser} (${agency})`;
           break;
         case "agency":
           const agencyInfo = extractAgencyInfo(campaignName);
@@ -174,8 +179,17 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
       const fullKey = timeAggregation === "total" ? groupKey : `${groupKey}|${timeKey}`;
       
       if (!groups[fullKey]) {
+        // Store the original advertiser name for display when grouping by advertiser
+        let displayName = groupKey;
+        if (groupingLevel === "advertiser") {
+          const advertiser = extractAdvertiserName(campaignName);
+          const { agency } = extractAgencyInfo(campaignName);
+          displayName = `${advertiser.trim()} (${agency})`;
+        }
+        
         groups[fullKey] = {
           groupKey,
+          displayName,
           timeKey,
           IMPRESSIONS: 0,
           CLICKS: 0,
@@ -413,6 +427,7 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
     
     switch (column) {
       case 'groupKey':
+        return row.displayName || value || 'N/A';
       case 'timeKey':
         return value || 'N/A';
       case 'CTR':
@@ -709,8 +724,8 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
             {paginatedData.length > 0 ? (
               paginatedData.map((row, index) => (
                 <TableRow key={`${row.groupKey}-${row.timeKey || 'total'}-${index}`} className="text-xs">
-                  <TableCell className="font-medium py-1 px-3 truncate" title={row.groupKey}>
-                    {row.groupKey}
+                  <TableCell className="font-medium py-1 px-3 truncate" title={row.displayName || row.groupKey}>
+                    {row.displayName || row.groupKey}
                   </TableCell>
                   
                   {timeAggregation !== "total" && (
