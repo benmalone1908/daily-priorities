@@ -1,3 +1,5 @@
+import { parseCampaignDate } from '@/lib/pacingCalculations';
+import { differenceInDays } from 'date-fns';
 
 export interface CampaignHealthData {
   campaignName: string;
@@ -81,15 +83,23 @@ export function calculateBurnRate(data: any[], campaignName: string, requiredDai
     };
   }
   
-  // Get most recent data points
-  const recent = campaignData.slice(-7); // Last 7 days
+  // Exclude most recent day (potentially incomplete) - use days 2,3,4,5,6,7,8 ago
+  // Remove the last day and get up to 7 days before that
+  const dataExcludingToday = campaignData.length > 1 ? campaignData.slice(0, -1) : [];
+  const recent = dataExcludingToday.slice(-7); // Last 7 days excluding most recent
   
+  // 1-day rate: day 2 ago (excluding yesterday)
   const oneDayRate = recent.length >= 1 ? Number(recent[recent.length - 1].IMPRESSIONS) || 0 : 0;
+  
+  // 3-day rate: average of days 2,3,4 ago
   const threeDayRate = recent.length >= 3 ? 
     recent.slice(-3).reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0) / 3 : 0;
+  
+  // 7-day rate: average of days 2,3,4,5,6,7,8 ago
   const sevenDayRate = recent.length >= 7 ? 
     recent.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0) / 7 : 0;
   
+  // Update confidence levels to account for excluding most recent day
   let confidence = 'no-data';
   if (recent.length >= 7) confidence = '7-day';
   else if (recent.length >= 3) confidence = '3-day';
@@ -329,59 +339,60 @@ export function calculateOverspendScore(
   return finalScore;
 }
 
-function calculateCompletionPercentage(pacingData: any[], campaignName: string): number {
+function calculateCompletionPercentage(contractTermsData: any[], campaignName: string): number {
   console.log(`Calculating completion for campaign: "${campaignName}"`);
-  console.log(`Pacing data available: ${pacingData.length} rows`);
+  console.log(`Contract terms data available: ${contractTermsData.length} rows`);
   
-  if (pacingData.length > 0) {
-    console.log("Sample pacing data row:", pacingData[0]);
-    console.log("Available fields in pacing data:", Object.keys(pacingData[0] || {}));
-  }
-  
-  // Look for the campaign using the correct field name "Campaign"
-  const campaignPacing = pacingData.find(row => {
-    const rowCampaign = row["Campaign"];
-    const normalizedRowCampaign = String(rowCampaign || "").trim();
-    const normalizedCampaignName = String(campaignName || "").trim();
+  // Find the campaign in contract terms data
+  const contractTerms = contractTermsData.find(row => {
+    const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
     
-    const match = normalizedRowCampaign === normalizedCampaignName;
-    if (match) {
-      console.log(`Found matching campaign: "${normalizedRowCampaign}" = "${normalizedCampaignName}"`);
+    for (const field of possibleNameFields) {
+      const rowCampaign = row[field];
+      if (rowCampaign) {
+        const normalizedRowCampaign = String(rowCampaign).trim();
+        const normalizedCampaignName = String(campaignName).trim();
+        
+        if (normalizedRowCampaign === normalizedCampaignName) {
+          console.log(`Found matching campaign in field "${field}": "${normalizedRowCampaign}"`);
+          return true;
+        }
+      }
     }
-    return match;
+    return false;
   });
   
-  if (!campaignPacing) {
-    console.log(`No pacing data found for campaign: "${campaignName}"`);
-    console.log("Available campaigns in pacing data:", 
-      pacingData.map(row => row["Campaign"]).filter(Boolean)
-    );
+  if (!contractTerms) {
+    console.log(`No contract terms found for campaign: "${campaignName}"`);
     return 0;
   }
   
-  // Use the correct field names from the pacing data
-  const daysIntoFlight = Number(campaignPacing["Days Into Flight"]) || 0;
-  const daysLeft = Number(campaignPacing["Days Left"]) || 0;
-  
-  console.log(`Campaign "${campaignName}": Days into flight = ${daysIntoFlight}, Days left = ${daysLeft}`);
-  
-  // Special case: If days left is 0 and days into flight > 1, campaign is 100% complete
-  if (daysLeft === 0 && daysIntoFlight > 1) {
-    console.log(`Campaign "${campaignName}" is complete (0 days left, ${daysIntoFlight} days into flight): 100%`);
-    return 100;
-  }
-  
-  if (daysIntoFlight === 0 && daysLeft === 0) {
-    console.log(`No valid day data for campaign: "${campaignName}"`);
+  try {
+    // Use imported date calculation logic from Pacing 2
+    const startDate = parseCampaignDate(contractTerms['Start Date']);
+    const endDate = parseCampaignDate(contractTerms['End Date']);
+    const today = new Date();
+    
+    // Calculate campaign duration (inclusive of both start and end dates)
+    const totalCampaignDays = differenceInDays(endDate, startDate) + 1;
+    
+    // Calculate days into campaign
+    const daysIntoCampaign = Math.max(0, Math.min(
+      differenceInDays(today, startDate),
+      totalCampaignDays
+    ));
+    
+    // Calculate completion percentage
+    const completionPercentage = totalCampaignDays > 0 ? (daysIntoCampaign / totalCampaignDays) * 100 : 0;
+    
+    console.log(`Campaign "${campaignName}" completion: ${Math.max(0, Math.min(100, completionPercentage)).toFixed(1)}%`);
+    
+    // Ensure completion percentage is between 0 and 100
+    return Math.max(0, Math.min(100, completionPercentage));
+  } catch (error) {
+    console.warn(`Error calculating completion percentage for "${campaignName}":`, error);
     return 0;
   }
-  
-  const totalDays = daysIntoFlight + daysLeft;
-  const completionPercentage = totalDays > 0 ? (daysIntoFlight / totalDays) * 100 : 0;
-  
-  console.log(`Campaign "${campaignName}" completion: ${completionPercentage.toFixed(1)}%`);
-  
-  return completionPercentage;
 }
 
 function findBudgetInFields(contractTermsRow: any, campaignName: string): number {
@@ -567,15 +578,60 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
     }
   }
   
-  // Get days left from pacing data
-  const campaignPacing = pacingData.find(row => {
-    const rowCampaign = row["Campaign"];
-    const normalizedRowCampaign = String(rowCampaign || "").trim();
-    const normalizedCampaignName = String(campaignName || "").trim();
-    return normalizedRowCampaign === normalizedCampaignName;
-  });
+  // Calculate days left from contract terms data if available, otherwise try pacing data
+  let daysLeft = 0;
   
-  const daysLeft = campaignPacing ? Number(campaignPacing["Days Left"]) || 0 : 0;
+  if (contractTermsData.length > 0) {
+    // First try to calculate from contract terms using the same logic as Pacing 2
+    const contractTermsRow = contractTermsData.find(row => {
+      const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
+      
+      for (const field of possibleNameFields) {
+        const rowCampaign = row[field];
+        if (rowCampaign) {
+          const normalizedRowCampaign = String(rowCampaign).trim();
+          const normalizedCampaignName = String(campaignName).trim();
+          if (normalizedRowCampaign === normalizedCampaignName) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+    
+    if (contractTermsRow) {
+      try {
+        const endDate = parseCampaignDate(contractTermsRow['End Date']);
+        const today = new Date();
+        daysLeft = Math.max(0, differenceInDays(endDate, today));
+        
+        if (isTargetCampaign) {
+          console.log(`💰 [BUDGET TARGET] Calculated days left from contract terms: ${daysLeft}`);
+        }
+      } catch (error) {
+        if (isTargetCampaign) {
+          console.log(`💰 [BUDGET TARGET] Error calculating days left from contract terms:`, error);
+        }
+      }
+    }
+  }
+  
+  // Fallback to pacing data if contract terms calculation failed
+  if (daysLeft === 0 && pacingData.length > 0) {
+    const campaignPacing = pacingData.find(row => {
+      const rowCampaign = row["Campaign"];
+      const normalizedRowCampaign = String(rowCampaign || "").trim();
+      const normalizedCampaignName = String(campaignName || "").trim();
+      return normalizedRowCampaign === normalizedCampaignName;
+    });
+    
+    if (campaignPacing) {
+      daysLeft = Number(campaignPacing["Days Left"]) || 0;
+      if (isTargetCampaign) {
+        console.log(`💰 [BUDGET TARGET] Using days left from pacing data: ${daysLeft}`);
+      }
+    }
+  }
   
   if (isTargetCampaign) {
     console.log(`💰 [BUDGET TARGET] Final result: budget=$${budget}, daysLeft=${daysLeft}`);
@@ -667,8 +723,64 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const expectedImpressions = totals.impressions * 1.1; // Assume 110% target for demo
   const deliveryPacingScore = calculateDeliveryPacingScore(totals.impressions, expectedImpressions);
   
-  // Calculate required daily impressions based on expected impressions and campaign days
-  const requiredDailyImpressions = campaignRows.length > 0 ? expectedImpressions / (campaignRows.length * 1.5) : totals.impressions / 30;
+  // Calculate required daily impressions from contract terms data
+  let requiredDailyImpressions = 0;
+  
+  // Try to get impression goal from contract terms
+  if (contractTermsData.length > 0) {
+    const contractTerms = contractTermsData.find(row => {
+      const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
+      
+      for (const field of possibleNameFields) {
+        const rowCampaign = row[field];
+        if (rowCampaign) {
+          const normalizedRowCampaign = String(rowCampaign).trim();
+          const normalizedCampaignName = String(campaignName).trim();
+          if (normalizedRowCampaign === normalizedCampaignName) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+    
+    if (contractTerms) {
+      try {
+        // Parse impression goal from contract terms
+        const impressionGoal = parseInt((contractTerms['Impressions Goal'] || '0').replace(/[,]/g, ''));
+        
+        if (!isNaN(impressionGoal) && impressionGoal > 0) {
+          // Calculate total campaign days from contract terms
+          const startDate = parseCampaignDate(contractTerms['Start Date']);
+          const endDate = parseCampaignDate(contractTerms['End Date']);
+          const totalCampaignDays = differenceInDays(endDate, startDate) + 1;
+          
+          if (totalCampaignDays > 0) {
+            requiredDailyImpressions = impressionGoal / totalCampaignDays;
+            
+            if (isTargetCampaign) {
+              console.log(`🚀 Target campaign calculated required daily impressions from contract terms: ${Math.round(requiredDailyImpressions)} (${impressionGoal} / ${totalCampaignDays} days)`);
+            } else {
+              console.log(`Campaign calculated required daily impressions from contract terms: ${Math.round(requiredDailyImpressions)}`);
+            }
+          }
+        }
+      } catch (error) {
+        if (isTargetCampaign) {
+          console.log(`🚀 Target campaign error calculating required daily impressions from contract terms:`, error);
+        }
+      }
+    }
+  }
+  
+  // Log when contract terms data is missing instead of using fallback
+  if (requiredDailyImpressions === 0) {
+    if (isTargetCampaign) {
+      console.log(`🚀 Target campaign missing contract terms - cannot calculate accurate required daily impressions`);
+    } else {
+      console.log(`Campaign missing contract terms - cannot calculate accurate required daily impressions`);
+    }
+  }
   
   const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
   const burnRateScore = calculateBurnRateScore(burnRateData, requiredDailyImpressions);
@@ -681,8 +793,46 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     console.log(`Budget from contract terms: $${budget}, Days left: ${daysLeft}`);
   }
   
-  // Calculate completion percentage and days into flight
-  const completionPercentage = calculateCompletionPercentage(pacingData, campaignName);
+  // Calculate completion percentage from contract terms data instead of pacing data
+  const completionPercentage = calculateCompletionPercentage(contractTermsData, campaignName);
+  
+  // Filter out campaigns without contract terms - they're already called out in the alert
+  if (completionPercentage === 0) {
+    console.log(`Excluding campaign "${campaignName}" from health chart - no contract terms found`);
+    return {
+      campaignName,
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      revenue: 0,
+      transactions: 0,
+      roasScore: 0,
+      deliveryPacingScore: 0,
+      burnRateScore: 0,
+      ctrScore: 0,
+      overspendScore: 0,
+      healthScore: 0, // This will cause the campaign to be filtered out
+      burnRateConfidence: 'no-contract-terms',
+      ctr: 0,
+      roas: 0,
+      completionPercentage: 0,
+      deliveryPacing: 0,
+      burnRate: 0,
+      overspend: 0,
+      burnRateData: {
+        oneDayRate: 0,
+        threeDayRate: 0,
+        sevenDayRate: 0,
+        confidence: 'no-contract-terms',
+        oneDayPercentage: 0,
+        threeDayPercentage: 0,
+        sevenDayPercentage: 0
+      },
+      requiredDailyImpressions: 0,
+      burnRatePercentage: 0
+    };
+  }
+  
   const daysIntoFlight = Math.max(1, campaignRows.length); // Use data days as approximation
   
   if (isTargetCampaign) {

@@ -375,7 +375,12 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
       // Generate CSV data rows
       csvData.forEach(row => {
         const csvRow = columns.map(column => {
-          const value = row[column];
+          let value = row[column];
+          
+          // Use displayName for groupKey when available (preserves original formatting)
+          if (column === 'groupKey' && row.displayName) {
+            value = row.displayName;
+          }
           
           // Format values appropriately
           if (column === 'CTR') {

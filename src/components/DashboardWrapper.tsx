@@ -118,12 +118,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       
       if (agency) {
         agencySet.add(agency);
-        console.log(`Added agency: "${agency}" from campaign: "${campaignName}"`);
       }
     });
     
-    console.log('Total unique agencies found:', agencySet.size);
-    console.log('Agency list:', Array.from(agencySet).sort());
     
     // Create agency option objects for the MultiSelect component
     return Array.from(agencySet).sort((a, b) => a.localeCompare(b)).map(agency => ({

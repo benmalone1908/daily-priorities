@@ -78,7 +78,6 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
     }
   });
   
-  console.log(`FIXED: fillMissingDates - Processing ${allDates.length} dates, existing data has ${timeSeriesData.length} entries`);
   
   // Find the first and last dates with actual data
   const actualDataDates = timeSeriesData
@@ -126,7 +125,6 @@ const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
       }
     });
   
-  console.log(`FIXED: fillMissingDates - Generated ${result.length} entries within campaign range (${result.filter(r => r.impressions === 0).length} with zero values)`);
   return result;
 };
 

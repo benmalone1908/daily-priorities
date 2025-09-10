@@ -59,8 +59,6 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 
 // Helper function to fill missing dates with zero values for combo chart
 const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[] => {
-  console.log('fillMissingDatesForCombo: Input data length:', processedData.length);
-  console.log('fillMissingDatesForCombo: Sample input data:', processedData.slice(0, 3));
   
   // Check if we're dealing with day of week data
   const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
@@ -77,13 +75,10 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
   const dataByDate = new Map();
   processedData.forEach(item => {
     if (item.date) {
-      console.log('fillMissingDatesForCombo: Mapping existing data for date:', item.date);
       dataByDate.set(item.date, item);
     }
   });
   
-  console.log('fillMissingDatesForCombo: Created map with', dataByDate.size, 'entries');
-  console.log('fillMissingDatesForCombo: Map keys:', Array.from(dataByDate.keys()));
   
   // Find the actual range of dates that have data
   const datesWithData = processedData
@@ -103,17 +98,14 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
     if (date >= firstDataDate && date <= lastDataDate) {
       // Format date as M/D/YYYY to match input data format
       const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-      console.log('fillMissingDatesForCombo: Checking date:', dateStr);
       
       const existingData = dataByDate.get(dateStr);
       
       if (existingData) {
         // Use existing data as-is
-        console.log('fillMissingDatesForCombo: Found existing data for', dateStr, ':', existingData);
         result.push(existingData);
       } else {
         // Fill gap with zero values
-        console.log('fillMissingDatesForCombo: Filling gap for', dateStr);
         result.push({
           date: dateStr,
           IMPRESSIONS: 0,
@@ -125,8 +117,6 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
     }
   }
   
-  console.log('fillMissingDatesForCombo: Final result length:', result.length);
-  console.log('fillMissingDatesForCombo: Sample final result:', result.slice(0, 3));
     
   return result;
 };

@@ -4,8 +4,9 @@ import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip } from "./ui/chart";
 import { Button } from "./ui/button";
 import { X } from "lucide-react";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { calculateTooltipPosition, getTooltipZIndex, createScrollHandler } from "@/utils/tooltipPositioning";
 
 interface QuadrantZoomModalProps {
   open: boolean;
@@ -41,6 +42,18 @@ const QuadrantZoomModal = ({
     x: 0,
     y: 0
   });
+
+  // Reset tooltip state when modal opens/closes
+  useEffect(() => {
+    if (!open) {
+      setTooltipState({
+        visible: false,
+        campaigns: [],
+        x: 0,
+        y: 0
+      });
+    }
+  }, [open]);
 
   const filteredData = useMemo(() => {
     return healthData
@@ -119,38 +132,42 @@ const QuadrantZoomModal = ({
       const clientX = event.clientX || event.nativeEvent?.clientX || 100;
       const clientY = event.clientY || event.nativeEvent?.clientY || 100;
       
-      // Increase tolerance and add debugging
+      // Find matching campaigns
       const tolerance = 0.5;
       const matchingCampaigns = healthData.filter(campaign => 
         Math.abs(campaign.completionPercentage - data.x) <= tolerance &&
         Math.abs(campaign.healthScore - data.y) <= tolerance
       );
       
-      console.log('Modal matching campaigns:', matchingCampaigns);
+      // Calculate optimal tooltip position with expanded dimensions for modal
+      const tooltipDimensions = {
+        width: 480, // Larger width to show full campaign names
+        height: matchingCampaigns.length === 1 ? 250 : Math.min(300, matchingCampaigns.length * 50 + 80)
+      };
       
-      // Better positioning logic for modal
+      const position = calculateTooltipPosition(clientX, clientY, tooltipDimensions);
+      
+      // Use relative positioning within the chart container instead of fixed
       const chartContainer = chartContainerRef.current;
-      const containerRect = chartContainer?.getBoundingClientRect();
-      
       let tooltipX = clientX;
       let tooltipY = clientY;
       
-      if (containerRect) {
-        // If tooltip would go off the right edge, position it to the left of cursor
-        if (clientX + 400 > containerRect.right) {
-          tooltipX = clientX - 420;
-        }
+      if (chartContainer) {
+        const containerRect = chartContainer.getBoundingClientRect();
+        const tooltipWidth = 480;
+        const tooltipHeight = 250;
+        const padding = 10;
         
-        // Keep tooltip within container bounds
-        tooltipX = Math.max(containerRect.left + 10, Math.min(tooltipX, containerRect.right - 410));
+        // Convert to relative position within the chart container
+        tooltipX = clientX - containerRect.left;
+        tooltipY = clientY - containerRect.top;
         
-        // Position tooltip above cursor if it would go below container
-        if (clientY + 200 > containerRect.bottom) {
-          tooltipY = clientY - 210;
-        }
+        // Ensure tooltip stays within container bounds  
+        tooltipX = Math.max(padding, Math.min(tooltipX, containerRect.width - tooltipWidth - padding));
+        tooltipY = Math.max(padding, Math.min(tooltipY, containerRect.height - tooltipHeight - padding));
         
-        // Keep tooltip within vertical bounds
-        tooltipY = Math.max(containerRect.top + 10, Math.min(tooltipY, containerRect.bottom - 210));
+        console.log('Chart container positioning: X=' + tooltipX + ', Y=' + tooltipY);
+        console.log('Container size: ' + containerRect.width + 'x' + containerRect.height);
       }
       
       setTooltipState({
@@ -170,6 +187,41 @@ const QuadrantZoomModal = ({
       y: 0
     });
   };
+
+  // Hide tooltip on scroll, but only for chart container scroll and window scroll, not modal content scroll
+  useEffect(() => {
+    if (!tooltipState.visible) return;
+    
+    const scrollHandler = (event: Event) => {
+      // Don't close tooltip if scrolling within the tooltip itself
+      const target = event.target as Element;
+      const tooltipElement = document.querySelector('[data-tooltip-content]');
+      
+      // Check if the scroll event is coming from within the tooltip
+      if (tooltipElement && (tooltipElement === target || tooltipElement.contains(target))) {
+        return; // Don't close tooltip for internal scrolling
+      }
+      
+      // Check if the scroll event is coming from within the modal dialog
+      const modalDialog = document.querySelector('[role="dialog"]');
+      if (modalDialog && (modalDialog === target || modalDialog.contains(target))) {
+        return; // Don't close tooltip for modal scrolling
+      }
+      
+      closeTooltip();
+    };
+    
+    // Only listen to window scroll and chart container scroll, not modal dialog scroll
+    const chartContainer = chartContainerRef.current;
+    
+    window.addEventListener('scroll', scrollHandler, true);
+    chartContainer?.addEventListener('scroll', scrollHandler, true);
+    
+    return () => {
+      window.removeEventListener('scroll', scrollHandler, true);
+      chartContainer?.removeEventListener('scroll', scrollHandler, true);
+    };
+  }, [tooltipState.visible]);
 
   const renderBurnRateDetails = (campaign: CampaignHealthData) => {
     if (!campaign.burnRateData) return null;
@@ -215,7 +267,7 @@ const QuadrantZoomModal = ({
             Showing {filteredData.length} campaign(s) in this quadrant
           </div>
           
-          <div className="w-full border border-gray-200 rounded-lg p-4" ref={chartContainerRef}>
+          <div className="w-full border border-gray-200 rounded-lg p-4 relative" ref={chartContainerRef}>
             <ChartContainer config={chartConfig} className="w-full min-h-[350px]">
               <ScatterChart
                 data={filteredData}
@@ -255,13 +307,16 @@ const QuadrantZoomModal = ({
               </ScatterChart>
             </ChartContainer>
 
-            {/* Multi-Campaign Tooltip with Accordion */}
+            {/* Tooltip positioned absolutely within chart container */}
             {tooltipState.visible && tooltipState.campaigns.length > 0 && (
               <div 
-                className="fixed bg-white border rounded shadow-lg max-w-md z-50 max-h-96 overflow-y-auto"
+                data-tooltip-content
+                className={`absolute bg-white border rounded shadow-lg ${getTooltipZIndex()} max-h-80 overflow-y-auto`}
                 style={{ 
                   left: tooltipState.x,
-                  top: tooltipState.y
+                  top: tooltipState.y,
+                  width: '480px',
+                  maxWidth: '480px'
                 }}
               >
                 <div className="flex justify-between items-center p-3 border-b">
@@ -325,9 +380,9 @@ const QuadrantZoomModal = ({
                     {tooltipState.campaigns.map((campaign, index) => (
                       <AccordionItem key={`${campaign.campaignName}-${index}`} value={`campaign-${index}`}>
                         <AccordionTrigger className="px-3 py-2 text-left">
-                          <div className="flex justify-between items-center w-full mr-2">
-                            <span className="font-medium text-sm truncate">{campaign.campaignName}</span>
-                            <div className="flex items-center gap-2 text-xs">
+                          <div className="flex justify-between items-start w-full mr-2 gap-2">
+                            <span className="font-medium text-sm break-words flex-1">{campaign.campaignName}</span>
+                            <div className="flex items-center gap-2 text-xs flex-shrink-0">
                               <span>Score: {campaign.healthScore}</span>
                               <span>Complete: {campaign.completionPercentage.toFixed(1)}%</span>
                             </div>
@@ -365,11 +420,10 @@ const QuadrantZoomModal = ({
               </div>
             )}
           </div>
-
           {filteredData.length > 0 && (
             <div className="mt-4">
-              <h4 className="font-medium mb-2">Campaigns in this quadrant:</h4>
-              <div className="max-h-32 overflow-y-auto text-sm space-y-1">
+              <h4 className="font-medium mb-2 text-sm">Campaigns in this quadrant:</h4>
+              <div className="max-h-32 overflow-y-auto text-xs space-y-1">
                 {filteredData.map((campaign, index) => (
                   <div key={index} className="flex justify-between items-center py-1 px-2 bg-gray-50 rounded">
                     <span className="truncate">{campaign.name}</span>

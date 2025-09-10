@@ -282,12 +282,10 @@ const Dashboard = ({
     const newViewMode = viewByDate ? "date" : "dayOfWeek";
     setMetricsViewMode(newViewMode);
     setRevenueViewMode(newViewMode);
-    console.log(`Dashboard: viewByDate prop changed to ${viewByDate}, setting view modes to ${newViewMode}`);
   }, [viewByDate]);
   
   useEffect(() => {
     renderCountRef.current += 1;
-    console.log(`Dashboard render #${renderCountRef.current}, data rows: ${data?.length || 0}`);
   });
 
   const campaigns = useMemo(() => {
@@ -343,7 +341,6 @@ const Dashboard = ({
       }
     });
     
-    console.log(`Filtered advertisers for agencies ${selectedRevenueAgencies.join(', ')}:`, Array.from(validAdvertisers));
     
     return Array.from(validAdvertisers)
       .sort((a, b) => a.localeCompare(b))
@@ -373,7 +370,6 @@ const Dashboard = ({
       });
     }
     
-    console.log(`Filtered revenue campaign options: ${validCampaigns.length} campaigns`);
     
     // Map strings to Option objects before returning
     return validCampaigns.map(campaign => ({
@@ -401,7 +397,6 @@ const Dashboard = ({
       }
     });
     
-    console.log(`Filtered advertisers for agencies ${selectedWeeklyAgencies.join(', ')}:`, Array.from(validAdvertisers));
     
     return Array.from(validAdvertisers)
       .sort((a, b) => a.localeCompare(b))
@@ -430,7 +425,6 @@ const Dashboard = ({
       });
     }
     
-    console.log(`Filtered weekly campaign options: ${validCampaigns.length} campaigns`);
     
     // Map strings to Option objects before returning
     return validCampaigns.map(campaign => ({
@@ -523,7 +517,6 @@ const Dashboard = ({
       });
     }
     
-    console.log(`Filtered metrics campaign options: ${validCampaigns.length} campaigns`);
     
     // Map strings to Option objects before returning
     return validCampaigns.map(campaign => ({
@@ -643,23 +636,27 @@ const Dashboard = ({
   };
 
   const getWeeklyData = (selectedCampaigns: string[], selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
-    console.log(`getWeeklyData called with campaigns=${selectedCampaigns.join(',')}, advertisers=${selectedAdvertisers.join(',')}, agencies=${selectedAgencies.join(',')}, period=${periodLength}`);
+    // Determine which data source to use
+    let sourceData;
+    if (useGlobalFilters) {
+      // Use globally filtered data (metricsData or revenueData if available, otherwise data)
+      sourceData = metricsData && metricsData.length > 0 ? metricsData : (revenueData && revenueData.length > 0 ? revenueData : data);
+    } else {
+      sourceData = data;
+    }
     
-    if (!data || data.length === 0) {
-      console.log("No data available for weekly comparison");
+    if (!sourceData || sourceData.length === 0) {
       return [];
     }
+    
 
     try {
-      let filteredData = JSON.parse(JSON.stringify(data));
-      console.log(`Starting with ${filteredData.length} rows of data`);
+      let filteredData = JSON.parse(JSON.stringify(sourceData));
       
       // For debugging purposes, look at a few sample campaign names
-      const sampleCampaigns = filteredData.slice(0, 5).map((row: any) => row["CAMPAIGN ORDER NAME"]);
-      console.log("Sample campaign names:", sampleCampaigns);
       
-      if (selectedAgencies.length > 0) {
-        console.log(`Filtering by agencies: ${selectedAgencies.join(", ")}`);
+      // Skip additional filtering when using global filters (data is already filtered)
+      if (!useGlobalFilters && selectedAgencies.length > 0) {
         
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
@@ -669,29 +666,14 @@ const Dashboard = ({
           
           const isIncluded = selectedAgencies.includes(agency) && agency !== "";
           
-          // Debug log for a few rows to see what's happening
-          if (sampleCampaigns.includes(campaignName)) {
-            console.log(`Campaign: "${campaignName}" -> Agency: "${agency}", Included: ${isIncluded}`);
-          }
           
           return isIncluded;
         });
         
-        console.log(`After agency filter: ${filteredData.length} rows`);
         
-        // Additional debugging - check what agencies are actually in the data
-        const uniqueAgencies = new Set<string>();
-        filteredData.slice(0, 100).forEach((row: any) => {
-          if (row["CAMPAIGN ORDER NAME"]) {
-            const { agency } = extractAgencyInfo(row["CAMPAIGN ORDER NAME"]);
-            if (agency) uniqueAgencies.add(agency);
-          }
-        });
-        console.log("Agencies found in filtered data:", Array.from(uniqueAgencies));
       }
       
-      if (selectedAdvertisers.length > 0) {
-        console.log(`Filtering by advertisers: ${selectedAdvertisers.join(", ")}`);
+      if (!useGlobalFilters && selectedAdvertisers.length > 0) {
         
         filteredData = filteredData.filter((row: any) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
@@ -701,27 +683,20 @@ const Dashboard = ({
           
           const isIncluded = selectedAdvertisers.includes(advertiser) && advertiser !== "";
           
-          // Debug log for a few rows to see what's happening
-          if (sampleCampaigns.includes(campaignName)) {
-            console.log(`Campaign: "${campaignName}" -> Advertiser: "${advertiser}", Included: ${isIncluded}`);
-          }
           
           return isIncluded;
         });
         
-        console.log(`After advertiser filter: ${filteredData.length} rows`);
       }
       
       // Updated to filter by an array of campaign names
-      if (selectedCampaigns.length > 0) {
+      if (!useGlobalFilters && selectedCampaigns.length > 0) {
         filteredData = filteredData.filter((row: any) => 
           selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"])
         );
-        console.log(`After campaign filter: ${filteredData.length} rows`);
       }
       
       if (filteredData.length === 0) {
-        console.log("No data after filtering");
         return [];
       }
 
@@ -742,10 +717,8 @@ const Dashboard = ({
         }
       }).filter(Boolean);
       
-      console.log(`Rows with valid dates: ${rowsWithDates.length}`);
       
       if (rowsWithDates.length === 0) {
-        console.log("No rows with valid dates");
         return [];
       }
 
@@ -753,41 +726,36 @@ const Dashboard = ({
       const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
       
-      console.log(`Date range: ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       
       const daysPeriod = parseInt(periodLength, 10);
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const completePeriods = Math.floor(totalDays / daysPeriod);
       
-      console.log(`Total days: ${totalDays}, Days per period: ${daysPeriod}, Complete periods: ${completePeriods}`);
       
       if (completePeriods < 1) {
-        console.log("Not enough data for even one complete period");
         return [];
       }
 
       const periods: WeeklyData[] = [];
       
+      // Calculate truly non-overlapping periods
+      let currentPeriodEnd = new Date(mostRecentDate);
       for (let i = 0; i < completePeriods; i++) {
-        const periodEnd = new Date(mostRecentDate);
-        periodEnd.setHours(23, 59, 59, 999);
-        if (i > 0) {
-          periodEnd.setDate(periodEnd.getDate() - (i * daysPeriod));
-        }
+        // Use the tracked end date for this period - no timezone modifications
+        const periodEnd = new Date(currentPeriodEnd);
         
+        // Calculate start date: for N days ending on date X, start = X - (N-1) days
+        // Example: 7 days ending Aug 30 = Aug 24-30 = start is Aug 30 - 6 = Aug 24
         const periodStart = new Date(periodEnd);
-        periodStart.setDate(periodEnd.getDate() - (daysPeriod - 1));
-        periodStart.setHours(0, 0, 0, 0);
+        periodStart.setDate(periodStart.getDate() - (daysPeriod - 1));
         
         if (periodStart < earliestDate) {
-          console.log(`Skipping period ${i+1} - starts before earliest data`);
           continue;
         }
         
         const periodStartStr = periodStart.toISOString().split('T')[0];
         const periodEndStr = periodEnd.toISOString().split('T')[0];
         
-        console.log(`Creating period ${i+1}: ${periodStartStr} to ${periodEndStr}`);
         
         periods.push({
           periodStart: periodStartStr,
@@ -799,9 +767,13 @@ const Dashboard = ({
           count: 0,
           TRANSACTIONS: 0
         });
+        
+        // Set the next period's end date to be the day before this period's start
+        // This ensures completely non-overlapping periods
+        currentPeriodEnd = new Date(periodStart);
+        currentPeriodEnd.setDate(currentPeriodEnd.getDate() - 1);
       }
       
-      console.log(`Created ${periods.length} periods of ${daysPeriod} days each`);
       
       rowsWithDates.forEach((row: any) => {
         try {
@@ -809,11 +781,12 @@ const Dashboard = ({
           const rowTime = rowDate.getTime();
           
           for (let i = 0; i < periods.length; i++) {
-            const periodStart = new Date(periods[i].periodStart);
-            const periodEnd = new Date(periods[i].periodEnd);
-            periodEnd.setHours(23, 59, 59, 999);
+            const periodStartDate = periods[i].periodStart;
+            const periodEndDate = periods[i].periodEnd;
+            const rowDateStr = row.parsedDate.toISOString().split('T')[0];
             
-            if (rowTime >= periodStart.getTime() && rowTime <= periodEnd.getTime()) {
+            // Pure string comparison - no timezone issues
+            if (rowDateStr >= periodStartDate && rowDateStr <= periodEndDate) {
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
               periods[i].CLICKS += Number(row.CLICKS) || 0;
               periods[i].REVENUE += Number(row.REVENUE) || 0;
@@ -833,13 +806,8 @@ const Dashboard = ({
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
       
-      console.log(`Final periods with data: ${nonEmptyPeriods.length}`);
       
       if (nonEmptyPeriods.length > 0) {
-        console.log("First period data:", JSON.stringify(nonEmptyPeriods[0]));
-        if (nonEmptyPeriods.length > 1) {
-          console.log("Second period data:", JSON.stringify(nonEmptyPeriods[1]));
-        }
       }
 
       return nonEmptyPeriods;
@@ -852,7 +820,6 @@ const Dashboard = ({
   const availablePeriods = useMemo(() => {
     try {
       if (!data || !data.length) {
-        console.log("No data for period calculation");
         return ["7"];
       }
 
@@ -870,7 +837,6 @@ const Dashboard = ({
         .filter(Boolean) as Date[];
       
       if (!dates.length) {
-        console.log("No valid dates found for period calculation");
         return ["7"];
       }
 
@@ -878,7 +844,6 @@ const Dashboard = ({
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
       
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      console.log(`Total days available for period calculation: ${totalDays}, from ${earliestDate.toISOString()} to ${mostRecentDate.toISOString()}`);
       
       const periods: ComparisonPeriod[] = ["7"];
       
@@ -890,7 +855,6 @@ const Dashboard = ({
         periods.push("30");
       }
       
-      console.log(`Available periods: ${periods.join(", ")}`);
       return periods;
     } catch (error) {
       console.error("Error calculating available periods:", error);
@@ -899,15 +863,20 @@ const Dashboard = ({
   }, [data]);
 
   useEffect(() => {
-    console.log("Calculating weekly data...");
-    // Updated function call to pass selectedWeeklyCampaigns array
-    const calculatedData = getWeeklyData(selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
-    console.log(`Weekly data calculation complete. Found ${calculatedData.length} periods.`);
-    setWeeklyDataState(calculatedData);
-  }, [data, selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod]);
+    
+    // Use global filters if enabled, otherwise use weekly-specific filters
+    if (useGlobalFilters) {
+      // When using global filters, pass empty arrays to use all data from metricsData/revenueData
+      const calculatedData = getWeeklyData([], [], [], comparisonPeriod);
+      setWeeklyDataState(calculatedData);
+    } else {
+      // Use weekly-specific filters
+      const calculatedData = getWeeklyData(selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
+      setWeeklyDataState(calculatedData);
+    }
+  }, [data, metricsData, revenueData, selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod, useGlobalFilters]);
 
   const processedMetricsData = useMemo(() => {
-    console.log(`Processing metrics data with view mode: ${metricsViewMode}`);
     if (metricsViewMode === "date") {
       return getAggregatedData(metricsData || data);
     } else {
@@ -916,7 +885,6 @@ const Dashboard = ({
   }, [metricsViewMode, metricsData, data]);
   
   const processedRevenueData = useMemo(() => {
-    console.log(`Processing revenue data with view mode: ${revenueViewMode}`);
     if (revenueViewMode === "date") {
       return getAggregatedData(revenueData || data);
     } else {
@@ -944,6 +912,24 @@ const Dashboard = ({
 
   const formatDate = (dateString: string) => {
     try {
+      // Parse the date string directly without timezone conversion
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+        const day = parseInt(parts[2]);
+        
+        // Create date in local timezone to avoid UTC conversion issues
+        const date = new Date(year, month, day);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        
+        return formatted;
+      }
+      
+      // Fallback to original logic for other formats
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -1077,7 +1063,6 @@ const Dashboard = ({
 
   // Handler for CombinedMetricsChart tab changes
   const handleCombinedChartTabChange = (tab: string) => {
-    console.log(`Dashboard: Combined chart tab changed to ${tab}`);
     if (onChartTabChange) {
       onChartTabChange(tab);
     }

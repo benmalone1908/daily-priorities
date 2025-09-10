@@ -52,6 +52,16 @@ const ContractTermsFileUpload = ({ onDataLoaded }: ContractTermsFileUploadProps)
                 return;
               }
 
+              // Create header mapping to normalize to StatusTab expected format
+              const headerMapping: Record<string, string> = {
+                "NAME": "Name",
+                "START DATE": "Start Date", 
+                "END DATE": "End Date",
+                "BUDGET": "Budget",
+                "CPM": "CPM",
+                "IMPRESSIONS GOAL": "Impressions Goal"
+              };
+
               const processedData = results.data.slice(1).map((row, rowIndex) => {
                 if (!Array.isArray(row)) {
                   console.warn(`Contract terms row ${rowIndex + 1} is not an array:`, row);
@@ -68,17 +78,20 @@ const ContractTermsFileUpload = ({ onDataLoaded }: ContractTermsFileUploadProps)
                   const value = row[index];
                   const upperHeader = header.toUpperCase();
                   
+                  // Use normalized header name that matches StatusTab expectations
+                  const normalizedHeader = headerMapping[upperHeader] || header;
+                  
                   if (upperHeader === "NAME") {
-                    processed[header] = String(value || "");
+                    processed[normalizedHeader] = String(value || "");
                   } 
                   else if (["START DATE", "END DATE"].includes(upperHeader)) {
-                    processed[header] = String(value || "");
+                    processed[normalizedHeader] = String(value || "");
                   }
                   else if (["BUDGET", "CPM"].includes(upperHeader)) {
-                    processed[header] = Number(value) || 0;
+                    processed[normalizedHeader] = Number(value) || 0;
                   } 
                   else {
-                    processed[header] = String(value || "");
+                    processed[normalizedHeader] = String(value || "");
                   }
                 });
                 

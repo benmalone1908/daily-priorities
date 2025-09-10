@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceArea, Cell } from "recharts";
 import { CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import QuadrantZoomModal from "./QuadrantZoomModal";
+import { calculateTooltipPosition, getTooltipZIndex, createScrollHandler } from "@/utils/tooltipPositioning";
 
 interface CampaignHealthScatterPlotProps {
   healthData: CampaignHealthData[];
@@ -157,56 +158,33 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
 
   const handleScatterClick = (data: any, event: any) => {
     console.log('Scatter clicked:', data, event);
-    console.log('Data coordinates:', data.x, data.y);
-    console.log('All health data:', healthData.map(c => ({ name: c.campaignName, completion: c.completionPercentage, health: c.healthScore })));
-    
     event?.stopPropagation?.();
     
     if (event) {
       const clientX = event.clientX || event.nativeEvent?.clientX || 100;
       const clientY = event.clientY || event.nativeEvent?.clientY || 100;
       
-      // Increase tolerance and add debugging
+      // Find matching campaigns
       const tolerance = 0.5;
       const matchingCampaigns = healthData.filter(campaign => {
         const xMatch = Math.abs(campaign.completionPercentage - data.x) <= tolerance;
         const yMatch = Math.abs(campaign.healthScore - data.y) <= tolerance;
-        console.log(`Campaign ${campaign.campaignName}: completion=${campaign.completionPercentage}, health=${campaign.healthScore}, xMatch=${xMatch}, yMatch=${yMatch}`);
         return xMatch && yMatch;
       });
       
-      console.log('Matching campaigns:', matchingCampaigns);
+      // Calculate optimal tooltip position with expanded dimensions to match modal
+      const tooltipDimensions = {
+        width: 480, // Larger width to match quadrant modal
+        height: matchingCampaigns.length === 1 ? 250 : Math.min(300, matchingCampaigns.length * 50 + 80)
+      };
       
-      // Better positioning logic
-      const chartContainer = chartContainerRef.current;
-      const containerRect = chartContainer?.getBoundingClientRect();
-      
-      let tooltipX = clientX;
-      let tooltipY = clientY;
-      
-      if (containerRect) {
-        // If tooltip would go off the right edge, position it to the left of cursor
-        if (clientX + 400 > containerRect.right) {
-          tooltipX = clientX - 420;
-        }
-        
-        // Keep tooltip within container bounds
-        tooltipX = Math.max(containerRect.left + 10, Math.min(tooltipX, containerRect.right - 410));
-        
-        // Position tooltip above cursor if it would go below container
-        if (clientY + 200 > containerRect.bottom) {
-          tooltipY = clientY - 210;
-        }
-        
-        // Keep tooltip within vertical bounds
-        tooltipY = Math.max(containerRect.top + 10, Math.min(tooltipY, containerRect.bottom - 210));
-      }
+      const position = calculateTooltipPosition(clientX, clientY, tooltipDimensions);
       
       setTooltipState({
         visible: true,
         campaigns: matchingCampaigns,
-        x: tooltipX,
-        y: tooltipY
+        x: position.x,
+        y: position.y
       });
     }
   };
@@ -219,6 +197,37 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
       y: 0
     });
   };
+
+  // Hide tooltip on scroll, but not when scrolling within the tooltip or modal
+  useEffect(() => {
+    if (!tooltipState.visible) return;
+    
+    const scrollHandler = (event: Event) => {
+      // Don't close tooltip if scrolling within the tooltip itself
+      const target = event.target as Element;
+      const tooltipElement = document.querySelector('[data-tooltip-content]');
+      
+      // Check if the scroll event is coming from within the tooltip
+      if (tooltipElement && (tooltipElement === target || tooltipElement.contains(target))) {
+        return; // Don't close tooltip for internal scrolling
+      }
+      
+      // Check if the scroll event is coming from within a modal dialog
+      const modalDialog = document.querySelector('[role="dialog"]');
+      if (modalDialog && (modalDialog === target || modalDialog.contains(target))) {
+        return; // Don't close tooltip for modal scrolling
+      }
+      
+      closeTooltip();
+    };
+    
+    // Add scroll listeners to window and potential modal containers
+    window.addEventListener('scroll', scrollHandler, true);
+    
+    return () => {
+      window.removeEventListener('scroll', scrollHandler, true);
+    };
+  }, [tooltipState.visible]);
 
   // Generate clickable ReferenceArea components for quadrants
   const generateQuadrantAreas = () => {
@@ -421,10 +430,13 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
       {/* Multi-Campaign Tooltip with Accordion */}
       {tooltipState.visible && tooltipState.campaigns.length > 0 && (
         <div 
-          className="fixed bg-white border rounded shadow-lg max-w-md z-50 max-h-96 overflow-y-auto"
+          data-tooltip-content
+          className={`fixed bg-white border rounded shadow-lg ${getTooltipZIndex()} max-h-80 overflow-y-auto`}
           style={{ 
             left: tooltipState.x,
-            top: tooltipState.y
+            top: tooltipState.y,
+            width: '480px',
+            maxWidth: '480px'
           }}
         >
           <div className="flex justify-between items-center p-3 border-b">
@@ -488,9 +500,9 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
               {tooltipState.campaigns.map((campaign, index) => (
                 <AccordionItem key={`${campaign.campaignName}-${index}`} value={`campaign-${index}`}>
                   <AccordionTrigger className="px-3 py-2 text-left">
-                    <div className="flex justify-between items-center w-full mr-2">
-                      <span className="font-medium text-sm truncate">{campaign.campaignName}</span>
-                      <div className="flex items-center gap-2 text-xs">
+                    <div className="flex justify-between items-start w-full mr-2 gap-2">
+                      <span className="font-medium text-sm break-words flex-1">{campaign.campaignName}</span>
+                      <div className="flex items-center gap-2 text-xs flex-shrink-0">
                         <span>Score: {campaign.healthScore}</span>
                         <span>Complete: {campaign.completionPercentage.toFixed(1)}%</span>
                       </div>

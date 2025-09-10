@@ -1,12 +1,15 @@
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
 import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { Alert, AlertDescription } from "./ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, HelpCircle } from "lucide-react";
+import ContractTermsAlert from "./ContractTermsAlert";
+import { validateContractTerms } from "@/utils/contractTermsValidation";
+import MetricExplanationModal, { MetricType } from "./MetricExplanationModal";
 
 interface CampaignHealthTabProps {
   data: any[];
@@ -16,6 +19,15 @@ interface CampaignHealthTabProps {
 
 const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: CampaignHealthTabProps) => {
   const { isTestCampaign } = useCampaignFilter();
+  
+  // Modal state for metric explanations
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<MetricType | null>(null);
+  
+  const handleMetricClick = (metric: MetricType) => {
+    setSelectedMetric(metric);
+    setModalOpen(true);
+  };
 
   // Debug logging to see what data we're receiving
   console.log("CampaignHealthTab: Received pacing data length:", pacingData.length);
@@ -31,7 +43,11 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
     console.log("CampaignHealthTab: Contract terms fields:", Object.keys(contractTermsData[0] || {}));
   }
 
-  const { healthData, missingPacingCampaigns } = useMemo(() => {
+  const { healthData, missingPacingCampaigns, contractTermsValidation } = useMemo(() => {
+    // Validate contract terms for campaigns with impressions
+    const contractValidation = validateContractTerms(data, contractTermsData);
+    console.log("CampaignHealthTab: Contract terms validation result:", contractValidation);
+    
     // Get unique campaigns excluding test campaigns
     const campaigns = Array.from(new Set(
       data
@@ -60,7 +76,8 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
 
     return {
       healthData: healthScores,
-      missingPacingCampaigns: missingFromPacing
+      missingPacingCampaigns: missingFromPacing,
+      contractTermsValidation: contractValidation
     };
   }, [data, pacingData, contractTermsData, isTestCampaign]);
 
@@ -83,6 +100,11 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
 
   return (
     <div className="space-y-6">
+      {/* Missing Contract Terms Alert */}
+      <ContractTermsAlert 
+        missingCampaigns={contractTermsValidation.missingCampaigns}
+      />
+      
       {/* Missing Pacing Data Alert - only show if pacing data was uploaded */}
       {pacingData.length > 0 && missingPacingCampaigns.length > 0 && (
         <Alert className="border-yellow-200 bg-yellow-50">
@@ -145,21 +167,48 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
       {/* Health Scoring Legend */}
       <Card className="p-4">
         <h3 className="text-lg font-semibold mb-3">Health Score Methodology</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Click on any metric below to see detailed scoring explanations and calculation methods.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <div className="font-medium">ROAS (40%)</div>
+          <div 
+            className="cursor-pointer p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+            onClick={() => handleMetricClick('roas')}
+          >
+            <div className="font-medium flex items-center gap-2">
+              ROAS (40%)
+              <HelpCircle className="h-3 w-3 text-muted-foreground group-hover:text-blue-500" />
+            </div>
             <div className="text-muted-foreground">Return on Ad Spend</div>
           </div>
-          <div>
-            <div className="font-medium">Delivery Pacing (30%)</div>
+          <div 
+            className="cursor-pointer p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+            onClick={() => handleMetricClick('pacing')}
+          >
+            <div className="font-medium flex items-center gap-2">
+              Delivery Pacing (30%)
+              <HelpCircle className="h-3 w-3 text-muted-foreground group-hover:text-blue-500" />
+            </div>
             <div className="text-muted-foreground">Actual vs Expected</div>
           </div>
-          <div>
-            <div className="font-medium">Burn Rate (15%)</div>
+          <div 
+            className="cursor-pointer p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+            onClick={() => handleMetricClick('burnrate')}
+          >
+            <div className="font-medium flex items-center gap-2">
+              Burn Rate (15%)
+              <HelpCircle className="h-3 w-3 text-muted-foreground group-hover:text-blue-500" />
+            </div>
             <div className="text-muted-foreground">Recent delivery pace</div>
           </div>
-          <div>
-            <div className="font-medium">Overspend Risk (15%)</div>
+          <div 
+            className="cursor-pointer p-3 rounded-lg border hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+            onClick={() => handleMetricClick('overspend')}
+          >
+            <div className="font-medium flex items-center gap-2">
+              Overspend Risk (15%)
+              <HelpCircle className="h-3 w-3 text-muted-foreground group-hover:text-blue-500" />
+            </div>
             <div className="text-muted-foreground">Budget tracking</div>
           </div>
         </div>
@@ -174,6 +223,13 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
         </div>
         <CampaignHealthScatterPlot healthData={healthData} />
       </Card>
+      
+      {/* Metric Explanation Modal */}
+      <MetricExplanationModal 
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        metric={selectedMetric}
+      />
     </div>
   );
 };

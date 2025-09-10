@@ -19,6 +19,8 @@ interface DateRangePickerProps {
   displayDateRangeSummary?: boolean;
   dateRangeSummaryText?: string | null;
   chartToggle?: React.ReactNode;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 export default function DateRangePicker({
@@ -26,6 +28,8 @@ export default function DateRangePicker({
   onDateRangeChange,
   className,
   chartToggle,
+  minDate,
+  maxDate,
 }: DateRangePickerProps) {
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
@@ -111,6 +115,18 @@ export default function DateRangePicker({
               defaultMonth={dateRange?.from}
               selected={dateRange?.from}
               onSelect={handleStartDateSelect}
+              disabled={(date) => {
+                // Normalize dates to start of day for proper comparison
+                const normalizedDate = new Date(date);
+                normalizedDate.setHours(0, 0, 0, 0);
+                
+                const normalizedMinDate = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()) : null;
+                const normalizedMaxDate = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()) : null;
+                
+                if (normalizedMinDate && normalizedDate < normalizedMinDate) return true;
+                if (normalizedMaxDate && normalizedDate > normalizedMaxDate) return true;
+                return false;
+              }}
               className="pointer-events-auto"
             />
           </PopoverContent>
@@ -143,9 +159,22 @@ export default function DateRangePicker({
               defaultMonth={dateRange?.to || dateRange?.from}
               selected={dateRange?.to}
               onSelect={handleEndDateSelect}
-              disabled={(date) => 
-                dateRange?.from ? date < dateRange.from : false
-              }
+              disabled={(date) => {
+                // Normalize dates to start of day for proper comparison
+                const normalizedDate = new Date(date);
+                normalizedDate.setHours(0, 0, 0, 0);
+                
+                const normalizedFromDate = dateRange?.from ? new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate()) : null;
+                const normalizedMinDate = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()) : null;
+                const normalizedMaxDate = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()) : null;
+                
+                // End date must be after start date
+                if (normalizedFromDate && normalizedDate < normalizedFromDate) return true;
+                // End date must be within available range
+                if (normalizedMinDate && normalizedDate < normalizedMinDate) return true;
+                if (normalizedMaxDate && normalizedDate > normalizedMaxDate) return true;
+                return false;
+              }}
               className="pointer-events-auto"
             />
           </PopoverContent>

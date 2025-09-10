@@ -267,10 +267,23 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
             }
 
             const headers = results.data[0] as string[];
+            
+            // Create header mapping to normalize to StatusTab expected format
+            const headerMapping: Record<string, string> = {
+              "NAME": "Name",
+              "START DATE": "Start Date", 
+              "END DATE": "End Date",
+              "BUDGET": "Budget",
+              "CPM": "CPM",
+              "IMPRESSIONS GOAL": "Impressions Goal"
+            };
+            
             const processedData = results.data.slice(1).map((row: any) => {
               const processed: Record<string, any> = {};
               headers.forEach((header, index) => {
-                processed[header] = row[index];
+                const upperHeader = header.toUpperCase();
+                const normalizedHeader = headerMapping[upperHeader] || header;
+                processed[normalizedHeader] = row[index];
               });
               return processed;
             });
