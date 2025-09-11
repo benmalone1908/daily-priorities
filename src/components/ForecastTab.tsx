@@ -33,8 +33,8 @@ const ForecastTab = ({ data }: ForecastTabProps) => {
     const dates = data
       .map(row => row.DATE)
       .filter(date => date && date !== 'Totals')
-      .map(dateStr => new Date(dateStr))
-      .filter(date => !isNaN(date.getTime()))
+      .map(dateStr => parseDateString(dateStr))
+      .filter(date => date !== null)
       .sort((a, b) => b.getTime() - a.getTime());
     
     return dates.length > 0 ? dates[0] : new Date();

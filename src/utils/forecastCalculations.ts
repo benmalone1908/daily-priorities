@@ -132,10 +132,18 @@ export function calculateForecastAsOfDate(
   currentMonth: number,
   currentYear: number
 ): number {
-  // Filter data up to the specific date
+  // Filter data up to the specific date (inclusive)
   const dataUpToDate = dailyData.filter(day => {
     const dayDate = parseDateString(day.date);
-    return dayDate && dayDate <= asOfDate;
+    if (!dayDate) return false;
+    
+    // Compare dates by setting both to the same time (start of day)
+    const dayStart = new Date(dayDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const asOfStart = new Date(asOfDate);
+    asOfStart.setHours(0, 0, 0, 0);
+    
+    return dayStart <= asOfStart;
   });
   
   if (dataUpToDate.length === 0) return 0;
@@ -146,12 +154,11 @@ export function calculateForecastAsOfDate(
   // Get the most recent day's spend up to that date
   const mostRecentDaySpend = dataUpToDate[dataUpToDate.length - 1]?.spend || 0;
   
-  // Calculate remaining days from that date
+  // Calculate remaining days in the month after this date
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const dayOfMonth = asOfDate.getDate();
-  const remainingDays = daysInMonth - dayOfMonth;
+  const remainingDays = daysInMonth - dayOfMonth; // Days remaining after this date
   
-  // Calculate what the forecast would have been
   return mtdSpendAsOfDate + (mostRecentDaySpend * remainingDays);
 }
 
@@ -184,14 +191,24 @@ export function generateDailyBreakdown(
     const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
     const isProjection = date > currentDate;
     
-    // Calculate what the forecast would have been on this specific date
-    const directDailyForecast = isProjection 
-      ? directForecast 
-      : calculateForecastAsOfDate(directMTD.dailyData, date, currentMonth, currentYear);
+    // Calculate forecast shifted by one day - each row shows the forecast as of the NEXT day
+    // This means: Day 1 shows Day 2's forecast, Day 2 shows Day 3's forecast, etc.
+    // Last day shows 0 since there's no next day
+    const nextDay = new Date(date);
+    nextDay.setDate(date.getDate() + 1);
+    const isLastDayOfMonth = date.getDate() === new Date(currentYear, currentMonth + 1, 0).getDate();
     
-    const channelDailyForecast = isProjection 
-      ? channelForecast 
-      : calculateForecastAsOfDate(channelMTD.dailyData, date, currentMonth, currentYear);
+    let directDailyForecast, channelDailyForecast;
+    
+    if (isProjection) {
+      // For future dates, use current forecast
+      directDailyForecast = directForecast;
+      channelDailyForecast = channelForecast;
+    } else {
+      // For current and past dates, show forecast as of the end of that day
+      directDailyForecast = calculateForecastAsOfDate(directMTD.dailyData, date, currentMonth, currentYear);
+      channelDailyForecast = calculateForecastAsOfDate(channelMTD.dailyData, date, currentMonth, currentYear);
+    }
     
     // Direct row
     const directData = directDailyMap.get(dateStr);
