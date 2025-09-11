@@ -78,7 +78,7 @@ const CampaignHealthTable = ({ healthData }: CampaignHealthTableProps) => {
             <SelectItem value="health">Health Score</SelectItem>
             <SelectItem value="name">Campaign Name</SelectItem>
             <SelectItem value="spend">Spend</SelectItem>
-            <SelectItem value="revenue">Revenue</SelectItem>
+            <SelectItem value="revenue">Attributed Sales</SelectItem>
           </SelectContent>
         </Select>
         

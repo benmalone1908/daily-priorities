@@ -152,7 +152,7 @@ const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
             <div className="text-lg font-semibold">{formatCurrency(campaign.spend)}</div>
           </div>
           <div className="space-y-1">
-            <span className="text-sm text-gray-600">Revenue</span>
+            <span className="text-sm text-gray-600">Attributed Sales</span>
             <div className="text-lg font-semibold">{formatCurrency(campaign.revenue)}</div>
           </div>
           <div className="space-y-1">

@@ -1109,7 +1109,7 @@ const Dashboard = ({
               anomalyPeriod={anomalyPeriod}
             />
             <MetricCard
-              title="Revenue Anomalies"
+              title="Attributed Sales Anomalies"
               anomalies={anomalies.REVENUE?.anomalies || []}
               metric="REVENUE"
               anomalyPeriod={anomalyPeriod}
@@ -1354,7 +1354,7 @@ const Dashboard = ({
                     format: formatTransactions
                   },
                   {
-                    title: "Revenue",
+                    title: "Attributed Sales",
                     current: period.REVENUE,
                     previous: previousPeriod?.REVENUE,
                     format: formatRevenue

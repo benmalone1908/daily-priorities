@@ -698,7 +698,7 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
                 className="cursor-pointer hover:bg-muted/50 text-right py-1 px-3 w-[10%]"
                 onClick={() => handleSort("REVENUE")}
               >
-                Revenue
+                Attributed Sales
                 {sortColumn === "REVENUE" && (
                   <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                 )}

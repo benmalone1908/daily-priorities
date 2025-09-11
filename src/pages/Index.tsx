@@ -350,7 +350,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
         };
       case "revenue":
         return {
-          title: "Revenue",
+          title: "Attributed Sales",
           color: "#ef4444",
           formatter: (value: number) => formatRevenue(value)
         };
@@ -472,7 +472,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
         )}
         
         {renderMetricCard(
-          "Revenue", 
+          "Attributed Sales", 
           totals.revenue, 
           trends.revenue, 
           formatRevenue, 

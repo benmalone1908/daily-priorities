@@ -184,7 +184,7 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
     
     // Handle revenue formatting with dollar signs and cents
     if (name === "REVENUE" || name === "Revenue" || name.toLowerCase().includes("revenue")) {
-      return [`$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue"];
+      return [`$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Attributed Sales"];
     }
     
     // Handle other metrics with comma formatting
@@ -276,7 +276,7 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
             dataKey="REVENUE"
             fill="#8b5cf6"
             yAxisId="right"
-            name="Revenue"
+            name="Attributed Sales"
             barSize={barSize}
             opacity={0.8}
           />

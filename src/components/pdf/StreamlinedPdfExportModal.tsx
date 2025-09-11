@@ -106,7 +106,7 @@ const StreamlinedPdfExportModal = ({
         { value: "clicks", label: "Clicks" },
         { value: "ctr", label: "CTR" },
         { value: "transactions", label: "Transactions" },
-        { value: "revenue", label: "Revenue" },
+        { value: "revenue", label: "Attributed Sales" },
         { value: "roas", label: "ROAS" }
       ]
     },

@@ -17,7 +17,7 @@ const getMetricDetails = (metric: MetricType | null) => {
         title: 'ROAS (Return on Ad Spend) Scoring',
         weight: '40%',
         description: 'Measures revenue efficiency by calculating how much revenue is generated for each dollar spent on advertising.',
-        calculation: 'ROAS = Total Revenue ÷ Total Spend',
+        calculation: 'ROAS = Total Attributed Sales ÷ Total Spend',
         scoringBands: [
           { range: 'ROAS ≥ 4.0', score: 10, color: 'text-green-600', description: 'Excellent - Strong revenue performance' },
           { range: '3.0 ≤ ROAS < 4.0', score: 7.5, color: 'text-green-500', description: 'Good - Above average returns' },

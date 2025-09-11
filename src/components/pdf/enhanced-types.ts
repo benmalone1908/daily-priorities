@@ -140,7 +140,7 @@ export const CHART_TEMPLATES: ChartTemplate[] = [
   },
   {
     id: 'metric_revenue',
-    name: 'Revenue',
+    name: 'Attributed Sales',
     description: 'Total revenue with financial tracking',
     category: 'metric',
     icon: 'DollarSign',

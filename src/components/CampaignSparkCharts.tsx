@@ -698,7 +698,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
         };
       case "revenue":
         return {
-          title: "Revenue",
+          title: "Attributed Sales",
           color: "#10B981",
           formatter: (value: number) => `$${formatNumber(value, { abbreviate: false })}`
         };
@@ -908,7 +908,7 @@ const CampaignSparkCharts = ({ data, dateRange, useGlobalFilters = false }: Camp
                     </div>
                     <div>
                       <p className="text-sm font-medium">${formatNumber(item.totals.revenue, { abbreviate: false })}</p>
-                      <p className="text-xs text-muted-foreground">Revenue</p>
+                      <p className="text-xs text-muted-foreground">Attributed Sales</p>
                     </div>
                   </div>
 

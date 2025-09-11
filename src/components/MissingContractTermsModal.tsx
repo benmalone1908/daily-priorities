@@ -13,7 +13,7 @@ interface MissingContractTermsModalProps {
 
 const MissingContractTermsModal = ({ isOpen, onClose, missingCampaigns }: MissingContractTermsModalProps) => {
   const handleExportCSV = () => {
-    const headers = ['Campaign Name', 'Total Impressions', 'Total Spend', 'Total Revenue'];
+    const headers = ['Campaign Name', 'Total Impressions', 'Total Spend', 'Total Attributed Sales'];
     const csvContent = [
       headers.join(','),
       ...missingCampaigns.map(campaign => [
@@ -62,7 +62,7 @@ const MissingContractTermsModal = ({ isOpen, onClose, missingCampaigns }: Missin
             </Card>
             <Card className="p-3">
               <div className="text-lg font-semibold">{formatCurrency(totalMissingRevenue)}</div>
-              <div className="text-sm text-muted-foreground">Total Revenue</div>
+              <div className="text-sm text-muted-foreground">Total Attributed Sales</div>
             </Card>
           </div>
 
@@ -96,7 +96,7 @@ const MissingContractTermsModal = ({ isOpen, onClose, missingCampaigns }: Missin
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{formatNumber(campaign.totalImpressions)} impressions</span>
                         <span>{formatCurrency(campaign.totalSpend)} spend</span>
-                        <span>{formatCurrency(campaign.totalRevenue)} revenue</span>
+                        <span>{formatCurrency(campaign.totalRevenue)} attributed sales</span>
                       </div>
                     </div>
                     <div className="flex-shrink-0">

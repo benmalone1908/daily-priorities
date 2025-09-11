@@ -12,7 +12,7 @@ const METRICS = [
   { value: "IMPRESSIONS", label: "Impressions" },
   { value: "CLICKS", label: "Clicks" },
   { value: "TRANSACTIONS", label: "Transactions" },
-  { value: "REVENUE", label: "Revenue" }
+  { value: "REVENUE", label: "Attributed Sales" }
 ];
 
 export function CustomMetricSelector({ 

@@ -178,7 +178,7 @@ const WeeklyComparisonComponent: React.FC<WeeklyComparisonComponentProps> = ({
                     format: formatPercentage
                   },
                   {
-                    title: "Revenue",
+                    title: "Attributed Sales",
                     current: period.REVENUE,
                     previous: previousPeriod?.REVENUE,
                     format: formatCurrency
