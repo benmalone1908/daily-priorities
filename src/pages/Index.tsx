@@ -5,7 +5,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
@@ -15,7 +15,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
-import { TrendingDown, TrendingUp, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
+import { TrendingDown, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
@@ -28,6 +28,7 @@ import { Pacing2 } from "@/components/Pacing2";
 import EnhancedPdfExportButton from "@/components/ui/enhanced-pdf-export-button";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
+import ForecastTab from "@/components/ForecastTab";
 
 type MetricType = 
   | "impressions" 
@@ -1020,6 +1021,12 @@ const DashboardContent = ({
                   Status
                 </TabsTrigger>
               )}
+              {data.length > 0 && (
+                <TabsTrigger value="forecast">
+                  <TrendingUp className="mr-2" size={16} />
+                  Forecast
+                </TabsTrigger>
+              )}
               <TabsTrigger value="custom-report">
                 <FileDown className="mr-2" size={16} />
                 Custom
@@ -1172,6 +1179,17 @@ const DashboardContent = ({
                     ? new Date(Math.max(...globalFilteredData.map(row => parseDateString(row.DATE)?.getTime() || 0).filter(Boolean)))
                     : new Date()
                 }
+              />
+            </div>
+          </TabsContent>
+        )}
+        
+        {data.length > 0 && (
+          <TabsContent value="forecast" className="mt-0">
+            {/* Forecast tab content */}
+            <div className="mb-4 animate-fade-in" id="forecast-section">
+              <ForecastTab 
+                data={globalFilteredData}
               />
             </div>
           </TabsContent>
