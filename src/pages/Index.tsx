@@ -28,7 +28,6 @@ import { Pacing2 } from "@/components/Pacing2";
 import EnhancedPdfExportButton from "@/components/ui/enhanced-pdf-export-button";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
-import ForecastTab from "@/components/ForecastTab";
 
 type MetricType = 
   | "impressions" 
@@ -1021,12 +1020,6 @@ const DashboardContent = ({
                   Status
                 </TabsTrigger>
               )}
-              {data.length > 0 && (
-                <TabsTrigger value="forecast">
-                  <TrendingUp className="mr-2" size={16} />
-                  Forecast
-                </TabsTrigger>
-              )}
               <TabsTrigger value="custom-report">
                 <FileDown className="mr-2" size={16} />
                 Custom
@@ -1184,16 +1177,6 @@ const DashboardContent = ({
           </TabsContent>
         )}
         
-        {data.length > 0 && (
-          <TabsContent value="forecast" className="mt-0">
-            {/* Forecast tab content */}
-            <div className="mb-4 animate-fade-in" id="forecast-section">
-              <ForecastTab 
-                data={globalFilteredData}
-              />
-            </div>
-          </TabsContent>
-        )}
         
         <TabsContent value="raw-data" className="mt-0">
           {/* Raw Data tab content */}
