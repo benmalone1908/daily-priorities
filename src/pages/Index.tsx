@@ -9,6 +9,7 @@ import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown,
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { useSupabase } from "@/contexts/SupabaseContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { ChartToggle } from "@/components/ChartToggle";
 import { Card } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { TrendingDown, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
+import Papa from "papaparse";
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
@@ -514,20 +516,22 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   );
 };
 
-const DashboardContent = ({ 
-  data, 
+const DashboardContent = ({
+  data,
   pacingData,
   contractTermsData,
-  dateRange, 
+  dateRange,
   onDateRangeChange,
-  onPacingDataLoaded
-}: { 
-  data: any[]; 
+  onPacingDataLoaded,
+  onDataLoaded
+}: {
+  data: any[];
   pacingData: any[];
   contractTermsData: any[];
-  dateRange: DateRange | undefined; 
+  dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onPacingDataLoaded: (data: any[]) => void;
+  onDataLoaded: (data: any[]) => void;
 }) => {
   // Calculate available date range from data to constrain date picker
   const availableDateRange = useMemo(() => {
@@ -976,13 +980,50 @@ const DashboardContent = ({
           </div>
           
           <div className="flex items-center gap-2">
-            <DateRangePicker 
+            <DateRangePicker
+              key={`date-picker-${data.length}`}
               dateRange={dateRange}
               onDateRangeChange={onDateRangeChange}
               displayDateRangeSummary={false}
               minDate={availableDateRange.min}
               maxDate={availableDateRange.max}
             />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.csv';
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    Papa.parse(file, {
+                      header: true,
+                      skipEmptyLines: true,
+                      complete: (results) => {
+                        if (results.errors.length > 0) {
+                          console.error('CSV parsing errors:', results.errors);
+                          toast.error('Error parsing CSV file');
+                          return;
+                        }
+                        // Process the data through the same handler
+                        onDataLoaded(results.data as any[]);
+                      },
+                      error: (error) => {
+                        console.error('CSV parsing error:', error);
+                        toast.error('Failed to parse CSV file');
+                      }
+                    });
+                  }
+                };
+                input.click();
+              }}
+              className="whitespace-nowrap"
+            >
+              <Plus className="mr-2" size={14} />
+              Upload More
+            </Button>
           </div>
         </div>
         
@@ -1201,36 +1242,112 @@ const DashboardContent = ({
 };
 
 const Index = () => {
+  const { upsertCampaignData, getCampaignData } = useSupabase();
   const [data, setData] = useState<any[]>([]);
   const [pacingData, setPacingData] = useState<any[]>([]);
   const [contractTermsData, setContractTermsData] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [isLoadingFromSupabase, setIsLoadingFromSupabase] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState<string>('');
+
+  // Load data from Supabase on component mount
+  useEffect(() => {
+    const loadDataFromSupabase = async () => {
+      try {
+        setLoadingProgress('Checking for existing data...');
+        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress);
+        if (campaignData.length > 0) {
+          setLoadingProgress('Processing data...');
+          // Transform Supabase data back to the format expected by the app
+          const transformedData = campaignData.map(row => {
+            // Convert YYYY-MM-DD date format to M/D/YYYY format
+            let formattedDate = row.date;
+            try {
+              if (row.date && typeof row.date === 'string') {
+                const date = new Date(row.date + 'T00:00:00'); // Add time to avoid timezone issues
+                if (!isNaN(date.getTime())) {
+                  formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+                }
+              }
+            } catch (e) {
+              console.error("Error formatting date:", e, row.date);
+            }
+
+            return {
+              DATE: formattedDate,
+              "CAMPAIGN ORDER NAME": row.campaign_order_name,
+              IMPRESSIONS: row.impressions,
+              CLICKS: row.clicks,
+              REVENUE: row.revenue,
+              SPEND: row.spend,
+              TRANSACTIONS: row.transactions
+            };
+          });
+
+          setData(transformedData);
+          // Reset date range to allow auto-calculation based on new data
+          setDateRange(undefined);
+          setShowDashboard(true);
+          console.log(`Loaded ${transformedData.length} rows from Supabase`);
+          console.log(`Sample transformed data:`, transformedData.slice(0, 3));
+        }
+      } catch (error) {
+        console.error("Failed to load data from Supabase:", error);
+        setLoadingProgress('Error loading data');
+      } finally {
+        setIsLoadingFromSupabase(false);
+        setLoadingProgress('');
+      }
+    };
+
+    loadDataFromSupabase();
+  }, [getCampaignData]);
+
+  // Debug effect to track data changes
+  useEffect(() => {
+    console.log(`🔍 Data changed: ${data.length} rows, current dateRange:`, dateRange);
+    if (data.length > 0) {
+      console.log(`🔍 First 3 dates in data:`, data.slice(0, 3).map(row => row.DATE));
+    }
+  }, [data.length, dateRange]);
 
   useEffect(() => {
     if (data.length > 0) {
-      const uniqueDates = Array.from(new Set(data.map(row => row.DATE))).filter(date => date !== 'Totals').sort();
-      console.log(`Dataset has ${uniqueDates.length} unique dates:`, uniqueDates);
-      
+      // First parse all dates and sort them chronologically, not alphabetically
+      const allDates = Array.from(new Set(data.map(row => row.DATE)))
+        .filter(date => date !== 'Totals')
+        .map(dateStr => ({
+          original: dateStr,
+          parsed: parseDateString(dateStr)
+        }))
+        .filter(item => item.parsed !== null)
+        .sort((a, b) => a.parsed!.getTime() - b.parsed!.getTime());
+
+      const uniqueDates = allDates.map(item => item.original);
+      console.log(`Dataset has ${uniqueDates.length} unique dates (chronologically sorted):`, uniqueDates);
+
       if (uniqueDates.length > 0) {
-        console.log(`Date range in dataset: ${uniqueDates[0]} to ${uniqueDates[uniqueDates.length - 1]}`);
+        const firstDate = allDates[0].original;
+        const lastDate = allDates[allDates.length - 1].original;
+        console.log(`Date range in dataset: ${firstDate} to ${lastDate}`);
+
         const dateCounts: Record<string, number> = {};
         data.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
         });
         console.log("Rows per date:", dateCounts);
-        
-        if (!dateRange || !dateRange.from) {
-          try {
-            // Parse dates and create proper Date objects
-            const parsedDates = uniqueDates
-              .map(dateStr => parseDateString(dateStr))
-              .filter(Boolean) as Date[];
-              
+
+        console.log(`🔍 Current dateRange state:`, dateRange);
+
+        // Force recalculation every time data loads to ensure we use the most recent 30 days
+        // Always recalculate to use the most recent 30 days from actual data
+        console.log(`🔍 Force recalculating date range based on loaded data...`);
+        try {
+            // Use the already parsed and sorted dates
+            const parsedDates = allDates.map(item => item.parsed!);
+
             if (parsedDates.length > 0) {
-              // Sort dates chronologically
-              parsedDates.sort((a, b) => a.getTime() - b.getTime());
-              
               const minDate = parsedDates[0];
               const maxDate = parsedDates[parsedDates.length - 1];
               
@@ -1241,30 +1358,33 @@ const Index = () => {
                 let fromDate = minDate;
                 let toDate = maxDate;
                 
+                console.log(`🔍 Dataset analysis:`);
+                console.log(`🔍 - Min date: ${minDate.toLocaleDateString()} (${minDate.toISOString()})`);
+                console.log(`🔍 - Max date: ${maxDate.toLocaleDateString()} (${maxDate.toISOString()})`);
+                console.log(`🔍 - Spans: ${Math.round(daysDifference)} days`);
+
                 // If dataset spans more than 90 days, default to last 30 days of data
                 if (daysDifference > 90) {
                   // Set to last 30 days of available data using proper date arithmetic
                   fromDate = new Date(maxDate.getTime() - (30 * 24 * 60 * 60 * 1000));
-                  
+
                   // Make sure fromDate doesn't go before the actual data start
                   if (fromDate < minDate) {
                     fromDate = minDate;
                   }
-                  
-                  console.log(`🔍 Dataset spans ${Math.round(daysDifference)} days - defaulting to last 30 days`);
-                  console.log(`🔍 Date range will be: ${fromDate.toLocaleDateString()} to ${maxDate.toLocaleDateString()}`);
-                  console.log(`🔍 Sample data dates:`, uniqueDates.slice(-5));
+
+                  console.log(`🔍 Using last 30 days: ${fromDate.toLocaleDateString()} to ${maxDate.toLocaleDateString()}`);
+                  console.log(`🔍 Latest 5 dates in data:`, uniqueDates.slice(-5));
                 } else {
-                  console.log(`🔍 Dataset spans ${Math.round(daysDifference)} days - using full range`);
-                  console.log(`🔍 Date range will be: ${minDate.toLocaleDateString()} to ${maxDate.toLocaleDateString()}`);
+                  console.log(`🔍 Using full range: ${minDate.toLocaleDateString()} to ${maxDate.toLocaleDateString()}`);
                 }
                 
+                console.log(`🔍 Setting dateRange to:`, { from: fromDate, to: toDate });
                 setDateRange({ from: fromDate, to: toDate });
               }
             }
-          } catch (e) {
-            console.error("Error auto-setting date range:", e);
-          }
+        } catch (e) {
+          console.error("Error auto-setting date range:", e);
         }
       }
     }
@@ -1336,6 +1456,64 @@ const Index = () => {
       }
       
       toast.success(`Successfully loaded ${processedData.length} rows of data`);
+
+      // Upsert data to Supabase in the background
+      try {
+        const supabaseData = processedData.map(row => ({
+          date: row.DATE,
+          campaign_order_name: row["CAMPAIGN ORDER NAME"] || row["Campaign Order Name"] || row.CAMPAIGN_ORDER_NAME,
+          impressions: Number(row.IMPRESSIONS) || 0,
+          clicks: Number(row.CLICKS) || 0,
+          revenue: Number(row.REVENUE) || 0,
+          spend: Number(row.SPEND) || 0,
+          transactions: row.TRANSACTIONS ? Number(row.TRANSACTIONS) : undefined
+        })).filter(row => row.campaign_order_name); // Filter out rows without campaign names
+
+        if (supabaseData.length > 0) {
+          upsertCampaignData(supabaseData).then(async () => {
+            console.log(`Successfully synced ${supabaseData.length} records to Supabase`);
+            // Reload all data from Supabase to get the complete dataset
+            try {
+              const allCampaignData = await getCampaignData();
+              if (allCampaignData.length > 0) {
+                const refreshedData = allCampaignData.map(row => {
+                  // Convert YYYY-MM-DD date format to M/D/YYYY format
+                  let formattedDate = row.date;
+                  try {
+                    if (row.date && typeof row.date === 'string') {
+                      const date = new Date(row.date + 'T00:00:00'); // Add time to avoid timezone issues
+                      if (!isNaN(date.getTime())) {
+                        formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Error formatting date:", e, row.date);
+                  }
+
+                  return {
+                    DATE: formattedDate,
+                    "CAMPAIGN ORDER NAME": row.campaign_order_name,
+                    IMPRESSIONS: row.impressions,
+                    CLICKS: row.clicks,
+                    REVENUE: row.revenue,
+                    SPEND: row.spend,
+                    TRANSACTIONS: row.transactions
+                  };
+                });
+                setData(refreshedData);
+                console.log(`Refreshed with ${refreshedData.length} total records from Supabase`);
+              }
+            } catch (error) {
+              console.error("Failed to refresh data from Supabase:", error);
+            }
+          }).catch((error) => {
+            console.error("Failed to sync data to Supabase:", error);
+            // Don't show error toast to user since this is background operation
+          });
+        }
+      } catch (error) {
+        console.error("Error preparing data for Supabase:", error);
+      }
     } catch (error) {
       console.error("Error processing uploaded data:", error);
       toast.error("Failed to process the uploaded data");
@@ -1385,7 +1563,21 @@ const Index = () => {
   return (
     <CampaignFilterProvider>
       <div className="container py-8">
-        {!showDashboard ? (
+        {isLoadingFromSupabase ? (
+          <div className="space-y-2 text-center animate-fade-in">
+            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+              Display Campaign Monitor
+            </h1>
+            <p className="text-muted-foreground">
+              Loading your campaign data...
+            </p>
+            {loadingProgress && (
+              <p className="text-sm text-muted-foreground">
+                {loadingProgress}
+              </p>
+            )}
+          </div>
+        ) : !showDashboard ? (
           <>
             <div className="space-y-2 text-center animate-fade-in">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
@@ -1397,8 +1589,8 @@ const Index = () => {
             </div>
 
             <div className="max-w-4xl mx-auto">
-              <FileUpload 
-                onDataLoaded={handleDataLoaded} 
+              <FileUpload
+                onDataLoaded={handleDataLoaded}
                 onPacingDataLoaded={handlePacingDataLoaded}
                 onContractTermsLoaded={handleContractTermsLoaded}
                 onProcessFiles={handleProcessFiles}
@@ -1406,13 +1598,14 @@ const Index = () => {
             </div>
           </>
         ) : (
-          <DashboardContent 
-            data={data} 
+          <DashboardContent
+            data={data}
             pacingData={pacingData}
             contractTermsData={contractTermsData}
-            dateRange={dateRange} 
+            dateRange={dateRange}
             onDateRangeChange={setDateRange}
             onPacingDataLoaded={handlePacingDataLoaded}
+            onDataLoaded={handleDataLoaded}
           />
         )}
       </div>
