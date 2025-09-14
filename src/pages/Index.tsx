@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
 import DateRangePicker from "@/components/DateRangePicker";
@@ -7,16 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import { setToStartOfDay, setToEndOfDay, logDateDetails, normalizeDate, parseDateString } from "@/lib/utils";
-import { CampaignFilterProvider, useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString } from "@/lib/utils";
+import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { ChartToggle } from "@/components/ChartToggle";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ResponsiveContainer, LineChart, Line, Tooltip, AreaChart, Area, XAxis, YAxis } from "recharts";
+import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { getColorClasses } from "@/utils/anomalyColors";
-import { TrendingDown, Maximize, Eye, MousePointer, ShoppingCart, DollarSign, Percent } from "lucide-react";
+import { TrendingDown, Maximize } from "lucide-react";
 import Papa from "papaparse";
 import SparkChartModal from "@/components/SparkChartModal";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
@@ -27,7 +27,6 @@ import PacingTable from "@/components/PacingTable";
 import PacingMetrics from "@/components/PacingMetrics";
 import CampaignHealthTab from "@/components/CampaignHealthTab";
 import { Pacing2 } from "@/components/Pacing2";
-import EnhancedPdfExportButton from "@/components/ui/enhanced-pdf-export-button";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
 
@@ -523,7 +522,10 @@ const DashboardContent = ({
   dateRange,
   onDateRangeChange,
   onPacingDataLoaded,
-  onDataLoaded
+  onDataLoaded,
+  hasAllData,
+  isLoadingAllData,
+  loadAllDataInBackgroundWrapper
 }: {
   data: any[];
   pacingData: any[];
@@ -532,6 +534,9 @@ const DashboardContent = ({
   onDateRangeChange: (range: DateRange | undefined) => void;
   onPacingDataLoaded: (data: any[]) => void;
   onDataLoaded: (data: any[]) => void;
+  hasAllData: boolean;
+  isLoadingAllData: boolean;
+  loadAllDataInBackgroundWrapper: () => void;
 }) => {
   // Calculate available date range from data to constrain date picker
   const availableDateRange = useMemo(() => {
@@ -808,8 +813,8 @@ const DashboardContent = ({
       if (selectedAgencies.length > 0) {
         const agencyInfo = extractAgencyInfo(campaignName);
         console.log('🔍 Agency info for', campaignName, ':', agencyInfo);
-        if (!agencyInfo || !selectedAgencySet.has(agencyInfo.fullName)) {
-          console.log('🔍 Filtered out by agency filter:', campaignName, 'Agency:', agencyInfo?.fullName);
+        if (!agencyInfo || !selectedAgencySet.has(agencyInfo.agency)) {
+          console.log('🔍 Filtered out by agency filter:', campaignName, 'Agency:', agencyInfo?.agency);
           return false;
         }
       }
@@ -977,6 +982,11 @@ const DashboardContent = ({
         <div className="flex items-center justify-between px-1 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+            {data.length > 0 && (
+              <span className="text-sm text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                {hasAllData ? `${data.length.toLocaleString()} records (complete)` : `${data.length.toLocaleString()} records (recent)`}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-2">
@@ -1024,6 +1034,19 @@ const DashboardContent = ({
               <Plus className="mr-2" size={14} />
               Upload More
             </Button>
+
+            {!hasAllData && (
+              <Button
+                variant={isLoadingAllData ? "secondary" : "outline"}
+                size="sm"
+                onClick={loadAllDataInBackgroundWrapper}
+                disabled={isLoadingAllData}
+                className="whitespace-nowrap"
+              >
+                <TrendingUp className="mr-2" size={14} />
+                {isLoadingAllData ? "Loading All..." : "Load All Data"}
+              </Button>
+            )}
           </div>
         </div>
         
@@ -1242,7 +1265,7 @@ const DashboardContent = ({
 };
 
 const Index = () => {
-  const { upsertCampaignData, getCampaignData } = useSupabase();
+  const { upsertCampaignData, getCampaignData, loadAllDataInBackground } = useSupabase();
   const [data, setData] = useState<any[]>([]);
   const [pacingData, setPacingData] = useState<any[]>([]);
   const [contractTermsData, setContractTermsData] = useState<any[]>([]);
@@ -1250,50 +1273,34 @@ const Index = () => {
   const [showDashboard, setShowDashboard] = useState(false);
   const [isLoadingFromSupabase, setIsLoadingFromSupabase] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState<string>('');
+  const [isLoadingAllData, setIsLoadingAllData] = useState(false);
+  const [hasAllData, setHasAllData] = useState(false);
 
-  // Load data from Supabase on component mount
+  // Fast initial load - recent data only
   useEffect(() => {
-    const loadDataFromSupabase = async () => {
+    const loadRecentDataFromSupabase = async () => {
       try {
-        setLoadingProgress('Checking for existing data...');
-        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress);
-        if (campaignData.length > 0) {
-          setLoadingProgress('Processing data...');
-          // Transform Supabase data back to the format expected by the app
-          const transformedData = campaignData.map(row => {
-            // Convert YYYY-MM-DD date format to M/D/YYYY format
-            let formattedDate = row.date;
-            try {
-              if (row.date && typeof row.date === 'string') {
-                const date = new Date(row.date + 'T00:00:00'); // Add time to avoid timezone issues
-                if (!isNaN(date.getTime())) {
-                  formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-                }
-              }
-            } catch (e) {
-              console.error("Error formatting date:", e, row.date);
-            }
+        setLoadingProgress('Loading recent campaign data...');
 
-            return {
-              DATE: formattedDate,
-              "CAMPAIGN ORDER NAME": row.campaign_order_name,
-              IMPRESSIONS: row.impressions,
-              CLICKS: row.clicks,
-              REVENUE: row.revenue,
-              SPEND: row.spend,
-              TRANSACTIONS: row.transactions
-            };
-          });
+        // Load only recent data (last 90 days) for fast startup
+        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, true);
+
+        if (campaignData.length > 0) {
+          setLoadingProgress('Processing recent data...');
+          const transformedData = transformDataFormat(campaignData);
 
           setData(transformedData);
-          // Reset date range to allow auto-calculation based on new data
           setDateRange(undefined);
           setShowDashboard(true);
-          console.log(`Loaded ${transformedData.length} rows from Supabase`);
-          console.log(`Sample transformed data:`, transformedData.slice(0, 3));
+          console.log(`✅ Fast load: ${transformedData.length} recent rows loaded`);
+
+          // Start background loading of all data
+          setTimeout(() => {
+            loadAllDataInBackgroundWrapper();
+          }, 1000); // Give UI time to render
         }
       } catch (error) {
-        console.error("Failed to load data from Supabase:", error);
+        console.error("Failed to load recent data from Supabase:", error);
         setLoadingProgress('Error loading data');
       } finally {
         setIsLoadingFromSupabase(false);
@@ -1301,8 +1308,61 @@ const Index = () => {
       }
     };
 
-    loadDataFromSupabase();
+    loadRecentDataFromSupabase();
   }, [getCampaignData]);
+
+  // Background loading of all historical data
+  const loadAllDataInBackgroundWrapper = useCallback(async () => {
+    if (hasAllData || isLoadingAllData) return;
+
+    try {
+      setIsLoadingAllData(true);
+      console.log('🔄 Loading all historical data in background...');
+
+      const allData = await loadAllDataInBackground((progress) => {
+        console.log(`Background loading: ${progress}`);
+      });
+
+      if (allData.length > data.length) {
+        const transformedData = transformDataFormat(allData);
+        setData(transformedData);
+        setHasAllData(true);
+        console.log(`✅ Background load complete: ${transformedData.length} total rows`);
+        toast.success(`Loaded complete dataset: ${transformedData.length.toLocaleString()} records`);
+      }
+    } catch (error) {
+      console.error("Background data loading failed:", error);
+    } finally {
+      setIsLoadingAllData(false);
+    }
+  }, [data.length, hasAllData, isLoadingAllData]);
+
+  // Helper function to transform data format
+  const transformDataFormat = (campaignData: any[]) => {
+    return campaignData.map(row => {
+      let formattedDate = row.date;
+      try {
+        if (row.date && typeof row.date === 'string') {
+          const date = new Date(row.date + 'T00:00:00');
+          if (!isNaN(date.getTime())) {
+            formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+          }
+        }
+      } catch (e) {
+        console.error("Error formatting date:", e, row.date);
+      }
+
+      return {
+        DATE: formattedDate,
+        "CAMPAIGN ORDER NAME": row.campaign_order_name,
+        IMPRESSIONS: row.impressions,
+        CLICKS: row.clicks,
+        REVENUE: row.revenue,
+        SPEND: row.spend,
+        TRANSACTIONS: row.transactions
+      };
+    });
+  };
 
   // Debug effect to track data changes
   useEffect(() => {
@@ -1441,21 +1501,22 @@ const Index = () => {
         return newRow;
       });
       
-      setData(processedData);
-      
+      // Don't replace existing data immediately - let Supabase upsert handle the merge
+      // setData(processedData);  // This was causing the bug!
+
       const dates = processedData.map(row => row.DATE).filter(date => date && date !== 'Totals').sort();
       if (dates.length > 0) {
         console.log(`Data date range: ${dates[0]} to ${dates[dates.length-1]}`);
         console.log(`Total unique dates: ${new Set(dates).size}`);
-        
+
         const dateCounts: Record<string, number> = {};
         processedData.forEach(row => {
           dateCounts[row.DATE] = (dateCounts[row.DATE] || 0) + 1;
         });
         console.log("Rows per date:", dateCounts);
       }
-      
-      toast.success(`Successfully loaded ${processedData.length} rows of data`);
+
+      toast.success(`Successfully uploaded ${processedData.length} rows of data. Refreshing with complete dataset...`);
 
       // Upsert data to Supabase in the background
       try {
@@ -1606,6 +1667,9 @@ const Index = () => {
             onDateRangeChange={setDateRange}
             onPacingDataLoaded={handlePacingDataLoaded}
             onDataLoaded={handleDataLoaded}
+            hasAllData={hasAllData}
+            isLoadingAllData={isLoadingAllData}
+            loadAllDataInBackgroundWrapper={loadAllDataInBackgroundWrapper}
           />
         )}
       </div>

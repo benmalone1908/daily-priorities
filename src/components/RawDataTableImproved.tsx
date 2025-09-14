@@ -35,7 +35,7 @@ interface RawDataTableProps {
   useGlobalFilters?: boolean;
 }
 
-type GroupingLevel = "campaign" | "advertiser" | "agency";
+type GroupingLevel = "campaign" | "advertiser" | "agency" | "date";
 type TimeAggregation = "daily" | "weekly" | "monthly" | "total";
 
 const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTableProps) => {
@@ -150,6 +150,9 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
           const agencyInfo = extractAgencyInfo(campaignName);
           groupKey = agencyInfo.agency;
           break;
+        case "date":
+          groupKey = dateStr; // Group by the date itself
+          break;
       }
       
       // Determine time key based on aggregation
@@ -179,12 +182,14 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
       const fullKey = timeAggregation === "total" ? groupKey : `${groupKey}|${timeKey}`;
       
       if (!groups[fullKey]) {
-        // Store the original advertiser name for display when grouping by advertiser
+        // Store the appropriate display name based on grouping level
         let displayName = groupKey;
         if (groupingLevel === "advertiser") {
           const advertiser = extractAdvertiserName(campaignName);
           const { agency } = extractAgencyInfo(campaignName);
           displayName = `${advertiser.trim()} (${agency})`;
+        } else if (groupingLevel === "date") {
+          displayName = dateStr; // Use the original date string for display
         }
         
         groups[fullKey] = {
@@ -568,6 +573,7 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
                 <SelectItem value="campaign" className="text-xs">Campaign</SelectItem>
                 <SelectItem value="advertiser" className="text-xs">Advertiser</SelectItem>
                 <SelectItem value="agency" className="text-xs">Agency</SelectItem>
+                <SelectItem value="date" className="text-xs">Date</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -633,8 +639,9 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
                 className="cursor-pointer hover:bg-muted/50 py-1 px-3 w-[25%]"
                 onClick={() => handleSort("groupKey")}
               >
-                {groupingLevel === "campaign" ? "Campaign" : 
-                 groupingLevel === "advertiser" ? "Advertiser" : "Agency"}
+                {groupingLevel === "campaign" ? "Campaign" :
+                 groupingLevel === "advertiser" ? "Advertiser" :
+                 groupingLevel === "agency" ? "Agency" : "Date"}
                 {sortColumn === "groupKey" && (
                   <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                 )}

@@ -3,9 +3,10 @@ import { supabase, type CampaignData } from '@/lib/supabase'
 
 interface SupabaseContextType {
   upsertCampaignData: (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[]) => Promise<void>
-  getCampaignData: (startDate?: string, endDate?: string, onProgress?: (progress: string) => void) => Promise<CampaignData[]>
+  getCampaignData: (startDate?: string, endDate?: string, onProgress?: (progress: string) => void, recentOnly?: boolean) => Promise<CampaignData[]>
   deleteCampaignData: (campaignName?: string, date?: string) => Promise<void>
   getCampaignDataCount: () => Promise<number>
+  loadAllDataInBackground: (onProgress?: (progress: string) => void) => Promise<CampaignData[]>
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
@@ -44,8 +45,16 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
   }
 
-  const getCampaignData = async (startDate?: string, endDate?: string, onProgress?: (progress: string) => void): Promise<CampaignData[]> => {
+  const getCampaignData = async (startDate?: string, endDate?: string, onProgress?: (progress: string) => void, recentOnly = false): Promise<CampaignData[]> => {
     try {
+      // If recentOnly is true, automatically filter to last 90 days for fast initial load
+      if (recentOnly && !startDate && !endDate) {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        startDate = ninetyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD format
+        onProgress?.('Loading recent data (last 90 days) for faster startup...');
+      }
+
       // Get total count first for progress tracking
       let countQuery = supabase
         .from('campaign_data')
@@ -162,6 +171,11 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
   }
 
+  const loadAllDataInBackground = async (onProgress?: (progress: string) => void): Promise<CampaignData[]> => {
+    console.log('🔄 Starting background load of all historical data...');
+    return getCampaignData(undefined, undefined, onProgress, false);
+  }
+
   const deleteCampaignData = async (campaignName?: string, date?: string): Promise<void> => {
     try {
       let query = supabase.from('campaign_data').delete()
@@ -195,7 +209,8 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     upsertCampaignData,
     getCampaignData,
     deleteCampaignData,
-    getCampaignDataCount
+    getCampaignDataCount,
+    loadAllDataInBackground
   }
 
   return (
