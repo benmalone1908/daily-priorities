@@ -12,7 +12,7 @@ import {
   Legend 
 } from 'recharts';
 import { DateRange } from 'react-day-picker';
-import { formatNumber, parseDateString } from '@/lib/utils';
+import { formatNumber, parseDateString, formatDateSortable } from '@/lib/utils';
 
 interface CampaignPerformanceComponentProps {
   data: any[];
@@ -60,15 +60,24 @@ const fillMissingDates = (data: any[], completeDateRange: Date[]) => {
   const dataByDate = new Map();
   
   data.forEach(item => {
-    const dateStr = item.date;
-    dataByDate.set(dateStr, item);
+    if (item.date) {
+      // Normalize the input date to MM/DD/YY format
+      const parsedDate = parseDateString(item.date);
+      if (parsedDate) {
+        const normalizedDateStr = formatDateSortable(parsedDate);
+        dataByDate.set(normalizedDateStr, {
+          ...item,
+          date: normalizedDateStr
+        });
+      }
+    }
   });
   
   const result = [];
   
   for (const date of completeDateRange) {
-    const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-    
+    const dateStr = formatDateSortable(date);
+
     const existingData = dataByDate.get(dateStr);
     
     if (existingData) {
@@ -138,10 +147,15 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
     } else {
       // Group by date
       const dateGroups: Record<string, any> = {};
-      
+
       filteredData.forEach(row => {
-        const dateStr = String(row.DATE).trim();
-        
+        // Normalize date to MM/DD/YY format
+        let dateStr = String(row.DATE).trim();
+        const parsedDate = parseDateString(dateStr);
+        if (parsedDate) {
+          dateStr = formatDateSortable(parsedDate);
+        }
+
         if (!dateGroups[dateStr]) {
           dateGroups[dateStr] = {
             date: dateStr,

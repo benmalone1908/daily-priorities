@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString } from "@/lib/utils";
+import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString, formatDateSortable } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
@@ -97,13 +97,13 @@ const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]):
   const lastDataDate = datesWithData[datesWithData.length - 1]!;
   
   // Generate complete time series only within the data range
-  // Use the same date format as the aggregated data (M/D/YYYY)
+  // Use consistent MM/DD/YY date format for proper sorting
   const result = [];
   for (const date of allDates) {
     if (date >= firstDataDate && date <= lastDataDate) {
-      // Format date as M/D/YYYY to match aggregated data format
-      const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-      
+      // Format date as MM/DD/YY for consistent sorting
+      const dateStr = formatDateSortable(date);
+
       const existingData = dataByDate.get(dateStr);
       
       if (existingData) {
@@ -1345,7 +1345,7 @@ const Index = () => {
         if (row.date && typeof row.date === 'string') {
           const date = new Date(row.date + 'T00:00:00');
           if (!isNaN(date.getTime())) {
-            formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+            formattedDate = formatDateSortable(date);
           }
         }
       } catch (e) {
@@ -1474,32 +1474,50 @@ const Index = () => {
       
       const processedData = uploadedData.map(row => {
         const newRow = { ...row };
-        
+
+        // Sanitize date field
         if (newRow.DATE) {
           try {
             const date = parseDateString(newRow.DATE);
             if (date) {
-              newRow.DATE = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-              if (newRow.DATE.includes('4/9/') || newRow.DATE.includes('4/8/')) {
+              newRow.DATE = formatDateSortable(date);
+              if (newRow.DATE.includes('04/09/') || newRow.DATE.includes('04/08/')) {
                 logDateDetails(`Processed date for row:`, date, `-> ${newRow.DATE} (original: ${row.DATE})`);
               }
             } else {
               console.error(`Invalid date format: ${newRow.DATE}`);
+              newRow.DATE = null; // Mark for filtering out
             }
           } catch (e) {
             console.error("Error parsing date:", e);
+            newRow.DATE = null; // Mark for filtering out
           }
         }
-        
+
+        // Sanitize campaign name field - remove any potential invalid characters
+        const campaignFields = ["CAMPAIGN ORDER NAME", "Campaign Order Name", "CAMPAIGN_ORDER_NAME"];
+        for (const field of campaignFields) {
+          if (newRow[field]) {
+            // Remove null bytes, control characters, and trim whitespace
+            newRow[field] = String(newRow[field])
+              .replace(/\u0000/g, '') // Remove null bytes
+              .replace(/[\u0000-\u001F\u007F]/g, '') // Remove control characters
+              .trim();
+            break;
+          }
+        }
+
+        // Sanitize numeric fields
         ["IMPRESSIONS", "CLICKS", "TRANSACTIONS", "REVENUE", "SPEND"].forEach(field => {
           const normalizedField = Object.keys(newRow).find(key => key.toUpperCase() === field);
           if (normalizedField) {
-            newRow[normalizedField] = Number(newRow[normalizedField]) || 0;
+            const value = Number(newRow[normalizedField]);
+            newRow[normalizedField] = isNaN(value) ? 0 : value;
           }
         });
-        
+
         return newRow;
-      });
+      }).filter(row => row.DATE && row.DATE !== null); // Filter out rows with invalid dates
       
       // Don't replace existing data immediately - let Supabase upsert handle the merge
       // setData(processedData);  // This was causing the bug!
@@ -1520,15 +1538,37 @@ const Index = () => {
 
       // Upsert data to Supabase in the background
       try {
-        const supabaseData = processedData.map(row => ({
-          date: row.DATE,
-          campaign_order_name: row["CAMPAIGN ORDER NAME"] || row["Campaign Order Name"] || row.CAMPAIGN_ORDER_NAME,
-          impressions: Number(row.IMPRESSIONS) || 0,
-          clicks: Number(row.CLICKS) || 0,
-          revenue: Number(row.REVENUE) || 0,
-          spend: Number(row.SPEND) || 0,
-          transactions: row.TRANSACTIONS ? Number(row.TRANSACTIONS) : undefined
-        })).filter(row => row.campaign_order_name); // Filter out rows without campaign names
+        const supabaseData = processedData.map(row => {
+          // Sanitize date field
+          const cleanDate = row.DATE;
+          if (typeof cleanDate !== 'string' || !cleanDate || cleanDate === 'Totals') {
+            return null; // Skip invalid rows
+          }
+
+          // Sanitize campaign name field
+          let campaignName = row["CAMPAIGN ORDER NAME"] || row["Campaign Order Name"] || row.CAMPAIGN_ORDER_NAME;
+          if (typeof campaignName !== 'string' || !campaignName.trim()) {
+            return null; // Skip rows without valid campaign names
+          }
+          campaignName = campaignName.trim();
+
+          // Sanitize numeric fields
+          const impressions = Number(row.IMPRESSIONS) || 0;
+          const clicks = Number(row.CLICKS) || 0;
+          const revenue = Number(row.REVENUE) || 0;
+          const spend = Number(row.SPEND) || 0;
+          const transactions = row.TRANSACTIONS ? Number(row.TRANSACTIONS) || 0 : 0;
+
+          return {
+            date: cleanDate,
+            campaign_order_name: campaignName,
+            impressions: impressions,
+            clicks: clicks,
+            revenue: revenue,
+            spend: spend,
+            transactions: transactions
+          };
+        }).filter(row => row !== null); // Filter out null/invalid rows
 
         if (supabaseData.length > 0) {
           upsertCampaignData(supabaseData).then(async () => {
@@ -1538,13 +1578,13 @@ const Index = () => {
               const allCampaignData = await getCampaignData();
               if (allCampaignData.length > 0) {
                 const refreshedData = allCampaignData.map(row => {
-                  // Convert YYYY-MM-DD date format to M/D/YYYY format
+                  // Convert YYYY-MM-DD date format to MM/DD/YY format
                   let formattedDate = row.date;
                   try {
                     if (row.date && typeof row.date === 'string') {
                       const date = new Date(row.date + 'T00:00:00'); // Add time to avoid timezone issues
                       if (!isNaN(date.getTime())) {
-                        formattedDate = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+                        formattedDate = formatDateSortable(date);
                       }
                     }
                   } catch (e) {

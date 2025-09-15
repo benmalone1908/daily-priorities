@@ -647,8 +647,8 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
                 )}
               </TableHead>
               
-              {timeAggregation !== "total" && (
-                <TableHead 
+              {timeAggregation !== "total" && groupingLevel !== "date" && (
+                <TableHead
                   className="cursor-pointer hover:bg-muted/50 py-1 px-3 text-right w-[15%]"
                   onClick={() => handleSort("timeKey")}
                 >
@@ -740,7 +740,7 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
                     {row.displayName || row.groupKey}
                   </TableCell>
                   
-                  {timeAggregation !== "total" && (
+                  {timeAggregation !== "total" && groupingLevel !== "date" && (
                     <TableCell className="py-1 px-3 text-right">{formatColumnValue(row, "timeKey")}</TableCell>
                   )}
                   
@@ -755,7 +755,9 @@ const RawDataTableImproved = ({ data, useGlobalFilters = false }: RawDataTablePr
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={timeAggregation === "total" ? 8 : 9} className="text-center py-1">
+                <TableCell colSpan={
+                  timeAggregation === "total" || groupingLevel === "date" ? 8 : 9
+                } className="text-center py-1">
                   No data available
                 </TableCell>
               </TableRow>

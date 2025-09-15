@@ -26,9 +26,36 @@ interface SupabaseProviderProps {
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
   const upsertCampaignData = async (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[]) => {
     try {
+      // Validate and sanitize data before sending to Supabase
+      const sanitizedData = data.map(row => {
+        // Ensure all required fields are present and valid
+        if (!row.date || typeof row.date !== 'string') {
+          throw new Error(`Invalid date field: ${row.date}`)
+        }
+        if (!row.campaign_order_name || typeof row.campaign_order_name !== 'string') {
+          throw new Error(`Invalid campaign_order_name field: ${row.campaign_order_name}`)
+        }
+
+        return {
+          date: row.date.trim(),
+          campaign_order_name: row.campaign_order_name.trim(),
+          impressions: Number(row.impressions) || 0,
+          clicks: Number(row.clicks) || 0,
+          revenue: Number(row.revenue) || 0,
+          spend: Number(row.spend) || 0,
+          transactions: row.transactions ? Number(row.transactions) || 0 : 0
+        }
+      }).filter(row => row.date && row.campaign_order_name)
+
+      if (sanitizedData.length === 0) {
+        throw new Error('No valid data rows to upsert')
+      }
+
+      console.log(`💾 Attempting to upsert ${sanitizedData.length} sanitized records to Supabase...`)
+
       const { error } = await supabase
         .from('campaign_data')
-        .upsert(data, {
+        .upsert(sanitizedData, {
           onConflict: 'date,campaign_order_name',
           ignoreDuplicates: false
         })
@@ -38,9 +65,9 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         throw error
       }
 
-      console.log(`Successfully upserted ${data.length} campaign records`)
+      console.log(`✅ Successfully upserted ${sanitizedData.length} campaign records`)
     } catch (error) {
-      console.error('Failed to upsert campaign data:', error)
+      console.error('❌ Failed to upsert campaign data:', error)
       throw error
     }
   }

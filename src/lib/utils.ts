@@ -267,3 +267,42 @@ export function createConsistentDate(date: Date | string): Date {
     throw new Error(`Failed to create consistent date: ${error}`);
   }
 }
+
+/**
+ * Formats a date as MM/DD/YY for better sorting and consistent display
+ * @param date - Date object or date string to format
+ * @returns Formatted date string as MM/DD/YY
+ */
+export function formatDateSortable(date: Date | string): string {
+  if (!date) return '';
+
+  try {
+    let dateObj: Date;
+
+    if (typeof date === 'string') {
+      const parsed = parseDateString(date);
+      if (!parsed) {
+        console.warn(`Failed to parse date for formatting: ${date}`);
+        return '';
+      }
+      dateObj = parsed;
+    } else {
+      dateObj = date;
+    }
+
+    if (isNaN(dateObj.getTime())) {
+      console.warn(`Invalid date object for formatting: ${date}`);
+      return '';
+    }
+
+    // Format as MM/DD/YY with zero padding for proper sorting
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const year = dateObj.getFullYear().toString().slice(-2); // Get last 2 digits
+
+    return `${month}/${day}/${year}`;
+  } catch (error) {
+    console.error(`Error formatting date ${date}:`, error);
+    return '';
+  }
+}

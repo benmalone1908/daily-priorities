@@ -12,7 +12,7 @@ import {
   Tooltip, 
   Legend 
 } from "recharts";
-import { formatNumber, parseDateString } from "@/lib/utils";
+import { formatNumber, parseDateString, formatDateSortable } from "@/lib/utils";
 import SparkChartModal from "./SparkChartModal";
 
 interface CombinedMetricsChartProps {
@@ -71,11 +71,19 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
   // If no data, return empty array
   if (processedData.length === 0 || allDates.length === 0) return processedData;
   
-  // Create a map of existing data by date string - use the same format as the data
+  // Create a map of existing data by date string - normalize all dates to MM/DD/YY format
   const dataByDate = new Map();
   processedData.forEach(item => {
     if (item.date) {
-      dataByDate.set(item.date, item);
+      // Normalize the input date to MM/DD/YY format
+      const parsedDate = parseDateString(item.date);
+      if (parsedDate) {
+        const normalizedDateStr = formatDateSortable(parsedDate);
+        dataByDate.set(normalizedDateStr, {
+          ...item,
+          date: normalizedDateStr
+        });
+      }
     }
   });
   
@@ -92,13 +100,13 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
   const lastDataDate = datesWithData[datesWithData.length - 1]!;
   
   // Generate complete time series only within the data range
-  // Use the same date format as the input data (M/D/YYYY)
+  // Use consistent MM/DD/YY date format for proper sorting
   const result = [];
   for (const date of allDates) {
     if (date >= firstDataDate && date <= lastDataDate) {
-      // Format date as M/D/YYYY to match input data format
-      const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-      
+      // Format date as MM/DD/YY for consistent sorting
+      const dateStr = formatDateSortable(date);
+
       const existingData = dataByDate.get(dateStr);
       
       if (existingData) {
@@ -224,16 +232,28 @@ const CombinedMetricsChart = ({
   // Get complete date range for filling gaps
   const completeDateRange = getCompleteDateRange(data);
 
-  // Process data to ensure we have all required fields
+  // Process data to ensure we have all required fields and normalize dates
   const processedData = data
     .filter(item => item && (item.DATE || item.DAY_OF_WEEK))
-    .map(item => ({
-      date: item.DATE || item.DAY_OF_WEEK,
-      IMPRESSIONS: Number(item.IMPRESSIONS || 0),
-      CLICKS: Number(item.CLICKS || 0),
-      TRANSACTIONS: Number(item.TRANSACTIONS || 0),
-      REVENUE: Number(item.REVENUE || 0),
-    }));
+    .map(item => {
+      let dateStr = item.DATE || item.DAY_OF_WEEK;
+
+      // Normalize date format to MM/DD/YY for consistent sorting (only for DATE, not DAY_OF_WEEK)
+      if (item.DATE) {
+        const parsedDate = parseDateString(item.DATE);
+        if (parsedDate) {
+          dateStr = formatDateSortable(parsedDate);
+        }
+      }
+
+      return {
+        date: dateStr,
+        IMPRESSIONS: Number(item.IMPRESSIONS || 0),
+        CLICKS: Number(item.CLICKS || 0),
+        TRANSACTIONS: Number(item.TRANSACTIONS || 0),
+        REVENUE: Number(item.REVENUE || 0),
+      };
+    });
 
   // Check if we're dealing with day of week data
   const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
