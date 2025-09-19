@@ -158,9 +158,16 @@ export const processCampaigns = (
       const campaignDeliveryData = deliveryData.filter(
         row => row['CAMPAIGN ORDER NAME'] === contractTerms.Name
       );
-      
+
+      // Skip campaigns that have no delivery data
+      if (campaignDeliveryData.length === 0) {
+        console.log(`Skipping campaign "${contractTerms.Name}" - no delivery data found`);
+        skippedCampaigns.push(contractTerms.Name);
+        return;
+      }
+
       const metrics = calculateCampaignMetrics(contractTerms, deliveryData, globalMostRecentDate, unfilteredDeliveryData);
-      
+
       processedCampaigns.push({
         name: contractTerms.Name,
         contractTerms,

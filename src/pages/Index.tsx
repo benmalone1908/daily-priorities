@@ -5,7 +5,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp, Bell } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp, Bell, Trash2 } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString, formatDateSortable } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
@@ -23,12 +23,12 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import PacingFileUpload from "@/components/PacingFileUpload";
-import PacingTable from "@/components/PacingTable";
-import PacingMetrics from "@/components/PacingMetrics";
+import ContractTermsUpload from "@/components/ContractTermsUpload";
 import CampaignHealthTab from "@/components/CampaignHealthTab";
-import { Pacing2 } from "@/components/Pacing2";
+import { Pacing } from "@/components/Pacing";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
+import { ClearDatabaseDialog } from "@/components/ClearDatabaseDialog";
 import { NotificationsTab } from "@/components/NotificationsTab";
 
 type MetricType = 
@@ -139,10 +139,6 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
     metricType: "impressions",
     data: []
   });
-  
-  if (!showAggregatedSparkCharts || !data || data.length === 0) {
-    return null;
-  }
 
   console.log('AggregatedSparkCharts: Raw data received:', data.length, 'rows');
   console.log('AggregatedSparkCharts: Sample raw data:', data.slice(0, 3));
@@ -283,6 +279,11 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   function calculatePercentChange(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
+  }
+
+  // Early return after all hooks are called
+  if (!showAggregatedSparkCharts || !data || data.length === 0) {
+    return null;
   }
 
   // Format functions
@@ -526,7 +527,9 @@ const DashboardContent = ({
   onDataLoaded,
   hasAllData,
   isLoadingAllData,
-  loadAllDataInBackgroundWrapper
+  loadAllDataInBackgroundWrapper,
+  showClearDialog,
+  setShowClearDialog
 }: {
   data: any[];
   pacingData: any[];
@@ -538,6 +541,8 @@ const DashboardContent = ({
   hasAllData: boolean;
   isLoadingAllData: boolean;
   loadAllDataInBackgroundWrapper: () => void;
+  showClearDialog: boolean;
+  setShowClearDialog: (show: boolean) => void;
 }) => {
   // Calculate available date range from data to constrain date picker
   const availableDateRange = useMemo(() => {
@@ -936,45 +941,6 @@ const DashboardContent = ({
     setSelectedCampaigns(selected);
   };
 
-  // Filter pacing data based on global filters with optimization
-  const getFilteredPacingData = useCallback((pacingData: any[], selectedAgencies: string[], selectedAdvertisers: string[], selectedCampaigns: string[]) => {
-    // Early return if no filters
-    if (selectedAgencies.length === 0 && selectedAdvertisers.length === 0 && selectedCampaigns.length === 0) {
-      return pacingData;
-    }
-    
-    const selectedAgencySet = new Set(selectedAgencies);
-    const selectedAdvertiserSet = new Set(selectedAdvertisers);
-    const selectedCampaignSet = new Set(selectedCampaigns);
-    
-    return pacingData.filter(row => {
-      const campaignName = row.Campaign || "";
-      
-      // Campaign filter (most specific)
-      if (selectedCampaigns.length > 0 && !selectedCampaignSet.has(campaignName)) {
-        return false;
-      }
-      
-      // Agency filter
-      if (selectedAgencies.length > 0) {
-        const { agency } = extractAgencyInfo(campaignName);
-        if (!selectedAgencySet.has(agency)) {
-          return false;
-        }
-      }
-      
-      // Advertiser filter
-      if (selectedAdvertisers.length > 0) {
-        const advertiser = extractAdvertiserName(campaignName);
-        if (!selectedAdvertiserSet.has(advertiser)) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  }, [extractAgencyInfo, extractAdvertiserName]);
-
   return (
     <>
       {/* Two-row header layout */}
@@ -1054,49 +1020,43 @@ const DashboardContent = ({
         {/* Bottom row: Tabs and Controls */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-1 py-3">
           <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="flex flex-wrap w-full min-w-fit">
-              <TabsTrigger value="dashboard">
-                <LayoutDashboard className="mr-2" size={16} />
+            <TabsList className="flex w-full min-w-fit overflow-x-auto whitespace-nowrap">
+              <TabsTrigger value="dashboard" className="text-sm">
+                <LayoutDashboard className="mr-1" size={14} />
                 Dashboard
               </TabsTrigger>
-              <TabsTrigger value="sparks">
-                <ChartLine className="mr-2" size={16} />
+              <TabsTrigger value="sparks" className="text-sm">
+                <ChartLine className="mr-1" size={14} />
                 Trends
               </TabsTrigger>
               {(pacingData.length > 0 || contractTermsData.length > 0) && (
-                <TabsTrigger value="health">
-                  <Activity className="mr-2" size={16} />
+                <TabsTrigger value="health" className="text-sm">
+                  <Activity className="mr-1" size={14} />
                   Health
                 </TabsTrigger>
               )}
-              {pacingData.length > 0 && (
-                <TabsTrigger value="pacing">
-                  <Target className="mr-2" size={16} />
-                  Pacing
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="pacing2">
-                <Target className="mr-2" size={16} />
+              <TabsTrigger value="pacing" className="text-sm">
+                <Target className="mr-1" size={14} />
                 Pacing
               </TabsTrigger>
               {(contractTermsData.length > 0 || data.length > 0) && (
-                <TabsTrigger value="status">
-                  <Clock className="mr-2" size={16} />
+                <TabsTrigger value="status" className="text-sm">
+                  <Clock className="mr-1" size={14} />
                   Status
                 </TabsTrigger>
               )}
               {data.length > 0 && (
-                <TabsTrigger value="notifications">
-                  <Bell className="mr-2" size={16} />
+                <TabsTrigger value="notifications" className="text-sm">
+                  <Bell className="mr-1" size={14} />
                   Notifications
                 </TabsTrigger>
               )}
-              <TabsTrigger value="custom-report">
-                <FileDown className="mr-2" size={16} />
+              <TabsTrigger value="custom-report" className="text-sm">
+                <FileDown className="mr-1" size={14} />
                 Custom
               </TabsTrigger>
-              <TabsTrigger value="raw-data">
-                <FileText className="mr-2" size={16} />
+              <TabsTrigger value="raw-data" className="text-sm">
+                <FileText className="mr-1" size={14} />
                 Raw Data
               </TabsTrigger>
             </TabsList>
@@ -1105,15 +1065,26 @@ const DashboardContent = ({
           <div className="flex items-center gap-2">
             <CampaignStatusToggle />
             {pacingData.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPacingUpload(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Pacing Data
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPacingUpload(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Contract Terms
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClearDialog(true)}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear Database
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1197,20 +1168,9 @@ const DashboardContent = ({
           </TabsContent>
         )}
         
-        {pacingData.length > 0 && (
-          <TabsContent value="pacing" className="mt-0">
-            <div className="mb-4 animate-fade-in" id="pacing-table-section">
-              <div id="pacing-metrics-section">
-                <PacingMetrics data={getFilteredPacingData(pacingData, selectedAgencies, selectedAdvertisers, selectedCampaigns)} />
-              </div>
-              <PacingTable data={getFilteredPacingData(pacingData, selectedAgencies, selectedAdvertisers, selectedCampaigns)} />
-            </div>
-          </TabsContent>
-        )}
-        
-        <TabsContent value="pacing2" className="mt-0">
-          <div className="mb-4 animate-fade-in" id="pacing2-section">
-            <Pacing2 
+        <TabsContent value="pacing" className="mt-0">
+          <div className="mb-4 animate-fade-in" id="pacing-section">
+            <Pacing
               data={globalFilteredData}
               unfilteredData={data}
               pacingData={pacingData}
@@ -1270,15 +1230,32 @@ const DashboardContent = ({
         </TabsContent>
       </Tabs>
 
-      {/* Pacing file upload dialog */}
-      <PacingFileUpload
+      {/* Contract terms upload dialog */}
+      <ContractTermsUpload
         isOpen={showPacingUpload}
         onClose={() => setShowPacingUpload(false)}
-        onDataLoaded={onPacingDataLoaded}
+        onSuccess={() => {
+          // Trigger a refresh of the pacing tab
+          toast.success("Contract terms uploaded successfully");
+        }}
+      />
+
+      {/* Clear database dialog */}
+      <ClearDatabaseDialog
+        isOpen={showClearDialog}
+        onClose={() => setShowClearDialog(false)}
+        onSuccess={() => {
+          // Refresh the page data after clearing
+          setData([]);
+          setContractTermsData([]);
+          setShowDashboard(false);
+          toast.success("Database cleared successfully");
+        }}
       />
     </>
   );
 };
+
 
 const Index = () => {
   const { upsertCampaignData, getCampaignData, loadAllDataInBackground } = useSupabase();
@@ -1291,32 +1268,29 @@ const Index = () => {
   const [loadingProgress, setLoadingProgress] = useState<string>('');
   const [isLoadingAllData, setIsLoadingAllData] = useState(false);
   const [hasAllData, setHasAllData] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
-  // Fast initial load - recent data only
+  // Load all data at startup
   useEffect(() => {
-    const loadRecentDataFromSupabase = async () => {
+    const loadAllDataFromSupabase = async () => {
       try {
-        setLoadingProgress('Loading recent campaign data...');
+        setLoadingProgress('Loading all campaign data...');
 
-        // Load only recent data (last 90 days) for fast startup
-        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, true);
+        // Load all data at startup
+        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, false);
 
         if (campaignData.length > 0) {
-          setLoadingProgress('Processing recent data...');
+          setLoadingProgress('Processing all data...');
           const transformedData = transformDataFormat(campaignData);
 
           setData(transformedData);
           setDateRange(undefined);
           setShowDashboard(true);
-          console.log(`✅ Fast load: ${transformedData.length} recent rows loaded`);
-
-          // Start background loading of all data
-          setTimeout(() => {
-            loadAllDataInBackgroundWrapper();
-          }, 1000); // Give UI time to render
+          setHasAllData(true); // Mark that we have all data
+          console.log(`✅ All data loaded: ${transformedData.length} total rows loaded`);
         }
       } catch (error) {
-        console.error("Failed to load recent data from Supabase:", error);
+        console.error("Failed to load all data from Supabase:", error);
         setLoadingProgress('Error loading data');
       } finally {
         setIsLoadingFromSupabase(false);
@@ -1324,7 +1298,7 @@ const Index = () => {
       }
     };
 
-    loadRecentDataFromSupabase();
+    loadAllDataFromSupabase();
   }, [getCampaignData]);
 
   // Background loading of all historical data
@@ -1587,7 +1561,10 @@ const Index = () => {
         }).filter(row => row !== null); // Filter out null/invalid rows
 
         if (supabaseData.length > 0) {
-          upsertCampaignData(supabaseData).then(async () => {
+          upsertCampaignData(supabaseData, (progress) => {
+            console.log(`Upload progress: ${progress}`);
+            setLoadingProgress(progress);
+          }).then(async () => {
             console.log(`Successfully synced ${supabaseData.length} records to Supabase`);
             // Reload all data from Supabase to get the complete dataset
             try {
@@ -1726,6 +1703,8 @@ const Index = () => {
             hasAllData={hasAllData}
             isLoadingAllData={isLoadingAllData}
             loadAllDataInBackgroundWrapper={loadAllDataInBackgroundWrapper}
+            showClearDialog={showClearDialog}
+            setShowClearDialog={setShowClearDialog}
           />
         )}
       </div>

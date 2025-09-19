@@ -31,6 +31,18 @@ export type CampaignAnomalyData = {
   updated_at?: string
 }
 
+export type ContractTermsData = {
+  id?: string
+  campaign_name: string
+  start_date: string
+  end_date: string
+  budget: number
+  cpm: number
+  impressions_goal: number
+  created_at?: string
+  updated_at?: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -43,6 +55,11 @@ export type Database = {
         Row: CampaignAnomalyData
         Insert: Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>>
+      }
+      contract_terms: {
+        Row: ContractTermsData
+        Insert: Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>>
       }
     }
   }

@@ -117,8 +117,13 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ campaigns }) => {
                 {/* Progress Bar */}
                 <div className="mt-3">
                   <div className="bg-gray-200 rounded-full h-1.5">
-                    <div 
-                      className={`h-1.5 rounded-full transition-all duration-500 ${config.iconColor.replace('text-', 'bg-')}`}
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${
+                        level === 'on-target' ? 'bg-green-600' :
+                        level === 'minor' ? 'bg-yellow-600' :
+                        level === 'moderate' ? 'bg-orange-600' :
+                        'bg-red-600'
+                      }`}
                       style={{ width: `${Math.min(percentage, 100)}%` }}
                     />
                   </div>

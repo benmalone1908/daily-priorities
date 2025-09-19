@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
-import { AlertCircle, TrendingUp, TrendingDown, Target, Calendar, Eye } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, Target, Calendar, Eye, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { processCampaigns } from '@/lib/pacingCalculations';
 import type { ContractTerms, PacingDeliveryData, ProcessedCampaign } from '@/types/pacing';
 import { parseDateString } from '@/lib/utils';
@@ -12,6 +13,9 @@ import { CampaignOverviewTable } from './pacing/CampaignOverviewTable';
 import { Modal } from './pacing/Modal';
 import { useCampaignUtils, formatCurrency, formatNumber, formatPercentage, getPacingColor } from '@/lib/pacingUtils';
 import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { toast } from 'sonner';
+import { MissingContractsModal } from './MissingContractsModal';
 
 // Helper function for pacing icons
 const getPacingIcon = (pacing: number) => {
@@ -305,17 +309,42 @@ const DetailedView: React.FC<DetailedViewProps> = ({ campaign }) => {
   );
 };
 
-interface Pacing2Props {
+interface PacingProps {
   data: any[];
   unfilteredData: any[];
   pacingData: any[];
   contractTermsData: any[];
 }
 
-export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingData, contractTermsData }) => {
+export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData, pacingData, contractTermsData }) => {
   const [selectedCampaign, setSelectedCampaign] = useState<ProcessedCampaign | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dbContractTerms, setDbContractTerms] = useState<any[]>([]);
+  const [missingContracts, setMissingContracts] = useState<string[]>([]);
+  const [missingContractsData, setMissingContractsData] = useState<Array<{name: string; firstDate: string; lastDate: string; totalImpressions: number}>>([]);
+  const [showMissingModal, setShowMissingModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { selectedAgencies, selectedAdvertisers, selectedCampaigns } = useCampaignFilter();
+  const { getContractTerms } = useSupabase();
+
+  // Load contract terms from database
+  useEffect(() => {
+    const loadContractTerms = async () => {
+      try {
+        setIsLoading(true);
+        const dbTerms = await getContractTerms();
+        setDbContractTerms(dbTerms);
+        console.log(`📋 Loaded ${dbTerms.length} contract terms from database`);
+      } catch (error) {
+        console.error('Error loading contract terms:', error);
+        toast.error('Failed to load contract terms from database');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadContractTerms();
+  }, [getContractTerms]);
 
   // Transform existing data to pacing format
   const campaigns = useMemo(() => {
@@ -324,11 +353,69 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
         return [];
       }
 
-      // If we have contractTermsData, use it; otherwise try to derive from existing data
+      // Get unique campaign names from data
+      const campaignNamesInData = Array.from(new Set(data.map(row => row['CAMPAIGN ORDER NAME'])));
+
+      // Use database contract terms first, then uploaded contract terms, then derive from data
       let contractTerms: ContractTerms[] = [];
-      
-      if (contractTermsData.length > 0) {
-        // Use existing contract terms data
+      let missing: string[] = [];
+
+      if (dbContractTerms.length > 0) {
+        // Convert database contract terms to the expected format
+        contractTerms = dbContractTerms.map((row: any) => ({
+          Name: row.campaign_name,
+          'Start Date': row.start_date,
+          'End Date': row.end_date,
+          Budget: row.budget.toString(),
+          CPM: row.cpm.toString(),
+          'Impressions Goal': row.impressions_goal.toString()
+        }));
+
+        // Find campaigns that are missing contract terms
+        const campaignsWithContracts = new Set(dbContractTerms.map(t => t.campaign_name));
+        missing = campaignNamesInData.filter(name => !campaignsWithContracts.has(name));
+
+        // Calculate detailed data for missing campaigns and filter out campaigns with zero impressions on most recent day
+        const missingDetails = missing.map(campaignName => {
+          const campaignRows = data.filter(row => row['CAMPAIGN ORDER NAME'] === campaignName);
+
+          const dates = campaignRows
+            .map(row => parseDateString(row.DATE))
+            .filter(Boolean) as Date[];
+          dates.sort((a, b) => a.getTime() - b.getTime());
+
+          // Find the most recent day's data
+          const mostRecentDate = dates[dates.length - 1];
+          const mostRecentRow = campaignRows.find(row => {
+            const rowDate = parseDateString(row.DATE);
+            return rowDate && rowDate.getTime() === mostRecentDate?.getTime();
+          });
+
+          // Check if most recent day has zero impressions (not blank, but actual zero)
+          const mostRecentImpressions = mostRecentRow ? parseInt(mostRecentRow.IMPRESSIONS?.toString().replace(/,/g, '') || '0') : 0;
+          const hasZeroImpressionsOnMostRecentDay = mostRecentRow && mostRecentRow.IMPRESSIONS !== undefined && mostRecentRow.IMPRESSIONS !== null && mostRecentRow.IMPRESSIONS !== '' && mostRecentImpressions === 0;
+
+          const totalImpressions = campaignRows.reduce((sum, row) =>
+            sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
+
+          return {
+            name: campaignName,
+            firstDate: dates[0] ? dates[0].toLocaleDateString() : 'Unknown',
+            lastDate: dates[dates.length - 1] ? dates[dates.length - 1].toLocaleDateString() : 'Unknown',
+            totalImpressions,
+            hasZeroImpressionsOnMostRecentDay
+          };
+        }).filter(campaign => !campaign.hasZeroImpressionsOnMostRecentDay); // Filter out campaigns with zero impressions on most recent day
+
+        // Update missing contracts to only include campaigns that aren't filtered out
+        missing = missingDetails.map(campaign => campaign.name);
+
+        setMissingContractsData(missingDetails);
+
+        console.log(`📋 Using ${contractTerms.length} database contract terms`);
+        console.log(`⚠️ Found ${missing.length} campaigns without contract terms:`, missing);
+      } else if (contractTermsData.length > 0) {
+        // Fallback to uploaded contract terms data
         contractTerms = contractTermsData.map((row: any) => ({
           Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
           'Start Date': row['Start Date'] || row.START_DATE || '',
@@ -337,6 +424,8 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
           CPM: row.CPM || row.cpm || '',
           'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
         }));
+
+        console.log(`📋 Using ${contractTerms.length} uploaded contract terms`);
       } else {
         // Try to derive contract terms from campaign data
         const campaignNames = Array.from(new Set(data.map(row => row['CAMPAIGN ORDER NAME'])));
@@ -386,7 +475,10 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
       }));
 
       const processedCampaigns = processCampaigns(contractTerms, deliveryData, unfilteredDeliveryData);
-      
+
+      // Update missing contracts state
+      setMissingContracts(missing);
+
       if (processedCampaigns.length === 0) {
         setError('No campaigns could be processed from existing data. Contract terms may be missing.');
       } else if (processedCampaigns.length < contractTerms.length) {
@@ -401,7 +493,7 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
       setError(err instanceof Error ? err.message : 'Error processing campaign data');
       return [];
     }
-  }, [data, unfilteredData, pacingData, contractTermsData]);
+  }, [data, unfilteredData, pacingData, contractTermsData, dbContractTerms]);
 
   // Modal handlers
   const handleCampaignClick = (campaign: ProcessedCampaign) => {
@@ -434,6 +526,16 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
         </Card>
       ) : (
         <div className="space-y-6">
+          {/* Missing Contract Terms Warning */}
+          {missingContracts.length > 0 && (
+            <Alert className="border-yellow-200 bg-yellow-50 cursor-pointer hover:bg-yellow-100 transition-colors" onClick={() => setShowMissingModal(true)}>
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                <strong>Missing Contract Terms:</strong> {missingContracts.length} campaign{missingContracts.length > 1 ? 's are' : ' is'} missing contract terms in database. <span className="underline">Click to view details</span>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Summary Cards */}
           <SummaryCards campaigns={campaigns} />
 
@@ -449,13 +551,20 @@ export const Pacing2: React.FC<Pacing2Props> = ({ data, unfilteredData, pacingDa
       )}
 
       {/* Modal for detailed campaign view */}
-      <Modal 
+      <Modal
         isOpen={!!selectedCampaign}
         onClose={handleModalClose}
         title={selectedCampaign?.name}
       >
         {selectedCampaign && <DetailedCampaignView campaign={selectedCampaign} />}
       </Modal>
+
+      {/* Missing Contracts Modal */}
+      <MissingContractsModal
+        isOpen={showMissingModal}
+        onClose={() => setShowMissingModal(false)}
+        missingCampaigns={missingContractsData}
+      />
 
       {error && (
         <Card className="border-yellow-200 bg-yellow-50 p-4">

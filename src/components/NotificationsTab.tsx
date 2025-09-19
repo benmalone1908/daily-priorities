@@ -170,21 +170,43 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
     }
   };
 
-  // Filter anomalies based on current filters and show/hide ignored
+  // Get list of campaign names that are present in the filtered campaign data
+  const availableCampaigns = useMemo(() => {
+    const campaigns = new Set<string>();
+    campaignData.forEach(row => {
+      const campaignName = row["CAMPAIGN ORDER NAME"] || row.campaign_order_name;
+      if (campaignName) {
+        campaigns.add(campaignName);
+      }
+    });
+    return campaigns;
+  }, [campaignData]);
+
+  // Filter anomalies based on current filters, show/hide ignored, and global filters
   const filteredAnomalies = useMemo(() => {
     let filtered = filterAnomalies(anomalies, filters);
+
+    // Filter by global filters - only show anomalies for campaigns present in the filtered data
+    filtered = filtered.filter(anomaly =>
+      availableCampaigns.has(anomaly.campaign_name)
+    );
 
     if (!showIgnored) {
       filtered = filtered.filter(a => !a.is_ignored);
     }
 
     return filtered;
-  }, [anomalies, filters, showIgnored]);
+  }, [anomalies, filters, showIgnored, availableCampaigns]);
 
-  // Count anomalies by severity (including recency filter)
+  // Count anomalies by severity (including recency filter and global filters)
   const anomalyCounts = useMemo(() => {
     // First filter by ignored status
     let activeAnomalies = anomalies.filter(a => !showIgnored ? !a.is_ignored : true);
+
+    // Filter by global filters - only count anomalies for campaigns present in the filtered data
+    activeAnomalies = activeAnomalies.filter(anomaly =>
+      availableCampaigns.has(anomaly.campaign_name)
+    );
 
     // Apply recency filter to counts
     if (filters.recency) {
@@ -202,7 +224,7 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
       medium: activeAnomalies.filter(a => a.severity === 'medium').length,
       low: activeAnomalies.filter(a => a.severity === 'low').length,
     };
-  }, [anomalies, showIgnored, filters.recency]);
+  }, [anomalies, showIgnored, filters.recency, availableCampaigns]);
 
   if (isLoading) {
     return (
@@ -305,13 +327,6 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
         </Card>
       </div>
 
-      {/* Filters */}
-      <AnomalyFiltersComponent
-        anomalies={anomalies}
-        filters={filters}
-        onFiltersChange={setFilters}
-      />
-
       {/* Anomalies Table */}
       <div className="space-y-4">
         {filteredAnomalies.length === 0 && anomalies.length === 0 ? (
@@ -325,11 +340,18 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
-                {filteredAnomalies.length} Anomal{filteredAnomalies.length === 1 ? 'y' : 'ies'}
-                {Object.keys(filters).length > 0 && " (filtered)"}
-              </h3>
-              <ActiveFilters
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-semibold">
+                  {filteredAnomalies.length} Anomal{filteredAnomalies.length === 1 ? 'y' : 'ies'}
+                  {Object.keys(filters).length > 0 && " (filtered)"}
+                </h3>
+                <ActiveFilters
+                  anomalies={anomalies}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                />
+              </div>
+              <AnomalyFiltersComponent
                 anomalies={anomalies}
                 filters={filters}
                 onFiltersChange={setFilters}

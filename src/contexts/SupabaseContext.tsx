@@ -1,10 +1,11 @@
 import React, { createContext, useContext, ReactNode } from 'react'
-import { supabase, type CampaignData, type CampaignAnomalyData } from '@/lib/supabase'
+import { supabase, type CampaignData, type CampaignAnomalyData, type ContractTermsData } from '@/lib/supabase'
 
 interface SupabaseContextType {
-  upsertCampaignData: (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[]) => Promise<void>
+  upsertCampaignData: (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[], onProgress?: (progress: string) => void) => Promise<void>
   getCampaignData: (startDate?: string, endDate?: string, onProgress?: (progress: string) => void, recentOnly?: boolean) => Promise<CampaignData[]>
   deleteCampaignData: (campaignName?: string, date?: string) => Promise<void>
+  clearCampaignData: () => Promise<void>
   getCampaignDataCount: () => Promise<number>
   loadAllDataInBackground: (onProgress?: (progress: string) => void) => Promise<CampaignData[]>
   // Anomaly methods
@@ -13,6 +14,12 @@ interface SupabaseContextType {
   updateAnomaly: (id: string, updates: Partial<Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>>) => Promise<void>
   deleteAnomaly: (id: string) => Promise<void>
   clearAnomalies: () => Promise<void>
+  // Contract terms methods
+  getContractTerms: () => Promise<ContractTermsData[]>
+  upsertContractTerms: (contractTerms: Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>[], clearFirst?: boolean) => Promise<void>
+  updateContractTerms: (id: string, updates: Partial<Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>>) => Promise<void>
+  deleteContractTerms: (id: string) => Promise<void>
+  clearContractTerms: () => Promise<void>
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
@@ -30,7 +37,7 @@ interface SupabaseProviderProps {
 }
 
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
-  const upsertCampaignData = async (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[]) => {
+  const upsertCampaignData = async (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[], onProgress?: (progress: string) => void) => {
     try {
       // Validate and sanitize data before sending to Supabase
       const sanitizedData = data.map(row => {
@@ -59,22 +66,61 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
       console.log(`💾 Attempting to upsert ${sanitizedData.length} sanitized records to Supabase...`)
 
-      const { error } = await supabase
-        .from('campaign_data')
-        .upsert(sanitizedData, {
-          onConflict: 'date,campaign_order_name',
-          ignoreDuplicates: false
-        })
+      // For large datasets, use chunked uploads to avoid payload size limits
+      const chunkSize = 1000; // Upload in chunks of 1000 records
+      const totalChunks = Math.ceil(sanitizedData.length / chunkSize);
 
-      if (error) {
-        console.error('Error upserting campaign data:', error)
-        throw error
+      if (sanitizedData.length > chunkSize) {
+        console.log(`Large dataset detected (${sanitizedData.length} records). Using chunked upload with ${totalChunks} chunks.`);
+
+        let successfullyUpserted = 0;
+
+        for (let i = 0; i < totalChunks; i++) {
+          const startIndex = i * chunkSize;
+          const endIndex = Math.min(startIndex + chunkSize, sanitizedData.length);
+          const chunk = sanitizedData.slice(startIndex, endIndex);
+
+          const progressMessage = `Uploading chunk ${i + 1} of ${totalChunks} (${successfullyUpserted + chunk.length} / ${sanitizedData.length} records)`;
+          console.log(progressMessage);
+          onProgress?.(progressMessage);
+
+          const { error } = await supabase
+            .from('campaign_data')
+            .upsert(chunk, {
+              onConflict: 'date,campaign_order_name',
+              ignoreDuplicates: false
+            });
+
+          if (error) {
+            console.error(`Error upserting chunk ${i + 1}:`, error);
+            throw new Error(`Failed to upload chunk ${i + 1}: ${error.message}`);
+          }
+
+          successfullyUpserted += chunk.length;
+          console.log(`✅ Chunk ${i + 1} uploaded successfully (${chunk.length} records)`);
+        }
+
+        onProgress?.(`Upload complete: ${successfullyUpserted} records uploaded successfully`);
+        console.log(`✅ Successfully upserted all ${successfullyUpserted} campaign records in ${totalChunks} chunks`);
+      } else {
+        // For smaller datasets, upload all at once
+        const { error } = await supabase
+          .from('campaign_data')
+          .upsert(sanitizedData, {
+            onConflict: 'date,campaign_order_name',
+            ignoreDuplicates: false
+          });
+
+        if (error) {
+          console.error('Error upserting campaign data:', error);
+          throw error;
+        }
+
+        console.log(`✅ Successfully upserted ${sanitizedData.length} campaign records`);
       }
-
-      console.log(`✅ Successfully upserted ${sanitizedData.length} campaign records`)
     } catch (error) {
-      console.error('❌ Failed to upsert campaign data:', error)
-      throw error
+      console.error('❌ Failed to upsert campaign data:', error);
+      throw error;
     }
   }
 
@@ -109,16 +155,15 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
       onProgress?.(`Found ${totalCount?.toLocaleString()} records. Loading...`);
 
-      // For very large datasets, use pagination to fetch all data
-      const pageSize = 1000; // Use smaller batches to ensure reliability
+      // Use pagination to fetch all data
+      const pageSize = 1000; // Use Supabase's reliable limit
       let allData: CampaignData[] = [];
       let page = 0;
       let hasMore = true;
-      let consecutiveEmptyPages = 0;
 
-      console.log(`Starting pagination with ${totalCount} total records expected`);
+      console.log(`Starting pagination with ${totalCount} total records expected, page size: ${pageSize}`);
 
-      while (hasMore && consecutiveEmptyPages < 3) {
+      while (hasMore) {
         let query = supabase
           .from('campaign_data')
           .select('*')
@@ -139,12 +184,10 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           throw error;
         }
 
-        console.log(`Page ${page}: fetched ${data?.length || 0} records (range: ${page * pageSize} to ${(page + 1) * pageSize - 1})`);
+        console.log(`Page ${page}: fetched ${data?.length || 0} records`);
 
         if (data && data.length > 0) {
           allData = allData.concat(data);
-          consecutiveEmptyPages = 0; // Reset counter on successful fetch
-          hasMore = data.length === pageSize; // Continue if we got a full page
           page++;
 
           const progress = totalCount
@@ -152,7 +195,9 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
             : `Loaded ${allData.length.toLocaleString()} records...`;
 
           onProgress?.(progress);
-          console.log(`Fetched page ${page}, ${progress}`);
+
+          // Continue until we get less than a full page or reach the expected total
+          hasMore = data.length === pageSize && (!totalCount || allData.length < totalCount);
 
           // Safety check: if we've loaded as much as the total count, stop
           if (totalCount && allData.length >= totalCount) {
@@ -160,31 +205,19 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
             hasMore = false;
           }
         } else {
-          consecutiveEmptyPages++;
-          if (consecutiveEmptyPages >= 3) {
-            console.log(`Got 3 consecutive empty pages, stopping pagination`);
-            hasMore = false;
-          } else {
-            console.log(`Empty page ${page}, continuing... (${consecutiveEmptyPages}/3 empty pages)`);
-            page++;
-          }
+          console.log(`No more data found, stopping pagination`);
+          hasMore = false;
         }
       }
 
       console.log(`Completed fetching ${allData.length} total records from Supabase`);
-
-      // If we didn't get all the expected records, log a warning
-      if (totalCount && allData.length < totalCount) {
-        console.warn(`⚠️ Only fetched ${allData.length} of ${totalCount} expected records. This may indicate a Supabase pagination limit.`);
-        console.warn(`Consider using date-based filtering to fetch data in chunks.`);
-      }
-
       return allData;
     } catch (error) {
       console.error('Failed to fetch campaign data:', error);
       throw error;
     }
   }
+
 
   const getCampaignDataCount = async (): Promise<number> => {
     try {
@@ -393,17 +426,174 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
   }
 
+  // Contract Terms operations
+  const getContractTerms = async (): Promise<ContractTermsData[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('contract_terms')
+        .select('*')
+        .order('campaign_name', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching contract terms:', error)
+        throw error
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('❌ Failed to fetch contract terms:', error)
+      throw error
+    }
+  }
+
+  const upsertContractTerms = async (contractTerms: Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>[], clearFirst: boolean = false): Promise<void> => {
+    try {
+      if (clearFirst) {
+        const { error: clearError } = await supabase
+          .from('contract_terms')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all records
+
+        if (clearError) {
+          console.error('Error clearing contract terms:', clearError)
+          throw clearError
+        }
+        console.log('🗑️ Cleared existing contract terms')
+      }
+
+      if (contractTerms.length === 0) {
+        console.log('No contract terms to insert')
+        return
+      }
+
+      // Validate and sanitize data
+      const sanitizedData = contractTerms.map(term => {
+        if (!term.campaign_name || typeof term.campaign_name !== 'string') {
+          throw new Error(`Invalid campaign_name: ${term.campaign_name}`)
+        }
+        if (!term.start_date || !term.end_date) {
+          throw new Error(`Invalid dates for campaign ${term.campaign_name}`)
+        }
+
+        return {
+          campaign_name: term.campaign_name.trim(),
+          start_date: term.start_date,
+          end_date: term.end_date,
+          budget: Number(term.budget) || 0,
+          cpm: Number(term.cpm) || 0,
+          impressions_goal: Number(term.impressions_goal) || 0
+        }
+      })
+
+      const { error } = await supabase
+        .from('contract_terms')
+        .insert(sanitizedData)
+
+      if (error) {
+        console.error('Error inserting contract terms:', error)
+        throw error
+      }
+
+      console.log(`✅ Successfully inserted ${sanitizedData.length} contract terms`)
+    } catch (error) {
+      console.error('❌ Failed to insert contract terms:', error)
+      throw error
+    }
+  }
+
+  const updateContractTerms = async (id: string, updates: Partial<Omit<ContractTermsData, 'id' | 'created_at' | 'updated_at'>>): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('contract_terms')
+        .update(updates)
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error updating contract terms:', error)
+        throw error
+      }
+
+      console.log(`✅ Successfully updated contract terms ${id}`)
+    } catch (error) {
+      console.error('❌ Failed to update contract terms:', error)
+      throw error
+    }
+  }
+
+  const deleteContractTerms = async (id: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('contract_terms')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error deleting contract terms:', error)
+        throw error
+      }
+
+      console.log(`✅ Successfully deleted contract terms ${id}`)
+    } catch (error) {
+      console.error('❌ Failed to delete contract terms:', error)
+      throw error
+    }
+  }
+
+  const clearContractTerms = async (): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('contract_terms')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all records
+
+      if (error) {
+        console.error('Error clearing contract terms:', error)
+        throw error
+      }
+
+      console.log('✅ Successfully cleared all contract terms')
+    } catch (error) {
+      console.error('❌ Failed to clear contract terms:', error)
+      throw error
+    }
+  }
+
+  const clearCampaignData = async (): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('campaign_data')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all records
+
+      if (error) {
+        console.error('Error clearing campaign data:', error)
+        throw error
+      }
+
+      console.log('✅ Successfully cleared all campaign data')
+    } catch (error) {
+      console.error('❌ Failed to clear campaign data:', error)
+      throw error
+    }
+  }
+
   const value: SupabaseContextType = {
     upsertCampaignData,
     getCampaignData,
     deleteCampaignData,
+    clearCampaignData,
     getCampaignDataCount,
     loadAllDataInBackground,
     getAnomalies,
     upsertAnomalies,
     updateAnomaly,
     deleteAnomaly,
-    clearAnomalies
+    clearAnomalies,
+    getContractTerms,
+    upsertContractTerms,
+    updateContractTerms,
+    deleteContractTerms,
+    clearContractTerms
   }
 
   return (

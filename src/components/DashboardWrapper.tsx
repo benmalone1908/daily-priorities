@@ -70,18 +70,9 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       
       // Use shared function to extract advertiser names
       const advertiser = extractAdvertiserName(campaignName);
-      
-      // Additional explicit logging for Sol Flower
-      if (campaignName.includes('Sol Flower')) {
-        console.log(`Sol Flower campaign found: "${campaignName}" -> Extracted: "${advertiser}"`);
-      }
-      
+
       if (advertiser) {
         advertiserSet.add(advertiser);
-        // Log when adding Sol Flower to the set
-        if (advertiser === "Sol Flower") {
-          console.log(`Added "Sol Flower" to advertiser set, current size: ${advertiserSet.size}`);
-        }
       }
     });
     
