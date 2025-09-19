@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS campaign_anomalies (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_name TEXT NOT NULL,
-  anomaly_type TEXT NOT NULL CHECK (anomaly_type IN ('impression_change', 'transaction_drop', 'transaction_zero')),
+  anomaly_type TEXT NOT NULL CHECK (anomaly_type IN ('impression_change', 'transaction_drop', 'transaction_zero', 'suspected_bot_activity')),
   date_detected DATE NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('high', 'medium', 'low')),
   details JSONB NOT NULL DEFAULT '{}',

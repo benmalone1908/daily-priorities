@@ -20,8 +20,8 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
-import { NotificationCard } from "./NotificationCard";
-import { AnomalyFiltersComponent, AnomalyFilters, filterAnomalies } from "./AnomalyFilters";
+import { AnomalyTable } from "./AnomalyTable";
+import { AnomalyFiltersComponent, ActiveFilters, AnomalyFilters, filterAnomalies } from "./AnomalyFilters";
 import {
   CampaignAnomaly,
   detectAllAnomalies,
@@ -312,20 +312,14 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
         onFiltersChange={setFilters}
       />
 
-      {/* Anomalies List */}
+      {/* Anomalies Table */}
       <div className="space-y-4">
-        {filteredAnomalies.length === 0 ? (
+        {filteredAnomalies.length === 0 && anomalies.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {anomalies.length === 0 ? "No anomalies detected" : "No anomalies match your filters"}
-              </h3>
-              <p className="text-gray-600">
-                {anomalies.length === 0
-                  ? "Your campaigns are running smoothly!"
-                  : "Try adjusting your filters to see more results."}
-              </p>
+              <h3 className="text-lg font-semibold mb-2">No anomalies detected</h3>
+              <p className="text-gray-600">Your campaigns are running smoothly!</p>
             </CardContent>
           </Card>
         ) : (
@@ -335,17 +329,17 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
                 {filteredAnomalies.length} Anomal{filteredAnomalies.length === 1 ? 'y' : 'ies'}
                 {Object.keys(filters).length > 0 && " (filtered)"}
               </h3>
+              <ActiveFilters
+                anomalies={anomalies}
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
             </div>
-            <div className="space-y-3">
-              {filteredAnomalies.map((anomaly, index) => (
-                <NotificationCard
-                  key={anomaly.id || index}
-                  anomaly={anomaly}
-                  onIgnore={handleIgnoreAnomaly}
-                  onUpdateDuration={handleUpdateDuration}
-                />
-              ))}
-            </div>
+            <AnomalyTable
+              anomalies={filteredAnomalies}
+              onIgnore={handleIgnoreAnomaly}
+              onUpdateDuration={handleUpdateDuration}
+            />
           </>
         )}
       </div>

@@ -16,7 +16,7 @@ import { CampaignAnomaly, getAnomalyTypeDisplayName } from "@/utils/anomalyDetec
 
 export interface AnomalyFilters {
   severity?: 'high' | 'medium' | 'low';
-  anomalyType?: 'impression_change' | 'transaction_drop' | 'transaction_zero';
+  anomalyType?: 'impression_change' | 'transaction_drop' | 'transaction_zero' | 'suspected_bot_activity';
   campaignName?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -44,10 +44,18 @@ export function AnomalyFiltersComponent({ anomalies, filters, onFiltersChange }:
   const handleFilterChange = (key: keyof AnomalyFilters, value: string | undefined) => {
     // Convert "__all__" back to undefined (no filter)
     const actualValue = value === "__all__" ? undefined : value;
-    onFiltersChange({
+
+    let newFilters = {
       ...filters,
       [key]: actualValue
-    });
+    };
+
+    // Auto-clear severity filter when selecting transaction drop type since all are high severity
+    if (key === 'anomalyType' && actualValue === 'transaction_drop') {
+      newFilters.severity = undefined;
+    }
+
+    onFiltersChange(newFilters);
   };
 
   const clearFilter = (key: keyof AnomalyFilters) => {
@@ -61,6 +69,73 @@ export function AnomalyFiltersComponent({ anomalies, filters, onFiltersChange }:
   };
 
   const activeFilterCount = Object.keys(filters).length;
+
+  const renderActiveFilters = () => {
+    if (activeFilterCount === 0) return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        {filters.severity && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            Severity: {filters.severity}
+            <button onClick={() => clearFilter('severity')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        {filters.anomalyType && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            Type: {getAnomalyTypeDisplayName(filters.anomalyType)}
+            <button onClick={() => clearFilter('anomalyType')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        {filters.campaignName && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            Campaign: {filters.campaignName.length > 20
+              ? `${filters.campaignName.substring(0, 20)}...`
+              : filters.campaignName}
+            <button onClick={() => clearFilter('campaignName')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        {filters.dateFrom && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            From: {filters.dateFrom}
+            <button onClick={() => clearFilter('dateFrom')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        {filters.dateTo && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            To: {filters.dateTo}
+            <button onClick={() => clearFilter('dateTo')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        {filters.recency && (
+          <Badge variant="outline" className="flex items-center gap-1">
+            Last {filters.recency} days
+            <button onClick={() => clearFilter('recency')}>
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearAllFilters}
+          className="text-xs h-6"
+        >
+          Clear All
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -100,6 +175,7 @@ export function AnomalyFiltersComponent({ anomalies, filters, onFiltersChange }:
               <SelectItem value="impression_change">Impression Change</SelectItem>
               <SelectItem value="transaction_drop">Transaction Drop</SelectItem>
               <SelectItem value="transaction_zero">Zero Transactions</SelectItem>
+              <SelectItem value="suspected_bot_activity">Suspected Bot Activity</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -147,71 +223,86 @@ export function AnomalyFiltersComponent({ anomalies, filters, onFiltersChange }:
           />
         </div>
       </div>
+    </div>
+  );
+};
 
-      {/* Active Filters Display */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-600">Active filters:</span>
-          {filters.severity && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              Severity: {filters.severity}
-              <button onClick={() => clearFilter('severity')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.anomalyType && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              Type: {getAnomalyTypeDisplayName(filters.anomalyType)}
-              <button onClick={() => clearFilter('anomalyType')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.campaignName && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              Campaign: {filters.campaignName.length > 20
-                ? `${filters.campaignName.substring(0, 20)}...`
-                : filters.campaignName}
-              <button onClick={() => clearFilter('campaignName')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.dateFrom && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              From: {filters.dateFrom}
-              <button onClick={() => clearFilter('dateFrom')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.dateTo && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              To: {filters.dateTo}
-              <button onClick={() => clearFilter('dateTo')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          {filters.recency && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              Last {filters.recency} days
-              <button onClick={() => clearFilter('recency')}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            className="text-xs h-6"
-          >
-            Clear All
-          </Button>
-        </div>
+// Export the active filters component separately for use in NotificationsTab
+export const ActiveFilters = ({ filters, onFiltersChange }: AnomalyFiltersProps) => {
+  const clearFilter = (key: keyof AnomalyFilters) => {
+    const newFilters = { ...filters };
+    delete newFilters[key];
+    onFiltersChange(newFilters);
+  };
+
+  const clearAllFilters = () => {
+    onFiltersChange({});
+  };
+
+  const activeFilterCount = Object.keys(filters).length;
+
+  if (activeFilterCount === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {filters.severity && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          Severity: {filters.severity}
+          <button onClick={() => clearFilter('severity')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
       )}
+      {filters.anomalyType && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          Type: {getAnomalyTypeDisplayName(filters.anomalyType)}
+          <button onClick={() => clearFilter('anomalyType')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+      {filters.campaignName && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          Campaign: {filters.campaignName.length > 20
+            ? `${filters.campaignName.substring(0, 20)}...`
+            : filters.campaignName}
+          <button onClick={() => clearFilter('campaignName')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+      {filters.dateFrom && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          From: {filters.dateFrom}
+          <button onClick={() => clearFilter('dateFrom')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+      {filters.dateTo && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          To: {filters.dateTo}
+          <button onClick={() => clearFilter('dateTo')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+      {filters.recency && (
+        <Badge variant="outline" className="flex items-center gap-1">
+          Last {filters.recency} days
+          <button onClick={() => clearFilter('recency')}>
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={clearAllFilters}
+        className="text-xs h-6"
+      >
+        Clear All
+      </Button>
     </div>
   );
 }

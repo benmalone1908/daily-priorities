@@ -1,7 +1,7 @@
 export interface CampaignAnomaly {
   id?: string;
   campaign_name: string;
-  anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero';
+  anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero' | 'suspected_bot_activity';
   date_detected: string; // YYYY-MM-DD format
   severity: 'high' | 'medium' | 'low';
   details: {
@@ -10,6 +10,9 @@ export interface CampaignAnomaly {
     percentage_change?: number;
     consecutive_days?: number;
     threshold_exceeded?: number;
+    ctr_percentage?: number;
+    clicks?: number;
+    impressions?: number;
   };
   is_ignored: boolean;
   custom_duration?: number;
@@ -252,6 +255,69 @@ export function detectZeroTransactionAnomalies(
 }
 
 /**
+ * Detects suspected bot activity based on CTR over 1%
+ */
+export function detectBotActivityAnomalies(
+  data: CampaignDataRow[],
+  ctrThresholdPercentage: number = 1.0
+): CampaignAnomaly[] {
+  const anomalies: CampaignAnomaly[] = [];
+
+  // Group data by campaign
+  const campaignGroups = data.reduce((acc, row) => {
+    const campaignName = row["CAMPAIGN ORDER NAME"];
+    if (!acc[campaignName]) {
+      acc[campaignName] = [];
+    }
+    acc[campaignName].push(row);
+    return acc;
+  }, {} as Record<string, CampaignDataRow[]>);
+
+  // Check each campaign for suspicious CTR
+  Object.entries(campaignGroups).forEach(([campaignName, campaignData]) => {
+    // Sort by date - include all data including most recent (CTR can be calculated even for incomplete days)
+    const sortedData = campaignData
+      .filter(row => row.DATE !== 'Totals' && row.DATE)
+      .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+
+    // Check each day for high CTR
+    sortedData.forEach(day => {
+      const clicks = Number(day.CLICKS) || 0;
+      const impressions = Number(day.IMPRESSIONS) || 0;
+
+      // Skip if no impressions to avoid division by zero
+      if (impressions === 0) return;
+
+      const ctrPercentage = (clicks / impressions) * 100;
+
+      if (ctrPercentage > ctrThresholdPercentage) {
+        // Determine severity based on CTR level
+        let severity: 'high' | 'medium' | 'low' = 'medium';
+        if (ctrPercentage >= 5.0) severity = 'high'; // 5%+ CTR is extremely suspicious
+        else if (ctrPercentage >= 2.0) severity = 'high'; // 2%+ CTR is very suspicious
+        else if (ctrPercentage >= 1.5) severity = 'medium'; // 1.5%+ CTR is suspicious
+
+        anomalies.push({
+          campaign_name: campaignName,
+          anomaly_type: 'suspected_bot_activity',
+          date_detected: day.DATE,
+          severity,
+          details: {
+            ctr_percentage: Math.round(ctrPercentage * 100) / 100,
+            clicks: clicks,
+            impressions: impressions,
+            threshold_exceeded: ctrPercentage
+          },
+          is_ignored: false
+        });
+      }
+    });
+  });
+
+  return anomalies;
+}
+
+/**
  * Main function to detect all types of anomalies
  */
 export function detectAllAnomalies(
@@ -260,23 +326,27 @@ export function detectAllAnomalies(
     impressionThreshold?: number;
     transactionDropThreshold?: number;
     zeroTransactionDays?: number;
+    ctrThreshold?: number;
   } = {}
 ): CampaignAnomaly[] {
   const {
     impressionThreshold = 20,
     transactionDropThreshold = 90,
-    zeroTransactionDays = 2
+    zeroTransactionDays = 2,
+    ctrThreshold = 1.0
   } = options;
 
   const impressionAnomalies = detectImpressionAnomalies(data, impressionThreshold);
   const transactionDropAnomalies = detectTransactionDropAnomalies(data, transactionDropThreshold);
   const zeroTransactionAnomalies = detectZeroTransactionAnomalies(data, zeroTransactionDays);
+  const botActivityAnomalies = detectBotActivityAnomalies(data, ctrThreshold);
 
   // Combine all anomalies and sort by date (most recent first)
   const allAnomalies = [
     ...impressionAnomalies,
     ...transactionDropAnomalies,
-    ...zeroTransactionAnomalies
+    ...zeroTransactionAnomalies,
+    ...botActivityAnomalies
   ].sort((a, b) => new Date(b.date_detected).getTime() - new Date(a.date_detected).getTime());
 
   return allAnomalies;
@@ -297,6 +367,9 @@ export function formatAnomalyMessage(anomaly: CampaignAnomaly): string {
     case 'transaction_zero':
       return `Zero transactions for ${anomaly.details.consecutive_days} consecutive day${(anomaly.details.consecutive_days || 0) > 1 ? 's' : ''}`;
 
+    case 'suspected_bot_activity':
+      return `CTR of ${anomaly.details.ctr_percentage}% detected (${anomaly.details.clicks?.toLocaleString()} clicks / ${anomaly.details.impressions?.toLocaleString()} impressions)`;
+
     default:
       return 'Unknown anomaly type';
   }
@@ -313,6 +386,8 @@ export function getAnomalyTypeDisplayName(type: CampaignAnomaly['anomaly_type'])
       return 'Transaction Drop';
     case 'transaction_zero':
       return 'Zero Transactions';
+    case 'suspected_bot_activity':
+      return 'Suspected Bot Activity';
     default:
       return 'Unknown';
   }

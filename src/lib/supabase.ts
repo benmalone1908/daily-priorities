@@ -21,7 +21,7 @@ export type CampaignData = {
 export type CampaignAnomalyData = {
   id?: string
   campaign_name: string
-  anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero'
+  anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero' | 'suspected_bot_activity'
   date_detected: string
   severity: 'high' | 'medium' | 'low'
   details: Record<string, any>
