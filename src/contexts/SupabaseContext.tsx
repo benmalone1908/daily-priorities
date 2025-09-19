@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react'
-import { supabase, type CampaignData } from '@/lib/supabase'
+import { supabase, type CampaignData, type CampaignAnomalyData } from '@/lib/supabase'
 
 interface SupabaseContextType {
   upsertCampaignData: (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[]) => Promise<void>
@@ -7,6 +7,12 @@ interface SupabaseContextType {
   deleteCampaignData: (campaignName?: string, date?: string) => Promise<void>
   getCampaignDataCount: () => Promise<number>
   loadAllDataInBackground: (onProgress?: (progress: string) => void) => Promise<CampaignData[]>
+  // Anomaly methods
+  getAnomalies: (includeIgnored?: boolean) => Promise<CampaignAnomalyData[]>
+  upsertAnomalies: (anomalies: Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>[], clearFirst?: boolean) => Promise<void>
+  updateAnomaly: (id: string, updates: Partial<Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>>) => Promise<void>
+  deleteAnomaly: (id: string) => Promise<void>
+  clearAnomalies: () => Promise<void>
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
@@ -232,12 +238,172 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
     }
   }
 
+  const getAnomalies = async (includeIgnored: boolean = false): Promise<CampaignAnomalyData[]> => {
+    try {
+      let query = supabase
+        .from('campaign_anomalies')
+        .select('*')
+        .order('date_detected', { ascending: false })
+
+      if (!includeIgnored) {
+        query = query.eq('is_ignored', false)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching anomalies:', error)
+        throw error
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Failed to fetch anomalies:', error)
+      throw error
+    }
+  }
+
+  const clearAnomalies = async (): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('campaign_anomalies')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000') // This will match all records
+
+      if (error) {
+        console.error('Error clearing anomalies:', error)
+        throw error
+      }
+
+      console.log('✅ Successfully cleared all anomalies')
+    } catch (error) {
+      console.error('❌ Failed to clear anomalies:', error)
+      throw error
+    }
+  }
+
+  const upsertAnomalies = async (anomalies: Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>[], clearFirst: boolean = true): Promise<void> => {
+    try {
+      // Clear existing anomalies first if requested
+      if (clearFirst) {
+        await clearAnomalies()
+      }
+
+      // Validate and sanitize anomaly data
+      const sanitizedData = anomalies.map(anomaly => ({
+        campaign_name: anomaly.campaign_name.trim(),
+        anomaly_type: anomaly.anomaly_type,
+        date_detected: anomaly.date_detected,
+        severity: anomaly.severity,
+        details: anomaly.details || {},
+        is_ignored: anomaly.is_ignored,
+        custom_duration: anomaly.custom_duration || null
+      }))
+
+      if (sanitizedData.length === 0) {
+        throw new Error('No valid anomaly data to insert')
+      }
+
+      console.log(`💾 Attempting to insert ${sanitizedData.length} anomalies to Supabase...`)
+
+      // Group anomalies by campaign and type to keep only the most recent/severe for each
+      const groupedAnomalies = sanitizedData.reduce((acc, anomaly) => {
+        const key = `${anomaly.campaign_name}|${anomaly.anomaly_type}`
+
+        if (!acc[key]) {
+          acc[key] = anomaly
+        } else {
+          const existing = acc[key]
+          const current = anomaly
+
+          // Keep the more recent one, or if same date, keep the more severe one
+          const existingDate = new Date(existing.date_detected)
+          const currentDate = new Date(current.date_detected)
+
+          if (currentDate > existingDate) {
+            acc[key] = current
+          } else if (currentDate.getTime() === existingDate.getTime()) {
+            // Same date - keep the more severe one
+            const severityOrder = { 'high': 3, 'medium': 2, 'low': 1 }
+            if (severityOrder[current.severity] > severityOrder[existing.severity]) {
+              acc[key] = current
+            }
+          }
+        }
+
+        return acc
+      }, {} as Record<string, typeof sanitizedData[0]>)
+
+      const finalAnomalies = Object.values(groupedAnomalies)
+
+      console.log(`💾 Reduced ${sanitizedData.length} anomalies to ${finalAnomalies.length} unique anomalies (most recent/severe per campaign per type)`)
+
+      const { error } = await supabase
+        .from('campaign_anomalies')
+        .insert(finalAnomalies)
+
+      if (error) {
+        console.error('Error inserting anomalies:', error)
+        console.error('Error details:', JSON.stringify(error, null, 2))
+        throw error
+      }
+
+      console.log(`✅ Successfully inserted ${finalAnomalies.length} anomalies`)
+    } catch (error) {
+      console.error('❌ Failed to insert anomalies:', error)
+      throw error
+    }
+  }
+
+  const updateAnomaly = async (id: string, updates: Partial<Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>>): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('campaign_anomalies')
+        .update(updates)
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error updating anomaly:', error)
+        throw error
+      }
+
+      console.log(`✅ Successfully updated anomaly ${id}`)
+    } catch (error) {
+      console.error('❌ Failed to update anomaly:', error)
+      throw error
+    }
+  }
+
+  const deleteAnomaly = async (id: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('campaign_anomalies')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error deleting anomaly:', error)
+        throw error
+      }
+
+      console.log(`✅ Successfully deleted anomaly ${id}`)
+    } catch (error) {
+      console.error('❌ Failed to delete anomaly:', error)
+      throw error
+    }
+  }
+
   const value: SupabaseContextType = {
     upsertCampaignData,
     getCampaignData,
     deleteCampaignData,
     getCampaignDataCount,
-    loadAllDataInBackground
+    loadAllDataInBackground,
+    getAnomalies,
+    upsertAnomalies,
+    updateAnomaly,
+    deleteAnomaly,
+    clearAnomalies
   }
 
   return (

@@ -18,6 +18,19 @@ export type CampaignData = {
   updated_at?: string
 }
 
+export type CampaignAnomalyData = {
+  id?: string
+  campaign_name: string
+  anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero'
+  date_detected: string
+  severity: 'high' | 'medium' | 'low'
+  details: Record<string, any>
+  is_ignored: boolean
+  custom_duration?: number
+  created_at?: string
+  updated_at?: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -25,6 +38,11 @@ export type Database = {
         Row: CampaignData
         Insert: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>>
+      }
+      campaign_anomalies: {
+        Row: CampaignAnomalyData
+        Insert: Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<CampaignAnomalyData, 'id' | 'created_at' | 'updated_at'>>
       }
     }
   }

@@ -5,7 +5,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
-import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp } from "lucide-react";
+import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp, Bell } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString, formatDateSortable } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
@@ -29,6 +29,7 @@ import CampaignHealthTab from "@/components/CampaignHealthTab";
 import { Pacing2 } from "@/components/Pacing2";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
+import { NotificationsTab } from "@/components/NotificationsTab";
 
 type MetricType = 
   | "impressions" 
@@ -1084,6 +1085,12 @@ const DashboardContent = ({
                   Status
                 </TabsTrigger>
               )}
+              {data.length > 0 && (
+                <TabsTrigger value="notifications">
+                  <Bell className="mr-2" size={16} />
+                  Notifications
+                </TabsTrigger>
+              )}
               <TabsTrigger value="custom-report">
                 <FileDown className="mr-2" size={16} />
                 Custom
@@ -1211,7 +1218,16 @@ const DashboardContent = ({
             />
           </div>
         </TabsContent>
-        
+
+        {data.length > 0 && (
+          <TabsContent value="notifications" className="mt-0">
+            {/* Notifications tab content */}
+            <div className="mb-4 animate-fade-in" id="notifications-section">
+              <NotificationsTab campaignData={globalFilteredData} />
+            </div>
+          </TabsContent>
+        )}
+
         <TabsContent value="custom-report" className="mt-0">
           {/* Custom Report tab content */}
           <div className="mb-4 animate-fade-in" id="custom-report-section">
