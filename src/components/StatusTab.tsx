@@ -146,23 +146,27 @@ const StatusTab: React.FC<StatusTabProps> = ({
       
       // For campaigns without contract terms, determine status based on delivery data
       const daysSinceLastData = differenceInDays(setToStartOfDay(referenceDate), setToEndOfDay(deliveryInfo.lastDate));
-      
+
       let autoStatus: 'live' | 'attribution' | 'ended';
       if (deliveryInfo.hasRecentData) {
-        // Has data for most recent date - mark as attribution
-        autoStatus = 'attribution';
+        // Has data for most recent date - likely still live
+        autoStatus = 'live';
+      } else if (daysSinceLastData <= 7) {
+        // Last data within 7 days - mark as live (could still be running)
+        autoStatus = 'live';
       } else if (daysSinceLastData <= 30) {
-        // Last data within 30 days - mark as attribution  
+        // Last data 8-30 days ago - mark as attribution
         autoStatus = 'attribution';
       } else {
         // More than 30 days since last data - mark as ended
         autoStatus = 'ended';
       }
-      
-      // For campaigns without contract terms, calculate days remaining from last impression date
+
+      // For campaigns without contract terms, show days since last impression instead of days remaining
       const endOfDayEndDate = setToEndOfDay(deliveryInfo.lastDate);
       const startOfDayReferenceDate = setToStartOfDay(referenceDate);
-      const daysRemaining = Math.max(0, differenceInDays(endOfDayEndDate, startOfDayReferenceDate));
+      const daysSinceLastImpression = Math.max(0, differenceInDays(startOfDayReferenceDate, endOfDayEndDate));
+      const daysRemaining = daysSinceLastImpression === 0 ? 0 : -daysSinceLastImpression; // Negative to indicate days since
       
       campaigns.push({
         name: campaignName,
@@ -277,8 +281,9 @@ const StatusTab: React.FC<StatusTabProps> = ({
 
   // Debug logging
   console.log('StatusTab received contractTermsData:', contractTermsData.length, 'campaigns');
-  
-  if (contractTermsData.length === 0) {
+  console.log('StatusTab received deliveryData:', deliveryData.length, 'rows');
+
+  if (contractTermsData.length === 0 && deliveryData.length === 0) {
     return (
       <div className={`flex flex-col items-center justify-center py-12 text-center ${className}`}>
         <Clock className="w-12 h-12 text-gray-400 mb-4" />
@@ -365,12 +370,12 @@ const StatusTab: React.FC<StatusTabProps> = ({
                   {getSortIcon('endDate')}
                 </div>
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="font-semibold text-center cursor-pointer hover:bg-gray-50 select-none"
                 onClick={() => handleSort('daysRemaining')}
               >
                 <div className="flex items-center justify-center gap-2">
-                  Days Remaining
+                  {contractTermsData.length > 0 ? 'Days Remaining' : 'Last Activity'}
                   {getSortIcon('daysRemaining')}
                 </div>
               </TableHead>
@@ -389,11 +394,18 @@ const StatusTab: React.FC<StatusTabProps> = ({
                 <TableCell>{formatDate(campaign.endDate)}</TableCell>
                 <TableCell className="text-center">
                   <span className={`inline-block px-2 py-1 rounded text-sm ${
-                    campaign.daysRemaining > 0 
-                      ? 'bg-blue-100 text-blue-800' 
+                    campaign.daysRemaining > 0
+                      ? 'bg-blue-100 text-blue-800'
+                      : campaign.daysRemaining < 0
+                      ? 'bg-orange-100 text-orange-800'
                       : 'bg-gray-100 text-gray-600'
                   }`}>
-                    {campaign.daysRemaining > 0 ? `${campaign.daysRemaining} days` : '0 days'}
+                    {campaign.daysRemaining > 0
+                      ? `${campaign.daysRemaining} days remaining`
+                      : campaign.daysRemaining < 0
+                      ? `${Math.abs(campaign.daysRemaining)} days since last impression`
+                      : 'Active today'
+                    }
                   </span>
                 </TableCell>
                 <TableCell>{getStatusBadge(campaign)}</TableCell>

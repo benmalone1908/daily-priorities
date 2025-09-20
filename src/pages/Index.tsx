@@ -1248,6 +1248,7 @@ const DashboardContent = ({
           // Refresh the page data after clearing
           setData([]);
           setContractTermsData([]);
+          setPacingData([]);
           setShowDashboard(false);
           toast.success("Database cleared successfully");
         }}
@@ -1258,7 +1259,7 @@ const DashboardContent = ({
 
 
 const Index = () => {
-  const { upsertCampaignData, getCampaignData, loadAllDataInBackground } = useSupabase();
+  const { upsertCampaignData, getCampaignData, loadAllDataInBackground, getContractTerms } = useSupabase();
   const [data, setData] = useState<any[]>([]);
   const [pacingData, setPacingData] = useState<any[]>([]);
   const [contractTermsData, setContractTermsData] = useState<any[]>([]);
@@ -1289,6 +1290,40 @@ const Index = () => {
           setHasAllData(true); // Mark that we have all data
           console.log(`✅ All data loaded: ${transformedData.length} total rows loaded`);
         }
+
+        // Load contract terms from Supabase
+        setLoadingProgress('Loading contract terms...');
+        try {
+          const contractTerms = await getContractTerms();
+          if (contractTerms.length > 0) {
+            // Transform database format to StatusTab expected format
+            const transformedContractTerms = contractTerms.map(term => {
+              // Convert YYYY-MM-DD database dates to MM/DD/YYYY format expected by StatusTab
+              const formatDbDate = (dateString: string) => {
+                const date = new Date(dateString);
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const year = date.getFullYear();
+                return `${month}/${day}/${year}`;
+              };
+
+              return {
+                'Name': term.campaign_name,
+                'Start Date': formatDbDate(term.start_date),
+                'End Date': formatDbDate(term.end_date),
+                'Budget': term.budget.toString(),
+                'CPM': term.cpm.toString(),
+                'Impressions Goal': term.impressions_goal.toString()
+              };
+            });
+            setContractTermsData(transformedContractTerms);
+            console.log(`✅ Contract terms loaded: ${contractTerms.length} contracts`);
+          }
+        } catch (contractError) {
+          console.error("Failed to load contract terms:", contractError);
+          // Don't fail the entire load if contract terms fail
+        }
+
       } catch (error) {
         console.error("Failed to load all data from Supabase:", error);
         setLoadingProgress('Error loading data');
@@ -1299,7 +1334,7 @@ const Index = () => {
     };
 
     loadAllDataFromSupabase();
-  }, [getCampaignData]);
+  }, [getCampaignData, getContractTerms]);
 
   // Background loading of all historical data
   const loadAllDataInBackgroundWrapper = useCallback(async () => {
