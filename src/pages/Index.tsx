@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import FileUpload from "@/components/FileUpload";
 import DateRangePicker from "@/components/DateRangePicker";
@@ -23,13 +24,15 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import GlobalFilters from "@/components/GlobalFilters";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import PacingFileUpload from "@/components/PacingFileUpload";
-import ContractTermsUpload from "@/components/ContractTermsUpload";
 import CampaignHealthTab from "@/components/CampaignHealthTab";
 import { Pacing } from "@/components/Pacing";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import StatusTab from "@/components/StatusTab";
 import { ClearDatabaseDialog } from "@/components/ClearDatabaseDialog";
 import { NotificationsTab } from "@/components/NotificationsTab";
+import SidebarLayout from "@/components/SidebarLayout";
+import UnifiedUploadModal from "@/components/UnifiedUploadModal";
+import CampaignManager from "@/components/CampaignManager";
 
 type MetricType = 
   | "impressions" 
@@ -423,10 +426,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   };
   
   return (
-    <div className="mb-8 animate-fade-in">
-      <div className="flex items-center mb-4">
-        &nbsp;
-      </div>
+    <div className="mb-2 animate-fade-in">
       {/* Updated to use two rows of three charts */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {renderMetricCard(
@@ -529,7 +529,9 @@ const DashboardContent = ({
   isLoadingAllData,
   loadAllDataInBackgroundWrapper,
   showClearDialog,
-  setShowClearDialog
+  setShowClearDialog,
+  showUnifiedUpload,
+  setShowUnifiedUpload
 }: {
   data: any[];
   pacingData: any[];
@@ -543,6 +545,8 @@ const DashboardContent = ({
   loadAllDataInBackgroundWrapper: () => void;
   showClearDialog: boolean;
   setShowClearDialog: (show: boolean) => void;
+  showUnifiedUpload: boolean;
+  setShowUnifiedUpload: (show: boolean) => void;
 }) => {
   // Calculate available date range from data to constrain date picker
   const availableDateRange = useMemo(() => {
@@ -589,9 +593,26 @@ const DashboardContent = ({
   const [selectedAgencies, setSelectedAgencies] = useState<string[]>([]);
   const [selectedAdvertisers, setSelectedAdvertisers] = useState<string[]>([]);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isInCampaignDetailView, setIsInCampaignDetailView] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    // Initialize active tab from URL parameter or default to dashboard
+    return searchParams.get('tab') || 'dashboard';
+  });
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (tab === 'dashboard') {
+      // Remove tab param for default dashboard tab to keep URL clean
+      newSearchParams.delete('tab');
+    } else {
+      newSearchParams.set('tab', tab);
+    }
+    setSearchParams(newSearchParams, { replace: true });
+  };
   const [isAttributionChart, setIsAttributionChart] = useState(false);
-  const [showPacingUpload, setShowPacingUpload] = useState(false);
   
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo, showDebugInfo } = useCampaignFilter();
 
@@ -941,169 +962,75 @@ const DashboardContent = ({
     setSelectedCampaigns(selected);
   };
 
-  return (
+  const headerContent = (
     <>
-      {/* Two-row header layout */}
-      <div className="border-b animate-fade-in">
-        {/* Top row: Title and Date Picker */}
-        <div className="flex items-center justify-between px-1 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
-            {data.length > 0 && (
-              <span className="text-sm text-muted-foreground bg-gray-100 px-2 py-1 rounded">
-                {hasAllData ? `${data.length.toLocaleString()} records (complete)` : `${data.length.toLocaleString()} records (recent)`}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <DateRangePicker
-              key={`date-picker-${data.length}`}
-              dateRange={dateRange}
-              onDateRangeChange={onDateRangeChange}
-              displayDateRangeSummary={false}
-              minDate={availableDateRange.min}
-              maxDate={availableDateRange.max}
-            />
+      {/* Title and Date Picker */}
+      <div className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <CampaignStatusToggle />
+          <DateRangePicker
+            key={`date-picker-${data.length}`}
+            dateRange={dateRange}
+            onDateRangeChange={onDateRangeChange}
+            displayDateRangeSummary={false}
+            minDate={availableDateRange.min}
+            maxDate={availableDateRange.max}
+          />
+
+          {!hasAllData && (
             <Button
-              variant="outline"
+              variant={isLoadingAllData ? "secondary" : "outline"}
               size="sm"
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.csv';
-                input.onchange = (e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file) {
-                    Papa.parse(file, {
-                      header: true,
-                      skipEmptyLines: true,
-                      complete: (results) => {
-                        if (results.errors.length > 0) {
-                          console.error('CSV parsing errors:', results.errors);
-                          toast.error('Error parsing CSV file');
-                          return;
-                        }
-                        // Process the data through the same handler
-                        onDataLoaded(results.data as any[]);
-                      },
-                      error: (error) => {
-                        console.error('CSV parsing error:', error);
-                        toast.error('Failed to parse CSV file');
-                      }
-                    });
-                  }
-                };
-                input.click();
-              }}
+              onClick={loadAllDataInBackgroundWrapper}
+              disabled={isLoadingAllData}
               className="whitespace-nowrap"
             >
-              <Plus className="mr-2" size={14} />
-              Upload More
+              <TrendingUp className="mr-2" size={14} />
+              {isLoadingAllData ? "Loading All..." : "Load All Data"}
             </Button>
-
-            {!hasAllData && (
-              <Button
-                variant={isLoadingAllData ? "secondary" : "outline"}
-                size="sm"
-                onClick={loadAllDataInBackgroundWrapper}
-                disabled={isLoadingAllData}
-                className="whitespace-nowrap"
-              >
-                <TrendingUp className="mr-2" size={14} />
-                {isLoadingAllData ? "Loading All..." : "Load All Data"}
-              </Button>
-            )}
-          </div>
-        </div>
-        
-        {/* Bottom row: Tabs and Controls */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-1 py-3">
-          <Tabs defaultValue="dashboard" className="w-full md:w-auto" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="flex w-full min-w-fit overflow-x-auto whitespace-nowrap">
-              <TabsTrigger value="dashboard" className="text-sm">
-                <LayoutDashboard className="mr-1" size={14} />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="sparks" className="text-sm">
-                <ChartLine className="mr-1" size={14} />
-                Trends
-              </TabsTrigger>
-              {(pacingData.length > 0 || contractTermsData.length > 0) && (
-                <TabsTrigger value="health" className="text-sm">
-                  <Activity className="mr-1" size={14} />
-                  Health
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="pacing" className="text-sm">
-                <Target className="mr-1" size={14} />
-                Pacing
-              </TabsTrigger>
-              {(contractTermsData.length > 0 || data.length > 0) && (
-                <TabsTrigger value="status" className="text-sm">
-                  <Clock className="mr-1" size={14} />
-                  Status
-                </TabsTrigger>
-              )}
-              {data.length > 0 && (
-                <TabsTrigger value="notifications" className="text-sm">
-                  <Bell className="mr-1" size={14} />
-                  Notifications
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="custom-report" className="text-sm">
-                <FileDown className="mr-1" size={14} />
-                Custom
-              </TabsTrigger>
-              <TabsTrigger value="raw-data" className="text-sm">
-                <FileText className="mr-1" size={14} />
-                Raw Data
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <div className="flex items-center gap-2">
-            <CampaignStatusToggle />
-            {pacingData.length === 0 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPacingUpload(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Contract Terms
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowClearDialog(true)}
-                  className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear Database
-                </Button>
-              </>
-            )}
-          </div>
+          )}
         </div>
       </div>
-      
-      {/* Global filters section */}
-      <GlobalFilters
-        agencyOptions={agencyOptions}
-        advertiserOptions={advertiserOptions}
-        campaignOptions={campaignOptions}
-        selectedAgencies={selectedAgencies}
-        selectedAdvertisers={selectedAdvertisers}
-        selectedCampaigns={selectedCampaigns}
-        onAgenciesChange={handleAgenciesChange}
-        onAdvertisersChange={handleAdvertisersChange}
-        onCampaignsChange={handleCampaignsChange}
-      />
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+
+      {/* Global filters section - hidden when viewing single campaign details */}
+      {!(activeTab === 'campaigns' && isInCampaignDetailView) && (
+        <div className="border-t border-gray-100">
+          <GlobalFilters
+            agencyOptions={agencyOptions}
+            advertiserOptions={advertiserOptions}
+            campaignOptions={campaignOptions}
+            selectedAgencies={selectedAgencies}
+            selectedAdvertisers={selectedAdvertisers}
+            selectedCampaigns={selectedCampaigns}
+            onAgenciesChange={handleAgenciesChange}
+            onAdvertisersChange={handleAdvertisersChange}
+            onCampaignsChange={handleCampaignsChange}
+          />
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <SidebarLayout
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        pacingDataLength={pacingData.length}
+        contractTermsDataLength={contractTermsData.length}
+        dataLength={data.length}
+        hasAllData={hasAllData}
+        onClearDatabase={() => setShowClearDialog(true)}
+        onUploadCSV={() => setShowUnifiedUpload(true)}
+        header={headerContent}
+        className="animate-fade-in"
+      >
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 pt-8">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsContent value="dashboard" className="mt-0">
           {/* Dashboard tab content */}
           <div id="dashboard-metrics-section">
@@ -1154,7 +1081,23 @@ const DashboardContent = ({
             />
           </div>
         </TabsContent>
-        
+
+        {data.length > 0 && (
+          <TabsContent value="campaigns" className="mt-0">
+            {/* Campaign Manager tab content */}
+            <div className="mb-4 animate-fade-in" id="campaigns-section">
+              <CampaignManager
+                data={globalFilteredData}
+                pacingData={pacingData}
+                contractTermsData={contractTermsData}
+                useGlobalFilters={true}
+                globalDateRange={dateRange}
+                onCampaignDetailViewChange={setIsInCampaignDetailView}
+              />
+            </div>
+          </TabsContent>
+        )}
+
         {(pacingData.length > 0 || contractTermsData.length > 0) && (
           <TabsContent value="health" className="mt-0">
             {/* Campaign Health tab content */}
@@ -1228,17 +1171,10 @@ const DashboardContent = ({
             />
           </div>
         </TabsContent>
-      </Tabs>
+          </Tabs>
+        </div>
+      </SidebarLayout>
 
-      {/* Contract terms upload dialog */}
-      <ContractTermsUpload
-        isOpen={showPacingUpload}
-        onClose={() => setShowPacingUpload(false)}
-        onSuccess={() => {
-          // Trigger a refresh of the pacing tab
-          toast.success("Contract terms uploaded successfully");
-        }}
-      />
 
       {/* Clear database dialog */}
       <ClearDatabaseDialog
@@ -1270,6 +1206,7 @@ const Index = () => {
   const [isLoadingAllData, setIsLoadingAllData] = useState(false);
   const [hasAllData, setHasAllData] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showUnifiedUpload, setShowUnifiedUpload] = useState(false);
 
   // Load all data at startup
   useEffect(() => {
@@ -1740,8 +1677,18 @@ const Index = () => {
             loadAllDataInBackgroundWrapper={loadAllDataInBackgroundWrapper}
             showClearDialog={showClearDialog}
             setShowClearDialog={setShowClearDialog}
+            showUnifiedUpload={showUnifiedUpload}
+            setShowUnifiedUpload={setShowUnifiedUpload}
           />
         )}
+
+        {/* Unified Upload Modal - moved here to be available in all states */}
+        <UnifiedUploadModal
+          isOpen={showUnifiedUpload}
+          onClose={() => setShowUnifiedUpload(false)}
+          onDeliveryDataLoaded={handleDataLoaded}
+          onContractTermsLoaded={handleContractTermsLoaded}
+        />
       </div>
     </CampaignFilterProvider>
   );
