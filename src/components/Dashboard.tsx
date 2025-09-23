@@ -24,6 +24,7 @@ import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import CombinedMetricsChart from "./CombinedMetricsChart";
 import { DailyTotalsTable } from "./DailyTotalsTable";
+import DashboardSparkCharts from "./DashboardSparkCharts";
 
 interface DashboardProps {
   data: any[];
@@ -1270,6 +1271,9 @@ const Dashboard = ({
           </div>
         </Card>
       )}
+
+      {/* Campaign Overview Spark Charts */}
+      <DashboardSparkCharts data={useGlobalFilters ? (metricsData || data) : data} />
 
       {/* Weekly comparison section */}
       <Card className="p-6">

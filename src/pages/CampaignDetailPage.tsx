@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardWrapper from "@/components/DashboardWrapper";
-import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import SidebarLayout from "@/components/SidebarLayout";
 import { useSupabase } from "@/contexts/SupabaseContext";
@@ -230,19 +229,44 @@ const CampaignDetailPageContent = () => {
     <div className="py-4">
       {/* Header with campaign info */}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900 truncate">
-          {decodedCampaignName}
-        </h1>
-        <div className="flex items-center gap-4 mt-2">
-          <Badge variant="secondary">
-            {campaignSummary.agency}
-          </Badge>
-          <Badge variant="outline">
-            {campaignSummary.advertiser}
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            {campaignSummary.dateRange}
-          </span>
+        <div className="grid grid-cols-12 gap-4">
+          {/* Left side - Campaign name and badges (takes up 8 columns) */}
+          <div className="col-span-8">
+            <h1 className="text-2xl font-bold text-gray-900 truncate">
+              {decodedCampaignName}
+            </h1>
+            <div className="flex items-center gap-4 mt-2">
+              <Badge variant="secondary">
+                {campaignSummary.agency}
+              </Badge>
+              <Badge variant="outline">
+                {campaignSummary.advertiser}
+              </Badge>
+              <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">MODIFIED LAYOUT</span>
+            </div>
+          </div>
+
+          {/* Right side - Flight dates and contract details (takes up 4 columns) */}
+          <div className="col-span-4">
+            <div className="bg-red-100 border-2 border-red-500 p-4 rounded-lg">
+              <div className="text-right mb-3">
+                <div className="text-sm font-semibold text-gray-900">Flight Dates</div>
+                <div className="text-sm text-gray-600">
+                  {campaignSummary.dateRange}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-sm font-semibold text-gray-900">Contract Terms</div>
+                <div className="text-sm text-gray-600">
+                  {contractTermsData && contractTermsData.length > 0
+                    ? `${contractTermsData[0]['Start Date']} - ${contractTermsData[0]['End Date']}`
+                    : 'No contract data'
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -328,9 +352,8 @@ const CampaignDetailPageContent = () => {
     >
       <div className="px-4 lg:px-6 pb-4 lg:pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
             <TabsTrigger value="raw-data">Raw Data</TabsTrigger>
           </TabsList>
 
@@ -357,13 +380,6 @@ const CampaignDetailPageContent = () => {
                 useGlobalFilters={false}
               />
             </div>
-          </TabsContent>
-
-          <TabsContent value="trends" className="mt-6">
-            <CampaignSparkCharts
-              data={filteredData}
-              useGlobalFilters={false}
-            />
           </TabsContent>
 
 

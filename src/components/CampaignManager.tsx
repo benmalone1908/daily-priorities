@@ -16,6 +16,9 @@ import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { setToStartOfDay, setToEndOfDay, parseDateString } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { processCampaigns } from "@/lib/pacingCalculations";
+import { calculateCampaignHealth } from "@/utils/campaignHealthScoring";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CampaignManagerProps {
   data: any[];
@@ -41,6 +44,8 @@ const CampaignManager = ({
   const [allContractData, setAllContractData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [pacingModalOpen, setPacingModalOpen] = useState(false);
+  const [healthModalOpen, setHealthModalOpen] = useState(false);
 
   const { getCampaignData, getContractTerms } = useSupabase();
   const { extractAdvertiserName, extractAgencyInfo, isTestCampaign } = useCampaignFilter();
@@ -220,6 +225,189 @@ const CampaignManager = ({
     }).format(value);
   };
 
+  // Calculate pacing information using the same logic as CampaignPacingCard
+  const pacingInfo = useMemo(() => {
+    if (!selectedCampaign) {
+      return { percentage: 0, status: 'No data' };
+    }
+
+    try {
+      // Use the exact same logic as CampaignPacingCard
+      let contractTerms: any[] = [];
+
+      if (allContractData.length > 0) {
+        // Convert database contract terms to the expected format (same as CampaignPacingCard)
+        contractTerms = allContractData.map((row: any) => ({
+          Name: row.campaign_name,
+          'Start Date': row.start_date,
+          'End Date': row.end_date,
+          Budget: row.budget.toString(),
+          CPM: row.cpm.toString(),
+          'Impressions Goal': row.impressions_goal.toString()
+        }));
+      } else if (campaignContractData.length > 0) {
+        // Fallback to uploaded contract terms data (same as CampaignPacingCard)
+        contractTerms = campaignContractData.map((row: any) => ({
+          Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
+          'Start Date': row['Start Date'] || row.START_DATE || '',
+          'End Date': row['End Date'] || row.END_DATE || '',
+          Budget: row.Budget || row.BUDGET || '',
+          CPM: row.CPM || row.cpm || '',
+          'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
+        }));
+      } else {
+        // Derive contract terms from campaign data like the card does
+        const campaignRows = filteredCampaignData.filter(row => row['CAMPAIGN ORDER NAME'] === selectedCampaign);
+
+        if (campaignRows.length === 0) {
+          return { percentage: 0, status: 'No data' };
+        }
+
+        const dates = campaignRows
+          .map(row => parseDateString(row.DATE))
+          .filter(Boolean) as Date[];
+        dates.sort((a, b) => a.getTime() - b.getTime());
+        const startDate = dates[0];
+        const endDate = dates[dates.length - 1];
+
+        const totalImpressions = campaignRows.reduce((sum, row) => sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
+        const totalSpend = campaignRows.reduce((sum, row) => sum + (parseFloat(row.SPEND?.toString().replace(/[$,]/g, '') || '0') || 0), 0);
+        const estimatedCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+
+        contractTerms = [{
+          Name: selectedCampaign,
+          'Start Date': startDate ? startDate.toISOString().split('T')[0] : '',
+          'End Date': endDate ? endDate.toISOString().split('T')[0] : '',
+          Budget: totalSpend.toString(),
+          CPM: estimatedCPM.toFixed(2),
+          'Impressions Goal': Math.round(totalImpressions * 1.1).toString()
+        }];
+      }
+
+      // Transform delivery data to the expected format
+      const formattedDeliveryData = filteredCampaignData.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      const unfilteredDeliveryData = campaignData.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      const processedCampaigns = processCampaigns(contractTerms, formattedDeliveryData, unfilteredDeliveryData);
+      const campaign = processedCampaigns.find(c => c.name === selectedCampaign);
+
+      if (campaign && campaign.metrics) {
+        const percentage = parseFloat((campaign.metrics.currentPacing * 100).toFixed(1));
+        return {
+          percentage,
+          status: percentage >= 95 && percentage <= 105 ? 'On Target' :
+                  (percentage >= 85 && percentage < 95) || (percentage > 105 && percentage <= 115) ? 'Minor Deviation' :
+                  (percentage >= 70 && percentage < 85) || (percentage > 115 && percentage <= 130) ? 'Moderate Deviation' : 'Major Deviation'
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating pacing:', error);
+    }
+
+    return { percentage: 0, status: 'No data' };
+  }, [selectedCampaign, allContractData, campaignContractData, filteredCampaignData, campaignData]);
+
+  // Calculate health status
+  const healthInfo = useMemo(() => {
+    if (!selectedCampaign || !filteredCampaignData.length) {
+      return { status: 'Unknown', level: 'warning' };
+    }
+
+    try {
+      // Get real pacing metrics using the same logic as CampaignHealthCard
+      let realPacingMetrics = null;
+
+      try {
+        // Use the same contract terms processing logic as the CampaignHealthCard
+        let contractTerms: any[] = [];
+
+        if (allContractData.length > 0) {
+          // Convert database contract terms to the expected format
+          contractTerms = allContractData.map((row: any) => ({
+            Name: row.campaign_name,
+            'Start Date': row.start_date,
+            'End Date': row.end_date,
+            Budget: row.budget.toString(),
+            CPM: row.cpm.toString(),
+            'Impressions Goal': row.impressions_goal.toString()
+          }));
+        } else if (campaignContractData.length > 0) {
+          // Fallback to uploaded contract terms data
+          contractTerms = campaignContractData.map((row: any) => ({
+            Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
+            'Start Date': row['Start Date'] || row.START_DATE || '',
+            'End Date': row['End Date'] || row.END_DATE || '',
+            Budget: row.Budget || row.BUDGET || '',
+            CPM: row.CPM || row.cpm || '',
+            'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
+          }));
+        }
+
+        if (contractTerms.length > 0) {
+          // Transform delivery data to the expected format
+          const formattedDeliveryData = filteredCampaignData.map((row: any) => ({
+            DATE: row.DATE || '',
+            'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+            IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+            SPEND: row.SPEND?.toString() || '0'
+          }));
+
+          // Transform unfiltered data for global date calculation
+          const unfilteredDeliveryData = campaignData.map((row: any) => ({
+            DATE: row.DATE || '',
+            'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+            IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+            SPEND: row.SPEND?.toString() || '0'
+          }));
+
+          // Use processCampaigns to get the processed campaign data
+          const processedCampaigns = processCampaigns(contractTerms, formattedDeliveryData, unfilteredDeliveryData);
+
+          // Find the specific campaign we're looking for
+          const campaign = processedCampaigns.find(c => c.name === selectedCampaign);
+          if (campaign) {
+            realPacingMetrics = campaign.metrics;
+          }
+        }
+      } catch (error) {
+        console.error('Error calculating real pacing metrics for health:', error);
+      }
+
+      const healthData = calculateCampaignHealth(
+        filteredCampaignData,
+        selectedCampaign,
+        campaignPacingData,
+        campaignContractData,
+        realPacingMetrics
+      );
+
+      if (!healthData || healthData.healthScore === 0) {
+        return { status: 'Unknown', level: 'warning' };
+      }
+
+      // Convert health score to status level (same logic as CampaignHealthCard)
+      const score = healthData.healthScore;
+      const level = score >= 7 ? 'healthy' : score >= 4 ? 'warning' : 'critical';
+      const status = level === 'healthy' ? 'Healthy' : level === 'warning' ? 'Warning' : 'Critical';
+
+      return { status, level };
+    } catch (error) {
+      console.error('Error calculating health:', error);
+      return { status: 'Unknown', level: 'warning' };
+    }
+  }, [selectedCampaign, allContractData, campaignContractData, filteredCampaignData, campaignData, campaignPacingData]);
+
   // Handle campaign selection
   const handleCampaignSelect = (campaignName: string) => {
     setSelectedCampaign(campaignName);
@@ -268,37 +456,89 @@ const CampaignManager = ({
   return (
     <div className="space-y-6">
       {/* Header with campaign info and back button */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 truncate mb-2">
+      <div className="grid grid-cols-12 gap-4 mb-4">
+        {/* Left side - Campaign name */}
+        <div className="col-span-7">
+          <h2 className="text-2xl font-bold text-gray-900 truncate">
             {selectedCampaign}
           </h2>
-          {/* Contract info as subtitle */}
-          {campaignContractData.length > 0 && (
-            <div className="space-y-1">
-              {campaignContractData.map((contract, index) => (
-                <div key={index} className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                  <span>{contract['Start Date'] || 'Start: Not specified'} → {contract['End Date'] || 'End: Not specified'}</span>
-                  {contract.budget && (
-                    <span><strong>Budget:</strong> {formatCurrency(parseFloat(contract.budget))}</span>
-                  )}
-                  {(contract.cpm || contract.CPM) && (
-                    <span><strong>CPM:</strong> {formatCurrency(parseFloat(contract.cpm || contract.CPM))}</span>
-                  )}
-                  {contract.goal && (
-                    <span>Goal: {contract.goal}</span>
-                  )}
-                  {contract.impression_goal && (
-                    <span><strong>Impression Goal:</strong> {parseFloat(contract.impression_goal).toLocaleString()}</span>
-                  )}
-                </div>
-              ))}
+
+          {/* Pacing and Health Status */}
+          <div className="flex items-center gap-4 mt-2">
+            {/* Pacing Percentage */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Pacing:</span>
+              <button
+                className={`px-2 py-1 text-sm rounded hover:opacity-80 transition-colors ${
+                  pacingInfo.percentage >= 95 && pacingInfo.percentage <= 105
+                    ? 'bg-green-100 text-green-800'
+                    : pacingInfo.percentage < 85 || pacingInfo.percentage > 115
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}
+                onClick={() => setPacingModalOpen(true)}
+              >
+                {pacingInfo.percentage > 0 ? `${pacingInfo.percentage}%` : 'No data'}
+              </button>
             </div>
-          )}
+
+            {/* Health Status */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Health:</span>
+              <button
+                className={`px-2 py-1 text-sm rounded hover:opacity-80 transition-colors ${
+                  healthInfo.level === 'healthy'
+                    ? 'bg-green-100 text-green-800'
+                    : healthInfo.level === 'warning'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800'
+                }`}
+                onClick={() => setHealthModalOpen(true)}
+              >
+                {healthInfo.status}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Flight dates and contract details */}
+        <div className="col-span-5 flex justify-end">
+          <div className="bg-gray-50 p-4 rounded-lg -mt-3 w-auto text-right">
+            {/* Flight dates */}
+            <div className="mb-1">
+              <div className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-900">Flight Dates:</span> {campaignSummary.dateRange}
+              </div>
+            </div>
+
+            {/* Contract info */}
+            {campaignContractData.length > 0 && (
+              <div>
+                {campaignContractData.map((contract, index) => (
+                  <div key={index} className="text-sm text-gray-600">
+                    {/* Budget, CPM, and Impression Goal in one row */}
+                    <div className="flex flex-wrap items-center justify-end gap-4 mb-1">
+                      {contract.budget && (
+                        <span><strong>Budget:</strong> {formatCurrency(parseFloat(contract.budget))}</span>
+                      )}
+                      {(contract.cpm || contract.CPM) && (
+                        <span><strong>CPM:</strong> {formatCurrency(parseFloat(contract.cpm || contract.CPM))}</span>
+                      )}
+                      {contract.impression_goal && (
+                        <span><strong>Impression Goal:</strong> {parseFloat(contract.impression_goal).toLocaleString()}</span>
+                      )}
+                    </div>
+                    {/* Goal on separate line if it exists */}
+                    {contract.goal && (
+                      <div><strong>Goal:</strong> {contract.goal}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-
       {/* Campaign summary metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
@@ -330,19 +570,19 @@ const CampaignManager = ({
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{formatCurrency(campaignSummary.revenue)}</div>
+            <div className="text-2xl font-bold">{formatNumber(campaignSummary.transactions)}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Transactions</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{formatNumber(campaignSummary.transactions)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(campaignSummary.revenue)}</div>
           </CardContent>
         </Card>
 
@@ -356,32 +596,11 @@ const CampaignManager = ({
         </Card>
       </div>
 
-      {/* Pacing and Health Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <CampaignPacingCard
-          campaignName={selectedCampaign}
-          contractTermsData={campaignContractData}
-          deliveryData={filteredCampaignData}
-          unfilteredData={campaignData}
-          dbContractTerms={allContractData}
-          pacingData={campaignPacingData}
-        />
-
-        <CampaignHealthCard
-          campaignName={selectedCampaign}
-          deliveryData={filteredCampaignData}
-          pacingData={campaignPacingData}
-          contractTermsData={campaignContractData}
-          unfilteredData={campaignData}
-          dbContractTerms={allContractData}
-        />
-      </div>
 
       {/* Tabbed content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="raw-data">Raw Data</TabsTrigger>
         </TabsList>
 
@@ -410,16 +629,6 @@ const CampaignManager = ({
           </div>
         </TabsContent>
 
-        <TabsContent value="trends" className="mt-6">
-          <CampaignSparkCharts
-            data={filteredCampaignData}
-            useGlobalFilters={false}
-          />
-        </TabsContent>
-
-
-
-
         <TabsContent value="raw-data" className="mt-6">
           <RawDataTableImproved
             data={filteredCampaignData}
@@ -427,6 +636,44 @@ const CampaignManager = ({
           />
         </TabsContent>
       </Tabs>
+
+      {/* Pacing Modal */}
+      <Dialog open={pacingModalOpen} onOpenChange={setPacingModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Campaign Pacing Details</DialogTitle>
+          </DialogHeader>
+          {selectedCampaign && (
+            <CampaignPacingCard
+              campaignName={selectedCampaign}
+              contractTermsData={campaignContractData}
+              deliveryData={filteredCampaignData}
+              unfilteredData={campaignData}
+              dbContractTerms={allContractData}
+              pacingData={campaignPacingData}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Health Modal */}
+      <Dialog open={healthModalOpen} onOpenChange={setHealthModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Campaign Health Details</DialogTitle>
+          </DialogHeader>
+          {selectedCampaign && (
+            <CampaignHealthCard
+              campaignName={selectedCampaign}
+              deliveryData={filteredCampaignData}
+              pacingData={campaignPacingData}
+              contractTermsData={campaignContractData}
+              unfilteredData={campaignData}
+              dbContractTerms={allContractData}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

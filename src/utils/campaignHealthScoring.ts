@@ -932,6 +932,9 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   
   const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
 
+  // Get budget and days left - prefer real pacing metrics if available
+  let budget, daysLeft;
+
   // Use real pacing metrics if available for burn rate scoring
   const actualImpressions = realPacingMetrics ? realPacingMetrics.actualImpressions : totals.impressions;
   const daysLeftForBurnRate = realPacingMetrics ? realPacingMetrics.daysUntilEnd : daysLeft;
@@ -943,9 +946,6 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     expectedImpressions,
     daysLeftForBurnRate
   );
-  
-  // Get budget and days left - prefer real pacing metrics if available
-  let budget, daysLeft;
 
   if (realPacingMetrics) {
     // Use budget and timeline from real pacing metrics (more reliable)
