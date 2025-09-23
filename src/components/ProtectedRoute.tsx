@@ -28,18 +28,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen">
-      {/* Logout button in top right */}
-      <div className="absolute top-4 right-4 z-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={logout}
-          className="gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
-      </div>
       {children}
     </div>
   )

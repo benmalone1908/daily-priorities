@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { AdminPasswordDialog } from '@/components/AdminPasswordDialog';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
   ChartLine,
@@ -15,7 +16,8 @@ import {
   X,
   Trash2,
   Upload,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -51,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const { logout } = useAuth();
 
   const navItems: NavItem[] = [
     {
@@ -217,6 +220,26 @@ const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
           )}
+
+          {/* Logout Button */}
+          <div className="pt-12">
+            <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start h-10 px-3 text-gray-600 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors border-gray-200",
+              isCollapsed && "justify-center px-2"
+            )}
+            onClick={() => {
+              logout();
+              setIsMobileOpen(false);
+            }}
+          >
+            <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
+            {!isCollapsed && (
+              <span className="text-sm font-medium">Logout</span>
+            )}
+          </Button>
+          </div>
         </div>
       </nav>
     </div>
