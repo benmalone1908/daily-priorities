@@ -1,21 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
-import { ArrowLeft } from "lucide-react";
 import DateRangePicker from "@/components/DateRangePicker";
 import { setToStartOfDay, setToEndOfDay, parseDateString } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
-import CampaignHealthTab from "@/components/CampaignHealthTab";
-import { Pacing } from "@/components/Pacing";
-import StatusTab from "@/components/StatusTab";
-import { NotificationsTab } from "@/components/NotificationsTab";
-import CustomReportBuilder from "@/components/CustomReportBuilder";
 import SidebarLayout from "@/components/SidebarLayout";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
@@ -228,12 +221,6 @@ const CampaignDetailPageContent = () => {
           <p className="text-muted-foreground mb-6">
             No data found for campaign: {decodedCampaignName}
           </p>
-          <Link to="/">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
         </div>
       </div>
     );
@@ -241,29 +228,21 @@ const CampaignDetailPageContent = () => {
 
   const headerContent = (
     <div className="py-4">
-      {/* Header with back button and campaign info */}
-      <div className="flex items-center gap-4 mb-4">
-        <Link to="/">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 truncate">
-            {decodedCampaignName}
-          </h1>
-          <div className="flex items-center gap-4 mt-2">
-            <Badge variant="secondary">
-              {campaignSummary.agency}
-            </Badge>
-            <Badge variant="outline">
-              {campaignSummary.advertiser}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {campaignSummary.dateRange}
-            </span>
-          </div>
+      {/* Header with campaign info */}
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-gray-900 truncate">
+          {decodedCampaignName}
+        </h1>
+        <div className="flex items-center gap-4 mt-2">
+          <Badge variant="secondary">
+            {campaignSummary.agency}
+          </Badge>
+          <Badge variant="outline">
+            {campaignSummary.advertiser}
+          </Badge>
+          <span className="text-sm text-muted-foreground">
+            {campaignSummary.dateRange}
+          </span>
         </div>
       </div>
 
@@ -349,16 +328,9 @@ const CampaignDetailPageContent = () => {
     >
       <div className="px-4 lg:px-6 pb-4 lg:pb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="trends">Trends</TabsTrigger>
-            {(pacingData.length > 0 || contractTermsData.length > 0) && (
-              <TabsTrigger value="health">Health</TabsTrigger>
-            )}
-            <TabsTrigger value="pacing">Pacing</TabsTrigger>
-            {contractTermsData.length > 0 && (
-              <TabsTrigger value="status">Status</TabsTrigger>
-            )}
             <TabsTrigger value="raw-data">Raw Data</TabsTrigger>
           </TabsList>
 
@@ -394,38 +366,7 @@ const CampaignDetailPageContent = () => {
             />
           </TabsContent>
 
-          {(pacingData.length > 0 || contractTermsData.length > 0) && (
-            <TabsContent value="health" className="mt-6">
-              <CampaignHealthTab
-                data={filteredData}
-                pacingData={pacingData}
-                contractTermsData={contractTermsData}
-              />
-            </TabsContent>
-          )}
 
-          <TabsContent value="pacing" className="mt-6">
-            <Pacing
-              data={filteredData}
-              unfilteredData={filteredData}
-              pacingData={pacingData}
-              contractTermsData={contractTermsData}
-            />
-          </TabsContent>
-
-          {contractTermsData.length > 0 && (
-            <TabsContent value="status" className="mt-6">
-              <StatusTab
-                contractTermsData={contractTermsData}
-                deliveryData={filteredData}
-                globalMostRecentDate={
-                  filteredData.length > 0
-                    ? new Date(Math.max(...filteredData.map(row => parseDateString(row.DATE)?.getTime() || 0).filter(Boolean)))
-                    : new Date()
-                }
-              />
-            </TabsContent>
-          )}
 
           <TabsContent value="raw-data" className="mt-6">
             <RawDataTableImproved
