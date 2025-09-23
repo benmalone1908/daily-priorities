@@ -965,13 +965,13 @@ const DashboardContent = ({
   const headerContent = (
     <>
       {/* Title and Date Picker */}
-      <div className="flex items-center justify-between py-4">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Display Campaign Monitor</h1>
         </div>
 
         <div className="flex items-center gap-2">
-          <CampaignStatusToggle />
+          {!(activeTab === 'campaigns' && isInCampaignDetailView) && <CampaignStatusToggle />}
           <DateRangePicker
             key={`date-picker-${data.length}`}
             dateRange={dateRange}
@@ -1061,11 +1061,12 @@ const DashboardContent = ({
                 useGlobalFilters={true}
                 hideCharts={isAttributionChart ? ["metricsChart"] : ["revenueChart"]}
                 chartToggleComponent={
-                  <ChartToggle 
-                    isAttributionChart={isAttributionChart} 
-                    setIsAttributionChart={setIsAttributionChart} 
+                  <ChartToggle
+                    isAttributionChart={isAttributionChart}
+                    setIsAttributionChart={setIsAttributionChart}
                   />
                 }
+                showDailyTotalsTable={false}
               />
             </div>
           </div>
@@ -1102,10 +1103,12 @@ const DashboardContent = ({
           <TabsContent value="health" className="mt-0">
             {/* Campaign Health tab content */}
             <div id="health-scatter-section">
-              <CampaignHealthTab 
+              <CampaignHealthTab
                 data={globalFilteredData}
                 pacingData={pacingData}
                 contractTermsData={contractTermsData}
+                unfilteredData={data}
+                dbContractTerms={[]}
               />
             </div>
           </TabsContent>

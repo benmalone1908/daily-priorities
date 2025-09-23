@@ -40,6 +40,7 @@ interface DashboardProxyProps {
   hideCharts?: string[];
   chartToggleComponent?: React.ReactNode;
   contractTermsData?: any[];
+  showDailyTotalsTable?: boolean;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -78,14 +79,10 @@ const DashboardProxy = (props: DashboardProxyProps) => {
     </div>
   );
 
-  // Create our chart controls component with the proper state
+  // Create separate chart controls - date toggle stays with chart
   const chartControls = (
     <div className="flex items-center space-x-4">
       <DateViewToggle />
-      <ChartModeSelector 
-        mode={chartMode} 
-        onModeChange={handleModeChange} 
-      />
       {chartMode === "custom" && (
         <CustomMetricSelector
           barMetric={customBarMetric}
@@ -95,6 +92,14 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         />
       )}
     </div>
+  );
+
+  // Chart mode selector will be passed separately
+  const chartModeSelector = (
+    <ChartModeSelector
+      mode={chartMode}
+      onModeChange={handleModeChange}
+    />
   );
   
   // Make sure the view mode changes are applied
@@ -135,6 +140,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         useGlobalFilters={props.useGlobalFilters}
         hideCharts={props.hideCharts}
         chartToggleComponent={chartControls}
+        chartModeSelector={chartModeSelector}
         activeTab={activeTab}
         onChartTabChange={(tab) => setActiveTab(tab)}
         viewByDate={viewByDate}
@@ -142,6 +148,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         contractTermsData={props.contractTermsData}
         customBarMetric={customBarMetric}
         customLineMetric={customLineMetric}
+        showDailyTotalsTable={props.showDailyTotalsTable}
       />
     </div>
   );

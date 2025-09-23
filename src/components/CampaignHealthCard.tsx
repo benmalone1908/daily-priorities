@@ -1,232 +1,402 @@
 
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { CampaignHealthData } from "@/utils/campaignHealthScoring";
+import { Activity, TrendingUp, Target, DollarSign, MousePointer, AlertTriangle, HelpCircle } from 'lucide-react';
+import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
+import { processCampaigns } from '@/lib/pacingCalculations';
+import type { ContractTerms, PacingDeliveryData } from '@/types/pacing';
+import { parseDateString } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface CampaignHealthCardProps {
-  campaign: CampaignHealthData;
+  campaignName: string;
+  deliveryData: any[];
+  pacingData: any[];
+  contractTermsData: any[];
+  unfilteredData?: any[];
+  dbContractTerms?: any[];
 }
 
-const CampaignHealthCard = ({ campaign }: CampaignHealthCardProps) => {
-  const getHealthColor = (score: number) => {
-    if (score >= 7) return "text-green-600";
-    if (score >= 4) return "text-yellow-600";
-    return "text-red-600";
+interface HealthStatus {
+  level: 'healthy' | 'warning' | 'critical';
+  label: string;
+  color: string;
+  bgColor: string;
+}
+
+const getHealthStatus = (healthScore: number): HealthStatus => {
+  if (healthScore >= 7) {
+    return {
+      level: 'healthy',
+      label: 'Healthy',
+      color: 'text-green-700',
+      bgColor: 'bg-green-100'
+    };
+  } else if (healthScore >= 4) {
+    return {
+      level: 'warning',
+      label: 'Warning',
+      color: 'text-yellow-700',
+      bgColor: 'bg-yellow-100'
+    };
+  } else {
+    return {
+      level: 'critical',
+      label: 'Critical',
+      color: 'text-red-700',
+      bgColor: 'bg-red-100'
+    };
+  }
+};
+
+const formatScore = (score: number): string => {
+  return score.toFixed(1);
+};
+
+const renderBurnRateDetails = (campaign: CampaignHealthData) => {
+  if (!campaign.burnRateData) return null;
+
+  const { oneDayRate, threeDayRate, sevenDayRate, oneDayPercentage, threeDayPercentage, sevenDayPercentage, confidence } = campaign.burnRateData;
+
+  // Map confidence levels to display styles
+  const getConfidenceStyle = (rateType: string) => {
+    if (confidence === '7-day') {
+      return rateType === 'seven' ? 'font-medium text-green-700' : '';
+    } else if (confidence === '3-day') {
+      return rateType === 'three' ? 'font-medium text-yellow-700' : '';
+    } else if (confidence === '1-day') {
+      return rateType === 'one' ? 'font-medium text-red-700' : '';
+    }
+    return '';
   };
 
-  const getHealthBadgeColor = (score: number) => {
-    if (score >= 7) return "bg-green-100 text-green-800";
-    if (score >= 4) return "bg-yellow-100 text-yellow-800";
-    return "bg-red-100 text-red-800";
+  // Format display - show percentage only if it's meaningful (not 0)
+  const formatRate = (rate: number, percentage: number) => {
+    const formattedRate = Math.round(rate).toLocaleString();
+    if (percentage > 0) {
+      return `${formattedRate} impressions (${percentage.toFixed(1)}%)`;
+    } else {
+      return `${formattedRate} impressions`;
+    }
   };
-
-  const getScoreColor = (score: number, maxScore: number = 10) => {
-    const percentage = (score / maxScore) * 100;
-    if (percentage >= 70) return "text-green-600";
-    if (percentage >= 40) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
-  };
-
-  // Calculate angle for needle (0-180 degrees for semicircle)
-  const needleAngle = (campaign.healthScore / 10) * 180;
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-4">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold text-gray-900 leading-tight">
-            {campaign.campaignName}
+    <div className="border-t pt-2 mt-2">
+      <div className="text-xs font-medium mb-1">Burn Rate Details:</div>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className={getConfidenceStyle('one')}>1-Day Rate:</span>
+          <span className={getConfidenceStyle('one')}>{formatRate(oneDayRate, oneDayPercentage)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className={getConfidenceStyle('three')}>3-Day Rate:</span>
+          <span className={getConfidenceStyle('three')}>{formatRate(threeDayRate, threeDayPercentage)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className={getConfidenceStyle('seven')}>7-Day Rate:</span>
+          <span className={getConfidenceStyle('seven')}>{formatRate(sevenDayRate, sevenDayPercentage)}</span>
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Confidence:</span>
+          <span className="capitalize">{confidence.replace('-', ' ')}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CampaignHealthCard = ({
+  campaignName,
+  deliveryData,
+  pacingData,
+  contractTermsData,
+  unfilteredData = [],
+  dbContractTerms = []
+}: CampaignHealthCardProps) => {
+  // Modal state for campaign details
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleHealthHeaderClick = () => {
+    setModalOpen(true);
+  };
+
+  // Get real pacing metrics using the same logic as the pacing card
+  const realPacingMetrics = useMemo(() => {
+    console.log('CampaignHealthCard: Getting real pacing metrics for:', campaignName);
+    console.log('CampaignHealthCard: unfilteredData length:', unfilteredData.length);
+    console.log('CampaignHealthCard: dbContractTerms length:', dbContractTerms.length);
+    console.log('CampaignHealthCard: deliveryData length:', deliveryData.length);
+
+    // We need deliveryData to have content, not necessarily unfilteredData or dbContractTerms
+    if (!deliveryData.length) {
+      console.log('CampaignHealthCard: No delivery data available');
+      return null;
+    }
+
+    try {
+      // Use the same contract terms processing logic as the Pacing tab
+      let contractTerms: ContractTerms[] = [];
+
+      if (dbContractTerms.length > 0) {
+        // Convert database contract terms to the expected format
+        contractTerms = dbContractTerms.map((row: any) => ({
+          Name: row.campaign_name,
+          'Start Date': row.start_date,
+          'End Date': row.end_date,
+          Budget: row.budget.toString(),
+          CPM: row.cpm.toString(),
+          'Impressions Goal': row.impressions_goal.toString()
+        }));
+      } else if (contractTermsData.length > 0) {
+        // Fallback to uploaded contract terms data
+        contractTerms = contractTermsData.map((row: any) => ({
+          Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
+          'Start Date': row['Start Date'] || row.START_DATE || '',
+          'End Date': row['End Date'] || row.END_DATE || '',
+          Budget: row.Budget || row.BUDGET || '',
+          CPM: row.CPM || row.cpm || '',
+          'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
+        }));
+      }
+
+      if (contractTerms.length === 0) {
+        return null;
+      }
+
+      // Transform delivery data to the expected format
+      const formattedDeliveryData: PacingDeliveryData[] = deliveryData.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      // Transform unfiltered data for global date calculation
+      const unfilteredDeliveryData: PacingDeliveryData[] = unfilteredData.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      // Use processCampaigns to get the processed campaign data
+      const processedCampaigns = processCampaigns(contractTerms, formattedDeliveryData, unfilteredDeliveryData);
+
+      console.log('CampaignHealthCard: Processed campaigns:', processedCampaigns.length);
+      console.log('CampaignHealthCard: Contract terms used:', contractTerms.length);
+
+      // Find the specific campaign we're looking for
+      const campaign = processedCampaigns.find(c => c.name === campaignName);
+
+      if (campaign) {
+        console.log('CampaignHealthCard: Found campaign metrics for:', campaign.name);
+        console.log('CampaignHealthCard: Campaign metrics:', campaign.metrics);
+        return campaign.metrics;
+      } else {
+        console.log('CampaignHealthCard: Campaign not found in processed campaigns');
+        console.log('CampaignHealthCard: Looking for:', campaignName);
+        console.log('CampaignHealthCard: Available campaign names:', processedCampaigns.map(c => c.name));
+        return null;
+      }
+    } catch (error) {
+      console.error('Error calculating real pacing metrics:', error);
+      return null;
+    }
+  }, [campaignName, deliveryData, unfilteredData, dbContractTerms, contractTermsData]);
+
+  const healthData = useMemo(() => {
+    try {
+      console.log('CampaignHealthCard: Calculating health data for:', campaignName);
+      console.log('CampaignHealthCard: Real pacing metrics available:', !!realPacingMetrics);
+      console.log('CampaignHealthCard: deliveryData length:', deliveryData.length);
+      console.log('CampaignHealthCard: pacingData length:', pacingData.length);
+      console.log('CampaignHealthCard: contractTermsData length:', contractTermsData.length);
+
+      if (realPacingMetrics) {
+        console.log('CampaignHealthCard: Real pacing metrics:', realPacingMetrics);
+      }
+
+      const result = calculateCampaignHealth(deliveryData, campaignName, pacingData, contractTermsData, realPacingMetrics);
+      console.log('CampaignHealthCard: Health calculation result:', result);
+
+      if (!result) {
+        console.error('CampaignHealthCard: Health calculation returned null');
+        return null;
+      }
+
+      if (result.healthScore === 0) {
+        console.error('CampaignHealthCard: Health calculation returned zero score');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('CampaignHealthCard: Error calculating health data:', error);
+      console.error('CampaignHealthCard: Error stack:', error.stack);
+      return null;
+    }
+  }, [campaignName, deliveryData, pacingData, contractTermsData, realPacingMetrics]);
+
+  if (!healthData || healthData.healthScore === 0) {
+    return (
+      <Card className="col-span-2 md:col-span-3">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-5 w-5 text-green-500" />
+            Campaign Health
           </CardTitle>
-          <Badge className={getHealthBadgeColor(campaign.healthScore)}>
-            {campaign.healthScore >= 7 ? 'Healthy' : campaign.healthScore >= 4 ? 'Warning' : 'Critical'}
-          </Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-muted-foreground">
+            No health data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const status = getHealthStatus(healthData.healthScore);
+
+  return (
+    <Card className="col-span-2 md:col-span-3">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle
+            className="text-base flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
+            onClick={handleHealthHeaderClick}
+          >
+            <Activity className="h-5 w-5 text-green-500 group-hover:text-blue-500 transition-colors" />
+            Campaign Health
+            <HelpCircle className="h-4 w-4 text-muted-foreground group-hover:text-blue-500 transition-colors" />
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="text-2xl font-bold">{formatScore(healthData.healthScore)}</div>
+            <Badge variant="secondary" className={`${status.color} ${status.bgColor} border-0`}>
+              {status.label}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
-      
-      <CardContent className="space-y-6">
-        {/* Semicircle Fuel Gauge for Health Score */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Health Score</span>
-            <span className={`text-xl font-bold ${getHealthColor(campaign.healthScore)}`}>
-              {campaign.healthScore}/10
-            </span>
-          </div>
-          
-          <div className="relative w-full h-32 flex items-end justify-center">
-            <svg width="240" height="120" viewBox="0 0 240 120" className="absolute">
-              {/* Background semicircle */}
-              <path
-                d="M 30 100 A 80 80 0 0 1 210 100"
-                fill="none"
-                stroke="#e5e7eb"
-                strokeWidth="16"
-                strokeLinecap="round"
-              />
-              
-              {/* Red zone (0-4) */}
-              <path
-                d="M 30 100 A 80 80 0 0 1 120 20"
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="16"
-                strokeLinecap="round"
-                opacity="0.7"
-              />
-              
-              {/* Yellow zone (4-7) */}
-              <path
-                d="M 120 20 A 80 80 0 0 1 174 47"
-                fill="none"
-                stroke="#eab308"
-                strokeWidth="16"
-                strokeLinecap="round"
-                opacity="0.7"
-              />
-              
-              {/* Green zone (7-10) */}
-              <path
-                d="M 174 47 A 80 80 0 0 1 210 100"
-                fill="none"
-                stroke="#22c55e"
-                strokeWidth="16"
-                strokeLinecap="round"
-                opacity="0.7"
-              />
-              
-              {/* Progress indicator based on score */}
-              <path
-                d={`M 30 100 A 80 80 0 ${needleAngle > 90 ? '1' : '0'} 1 ${
-                  120 + 80 * Math.cos((needleAngle - 90) * Math.PI / 180)
-                } ${
-                  100 - 80 * Math.sin((needleAngle - 90) * Math.PI / 180)
-                }`}
-                fill="none"
-                stroke={campaign.healthScore >= 7 ? "#22c55e" : campaign.healthScore >= 4 ? "#eab308" : "#ef4444"}
-                strokeWidth="16"
-                strokeLinecap="round"
-              />
-              
-              {/* Needle */}
-              <line
-                x1="120"
-                y1="100"
-                x2={120 + 65 * Math.cos((needleAngle - 90) * Math.PI / 180)}
-                y2={100 - 65 * Math.sin((needleAngle - 90) * Math.PI / 180)}
-                stroke="#dc2626"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              
-              {/* Center circle */}
-              <circle cx="120" cy="100" r="6" fill="#374151" />
-              <circle cx="120" cy="100" r="3" fill="#dc2626" />
-            </svg>
-            
-            {/* Scale labels */}
-            <div className="absolute bottom-0 w-full flex justify-between text-xs text-gray-500 px-4">
-              <span>0</span>
-              <span>5</span>
-              <span>10</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Campaign Metrics */}
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <span className="text-sm text-gray-600">Spend</span>
-            <div className="text-lg font-semibold">{formatCurrency(campaign.spend)}</div>
-          </div>
-          <div className="space-y-1">
-            <span className="text-sm text-gray-600">Attributed Sales</span>
-            <div className="text-lg font-semibold">{formatCurrency(campaign.revenue)}</div>
-          </div>
-          <div className="space-y-1">
-            <span className="text-sm text-gray-600">Impressions</span>
-            <div className="text-lg font-semibold">{formatNumber(campaign.impressions)}</div>
-          </div>
-          <div className="space-y-1">
-            <span className="text-sm text-gray-600">Clicks</span>
-            <div className="text-lg font-semibold">{formatNumber(campaign.clicks)}</div>
-          </div>
-        </div>
-
-        {/* Score Breakdown */}
-        <div className="space-y-3 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-700">Score Breakdown</h4>
-          
-          <div className="grid grid-cols-1 gap-3">
-            {/* ROAS Score */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">ROAS (40%)</span>
-                <span className="text-xs text-gray-500">{campaign.roas?.toFixed(2)}x</span>
-              </div>
-              <div className={`text-right ${getScoreColor(campaign.roasScore)}`}>
-                <div className="font-semibold">{campaign.roasScore}/10</div>
-              </div>
+          {/* ROAS Score */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-50">
+              <DollarSign className="h-4 w-4 text-green-600" />
             </div>
-
-            {/* Delivery Pacing Score */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">Delivery Pacing (30%)</span>
-                <span className="text-xs text-gray-500">{campaign.pace?.toFixed(1)}%</span>
-              </div>
-              <div className={`text-right ${getScoreColor(campaign.deliveryPacingScore)}`}>
-                <div className="font-semibold">{campaign.deliveryPacingScore}/10</div>
-              </div>
+            <div>
+              <div className="text-lg font-semibold">{formatScore(healthData.roasScore)}</div>
+              <div className="text-xs text-muted-foreground">ROAS Score</div>
+              <div className="text-xs text-muted-foreground">{healthData.roas.toFixed(2)}x return</div>
             </div>
+          </div>
 
-            {/* Burn Rate Score */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">Burn Rate (15%)</span>
-                <span className="text-xs text-gray-500">{campaign.burnRateConfidence}</span>
-              </div>
-              <div className={`text-right ${getScoreColor(campaign.burnRateScore)}`}>
-                <div className="font-semibold">{campaign.burnRateScore}/10</div>
-              </div>
+          {/* CTR Score */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-50">
+              <MousePointer className="h-4 w-4 text-blue-600" />
             </div>
-
-            {/* CTR Score */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">CTR (10%)</span>
-                <span className="text-xs text-gray-500">{campaign.ctr?.toFixed(2)}%</span>
-              </div>
-              <div className={`text-right ${getScoreColor(campaign.ctrScore)}`}>
-                <div className="font-semibold">{campaign.ctrScore}/10</div>
-              </div>
-            </div>
-
-            {/* Overspend Score */}
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">Overspend Risk (5%)</span>
-                <span className="text-xs text-gray-500">Budget tracking</span>
-              </div>
-              <div className={`text-right ${getScoreColor(campaign.overspendScore, 5)}`}>
-                <div className="font-semibold">{campaign.overspendScore}/5</div>
-              </div>
+            <div>
+              <div className="text-lg font-semibold">{formatScore(healthData.ctrScore)}</div>
+              <div className="text-xs text-muted-foreground">CTR Score</div>
+              <div className="text-xs text-muted-foreground">{healthData.ctr.toFixed(2)}% rate</div>
             </div>
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Delivery Pacing Score */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-50">
+              <Target className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <div className="text-lg font-semibold">{formatScore(healthData.deliveryPacingScore)}</div>
+              <div className="text-xs text-muted-foreground">Delivery Score</div>
+              <div className="text-xs text-muted-foreground">{healthData.deliveryPacing.toFixed(1)}% pace</div>
+            </div>
+          </div>
+
+          {/* Burn Rate Score */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-orange-50">
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+            </div>
+            <div>
+              <div className="text-lg font-semibold">{formatScore(healthData.burnRateScore)}</div>
+              <div className="text-xs text-muted-foreground">Burn Rate Score</div>
+              <div className="text-xs text-muted-foreground">{healthData.burnRateConfidence}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Overspend Risk */}
+        {healthData.overspendScore < 8 && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <div className="flex-1">
+              <div className="text-sm font-medium text-red-700">Overspend Risk</div>
+              <div className="text-xs text-red-600">
+                Score: {formatScore(healthData.overspendScore)} | Risk: ${healthData.overspend.toFixed(0)}
+              </div>
+            </div>
+          </div>
+        )}
+
       </CardContent>
+
+      {/* Campaign Details Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-medium">Campaign Details</DialogTitle>
+          </DialogHeader>
+
+          {healthData && (
+            <div className="space-y-3 mt-4">
+              <div className="font-medium text-sm mb-2">{campaignName}</div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span>Overall Health:</span>
+                  <span className="font-medium">{healthData.healthScore.toFixed(1)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>ROAS:</span>
+                  <span className="font-medium">{healthData.roas.toFixed(1)}x (Score: {healthData.roasScore.toFixed(0)})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Delivery Pacing:</span>
+                  <span className="font-medium">{healthData.deliveryPacing.toFixed(1)}% (Score: {healthData.deliveryPacingScore.toFixed(0)})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Burn Rate:</span>
+                  <span className="font-medium">
+                    {healthData.burnRatePercentage > 0
+                      ? `${healthData.burnRatePercentage.toFixed(1)}% (Score: ${healthData.burnRateScore.toFixed(0)})`
+                      : `${Math.round(healthData.burnRate).toLocaleString()} daily (Score: ${healthData.burnRateScore.toFixed(0)})`
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>CTR:</span>
+                  <span className="font-medium">{healthData.ctr.toFixed(3)}% (Score: {healthData.ctrScore.toFixed(0)})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Overspend:</span>
+                  <span className="font-medium">${healthData.overspend.toFixed(2)} (Score: {healthData.overspendScore.toFixed(0)})</span>
+                </div>
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between">
+                    <span>Completion:</span>
+                    <span className="font-medium">{healthData.completionPercentage.toFixed(1)}%</span>
+                  </div>
+                </div>
+                {renderBurnRateDetails(healthData)}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

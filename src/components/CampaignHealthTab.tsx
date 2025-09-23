@@ -10,14 +10,18 @@ import { AlertTriangle, HelpCircle } from "lucide-react";
 import ContractTermsAlert from "./ContractTermsAlert";
 import { validateContractTerms } from "@/utils/contractTermsValidation";
 import MetricExplanationModal, { MetricType } from "./MetricExplanationModal";
+import { processCampaigns } from '@/lib/pacingCalculations';
+import type { ContractTerms, PacingDeliveryData } from '@/types/pacing';
 
 interface CampaignHealthTabProps {
   data: any[];
   pacingData?: any[];
   contractTermsData?: any[];
+  unfilteredData?: any[];
+  dbContractTerms?: any[];
 }
 
-const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: CampaignHealthTabProps) => {
+const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [], unfilteredData = [], dbContractTerms = [] }: CampaignHealthTabProps) => {
   const { isTestCampaign } = useCampaignFilter();
   
   // Modal state for metric explanations
@@ -44,8 +48,22 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
   }
 
   const { healthData, missingPacingCampaigns, contractTermsValidation } = useMemo(() => {
-    // Validate contract terms for campaigns with impressions
-    const contractValidation = validateContractTerms(data, contractTermsData);
+    // For single-campaign view with existing contract data, assume contract terms are available
+    const isSingleCampaignWithContract = contractTermsData.length > 0 &&
+      new Set(data.map(row => row["CAMPAIGN ORDER NAME"])).size <= 1;
+
+    let contractValidation;
+    if (isSingleCampaignWithContract) {
+      // In single-campaign view with contract data, consider contract terms as satisfied
+      contractValidation = {
+        missingCampaigns: [],
+        totalMissingCampaigns: 0,
+        hasActiveCampaignsMissing: false
+      };
+    } else {
+      // Normal validation for multi-campaign views or when no contract data
+      contractValidation = validateContractTerms(data, contractTermsData);
+    }
     console.log("CampaignHealthTab: Contract terms validation result:", contractValidation);
     
     // Get unique campaigns excluding test campaigns
@@ -69,9 +87,74 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
       ? campaigns.filter(campaign => !pacingCampaigns.has(campaign))
       : [];
 
-    // Calculate health score for each campaign, now passing contractTermsData
+    // Get real pacing metrics using the same logic as the health card
+    let realPacingMetricsMap = new Map();
+
+    if (unfilteredData.length > 0 || dbContractTerms.length > 0) {
+      try {
+        // Use the same contract terms processing logic as the health card
+        let contractTerms: ContractTerms[] = [];
+
+        if (dbContractTerms.length > 0) {
+          // Convert database contract terms to the expected format
+          contractTerms = dbContractTerms.map((row: any) => ({
+            Name: row.campaign_name,
+            'Start Date': row.start_date,
+            'End Date': row.end_date,
+            Budget: row.budget.toString(),
+            CPM: row.cpm.toString(),
+            'Impressions Goal': row.impressions_goal.toString()
+          }));
+        } else if (contractTermsData.length > 0) {
+          // Fallback to uploaded contract terms data
+          contractTerms = contractTermsData.map((row: any) => ({
+            Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
+            'Start Date': row['Start Date'] || row.START_DATE || '',
+            'End Date': row['End Date'] || row.END_DATE || '',
+            Budget: row.Budget || row.BUDGET || '',
+            CPM: row.CPM || row.cpm || '',
+            'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
+          }));
+        }
+
+        if (contractTerms.length > 0) {
+          // Transform delivery data to the expected format
+          const formattedDeliveryData: PacingDeliveryData[] = data.map((row: any) => ({
+            DATE: row.DATE || '',
+            'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+            IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+            SPEND: row.SPEND?.toString() || '0'
+          }));
+
+          // Transform unfiltered data for global date calculation
+          const unfilteredDeliveryData: PacingDeliveryData[] = unfilteredData.map((row: any) => ({
+            DATE: row.DATE || '',
+            'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+            IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+            SPEND: row.SPEND?.toString() || '0'
+          }));
+
+          // Use processCampaigns to get the processed campaign data
+          const processedCampaigns = processCampaigns(contractTerms, formattedDeliveryData, unfilteredDeliveryData);
+
+          // Create a map of campaign name to real pacing metrics
+          processedCampaigns.forEach(campaign => {
+            realPacingMetricsMap.set(campaign.name, campaign.metrics);
+          });
+
+          console.log('CampaignHealthTab: Created real pacing metrics for', realPacingMetricsMap.size, 'campaigns');
+        }
+      } catch (error) {
+        console.error('CampaignHealthTab: Error getting real pacing metrics:', error);
+      }
+    }
+
+    // Calculate health score for each campaign, now passing contractTermsData and real pacing metrics
     const healthScores = campaigns
-      .map(campaignName => calculateCampaignHealth(data, campaignName, pacingData, contractTermsData))
+      .map(campaignName => {
+        const realPacingMetrics = realPacingMetricsMap.get(campaignName) || null;
+        return calculateCampaignHealth(data, campaignName, pacingData, contractTermsData, realPacingMetrics);
+      })
       .filter(campaign => campaign.healthScore > 0); // Only show campaigns with valid data
 
     return {
@@ -79,7 +162,7 @@ const CampaignHealthTab = ({ data, pacingData = [], contractTermsData = [] }: Ca
       missingPacingCampaigns: missingFromPacing,
       contractTermsValidation: contractValidation
     };
-  }, [data, pacingData, contractTermsData, isTestCampaign]);
+  }, [data, pacingData, contractTermsData, unfilteredData, dbContractTerms, isTestCampaign]);
 
   const summaryStats = useMemo(() => {
     if (healthData.length === 0) return { total: 0, healthy: 0, warning: 0, critical: 0, avgScore: 0 };

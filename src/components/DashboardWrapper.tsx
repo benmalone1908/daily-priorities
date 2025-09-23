@@ -32,6 +32,8 @@ interface DashboardWrapperProps {
   chartToggleComponent?: React.ReactNode;
   // Add contractTermsData prop
   contractTermsData?: any[];
+  // Add prop to control whether to show the daily totals table
+  showDailyTotalsTable?: boolean;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -307,6 +309,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       chartToggleComponent={props.chartToggleComponent}
       // Pass contractTermsData through
       contractTermsData={props.contractTermsData}
+      // Pass showDailyTotalsTable prop through
+      showDailyTotalsTable={props.showDailyTotalsTable}
     />
   );
 };

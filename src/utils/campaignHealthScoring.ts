@@ -70,7 +70,17 @@ export function calculateBurnRate(data: any[], campaignName: string, requiredDai
   const campaignData = data
     .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
     .sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
-  
+
+  console.log(`🔥 Burn Rate Debug for "${campaignName}":`, {
+    totalRows: campaignData.length,
+    totalImpressions: campaignData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0),
+    requiredDailyImpressions,
+    dateRange: campaignData.length > 0 ? {
+      first: campaignData[0]?.DATE,
+      last: campaignData[campaignData.length - 1]?.DATE
+    } : null
+  });
+
   if (campaignData.length === 0) {
     return {
       oneDayRate: 0,
@@ -82,38 +92,101 @@ export function calculateBurnRate(data: any[], campaignName: string, requiredDai
       sevenDayPercentage: 0
     };
   }
-  
+
   // Exclude most recent day (potentially incomplete) - use days 2,3,4,5,6,7,8 ago
   // Remove the last day and get up to 7 days before that
   const dataExcludingToday = campaignData.length > 1 ? campaignData.slice(0, -1) : [];
   const recent = dataExcludingToday.slice(-7); // Last 7 days excluding most recent
-  
+
+  // Log the data being used for burn rate calculation
+  console.log(`🔥 Recent data for burn rate (excluding today):`, recent.map(row => ({
+    date: row.DATE,
+    impressions: Number(row.IMPRESSIONS) || 0
+  })));
+
   // 1-day rate: day 2 ago (excluding yesterday)
   const oneDayRate = recent.length >= 1 ? Number(recent[recent.length - 1].IMPRESSIONS) || 0 : 0;
-  
+
   // 3-day rate: average of days 2,3,4 ago
-  const threeDayRate = recent.length >= 3 ? 
-    recent.slice(-3).reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0) / 3 : 0;
-  
+  const threeDayData = recent.length >= 3 ? recent.slice(-3) : [];
+  const threeDaySum = threeDayData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+  const threeDayRate = threeDayData.length > 0 ? threeDaySum / threeDayData.length : 0;
+
   // 7-day rate: average of days 2,3,4,5,6,7,8 ago
-  const sevenDayRate = recent.length >= 7 ? 
-    recent.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0) / 7 : 0;
-  
+  const sevenDayData = recent.length >= 7 ? recent : [];
+  const sevenDaySum = sevenDayData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+  const sevenDayRate = sevenDayData.length > 0 ? sevenDaySum / sevenDayData.length : 0;
+
+  console.log(`🔥 Detailed Burn Rate Breakdown for "${campaignName}":`, {
+    oneDayRate,
+    threeDayData: threeDayData.map(row => ({ date: row.DATE, impressions: Number(row.IMPRESSIONS) || 0 })),
+    threeDaySum,
+    threeDayRate,
+    sevenDayData: sevenDayData.map(row => ({ date: row.DATE, impressions: Number(row.IMPRESSIONS) || 0 })),
+    sevenDaySum,
+    sevenDayRate
+  });
+
+  // VALIDATION: Check if rates are reasonable compared to total impressions
+  const totalImpressions = campaignData.reduce((sum, row) => sum + (Number(row.IMPRESSIONS) || 0), 0);
+  const averageDailyFromTotal = campaignData.length > 0 ? totalImpressions / campaignData.length : 0;
+
+  console.log(`🔥 Burn Rate Validation:`, {
+    oneDayRate,
+    threeDayRate,
+    sevenDayRate,
+    totalImpressions,
+    averageDailyFromTotal,
+    dataPoints: campaignData.length
+  });
+
+  // If any calculated rate is more than 2x the average daily from total, something is wrong
+  const maxReasonableRate = averageDailyFromTotal * 2;
+
+  let validatedOneDayRate = oneDayRate;
+  let validatedThreeDayRate = threeDayRate;
+  let validatedSevenDayRate = sevenDayRate;
+
+  if (oneDayRate > maxReasonableRate && maxReasonableRate > 0) {
+    console.warn(`🚨 Burn Rate Error: 1-day rate ${oneDayRate} seems too high (max reasonable: ${maxReasonableRate}), using average daily instead`);
+    validatedOneDayRate = averageDailyFromTotal;
+  }
+
+  if (threeDayRate > maxReasonableRate && maxReasonableRate > 0) {
+    console.warn(`🚨 Burn Rate Error: 3-day rate ${threeDayRate} seems too high (max reasonable: ${maxReasonableRate}), using average daily instead`);
+    validatedThreeDayRate = averageDailyFromTotal;
+  }
+
+  if (sevenDayRate > maxReasonableRate && maxReasonableRate > 0) {
+    console.warn(`🚨 Burn Rate Error: 7-day rate ${sevenDayRate} seems too high (max reasonable: ${maxReasonableRate}), using average daily instead`);
+    validatedSevenDayRate = averageDailyFromTotal;
+  }
+
   // Update confidence levels to account for excluding most recent day
   let confidence = 'no-data';
   if (recent.length >= 7) confidence = '7-day';
   else if (recent.length >= 3) confidence = '3-day';
   else if (recent.length >= 1) confidence = '1-day';
-  
-  // Calculate percentages
-  const oneDayPercentage = requiredDailyImpressions > 0 ? (oneDayRate / requiredDailyImpressions) * 100 : 0;
-  const threeDayPercentage = requiredDailyImpressions > 0 ? (threeDayRate / requiredDailyImpressions) * 100 : 0;
-  const sevenDayPercentage = requiredDailyImpressions > 0 ? (sevenDayRate / requiredDailyImpressions) * 100 : 0;
-  
+
+  // Calculate percentages using validated rates
+  const oneDayPercentage = requiredDailyImpressions > 0 ? (validatedOneDayRate / requiredDailyImpressions) * 100 : 0;
+  const threeDayPercentage = requiredDailyImpressions > 0 ? (validatedThreeDayRate / requiredDailyImpressions) * 100 : 0;
+  const sevenDayPercentage = requiredDailyImpressions > 0 ? (validatedSevenDayRate / requiredDailyImpressions) * 100 : 0;
+
+  console.log(`🔥 Final Burn Rate Results:`, {
+    oneDayRate: validatedOneDayRate,
+    threeDayRate: validatedThreeDayRate,
+    sevenDayRate: validatedSevenDayRate,
+    confidence,
+    oneDayPercentage,
+    threeDayPercentage,
+    sevenDayPercentage
+  });
+
   return {
-    oneDayRate,
-    threeDayRate,
-    sevenDayRate,
+    oneDayRate: validatedOneDayRate,
+    threeDayRate: validatedThreeDayRate,
+    sevenDayRate: validatedSevenDayRate,
     confidence,
     oneDayPercentage,
     threeDayPercentage,
@@ -121,9 +194,7 @@ export function calculateBurnRate(data: any[], campaignName: string, requiredDai
   };
 }
 
-export function calculateBurnRateScore(burnRate: BurnRateData, requiredDailyImpressions: number): number {
-  if (requiredDailyImpressions === 0) return 0;
-  
+export function calculateBurnRateScore(burnRate: BurnRateData, requiredDailyImpressions: number, actualImpressions: number = 0, expectedImpressions: number = 0, daysLeft: number = 0): number {
   // Use best available burn rate based on confidence
   let currentRate = 0;
   switch (burnRate.confidence) {
@@ -139,13 +210,49 @@ export function calculateBurnRateScore(burnRate: BurnRateData, requiredDailyImpr
     default:
       return 0;
   }
-  
-  const ratio = currentRate / requiredDailyImpressions;
-  
+
+  console.log(`🔥 Burn Rate Score Calculation:`, {
+    currentRate,
+    actualImpressions,
+    expectedImpressions,
+    daysLeft,
+    requiredDailyImpressions
+  });
+
+  // Calculate required daily rate on the fly: remaining impressions ÷ remaining days
+  let dynamicRequiredDaily = requiredDailyImpressions;
+
+  if (expectedImpressions > 0 && actualImpressions >= 0 && daysLeft > 0) {
+    const remainingImpressions = Math.max(0, expectedImpressions - actualImpressions);
+    dynamicRequiredDaily = remainingImpressions / daysLeft;
+
+    console.log(`🔥 Dynamic Required Daily Calculation:`, {
+      remainingImpressions,
+      daysLeft,
+      dynamicRequiredDaily,
+      originalRequired: requiredDailyImpressions
+    });
+  }
+
+  // If we still don't have a target, can't score
+  if (dynamicRequiredDaily === 0) {
+    console.log(`🔥 No target daily rate available, returning 0`);
+    return 0;
+  }
+
+  const ratio = currentRate / dynamicRequiredDaily;
+
+  console.log(`🔥 Burn Rate Score Result:`, {
+    currentRate,
+    dynamicRequiredDaily,
+    ratio,
+    ratioPercent: (ratio * 100).toFixed(1) + '%'
+  });
+
   if (ratio >= 0.95 && ratio <= 1.05) return 10;
   if ((ratio >= 0.85 && ratio < 0.95) || (ratio > 1.05 && ratio <= 1.15)) return 8;
   if (ratio < 0.85 || ratio > 1.15) return 5;
-  
+
   return 0;
 }
 
@@ -263,28 +370,35 @@ function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: n
 }
 
 export function calculateOverspendScore(
-  currentSpend: number, 
-  budget: number, 
-  dailySpendRate: number, 
+  currentSpend: number,
+  budget: number,
+  dailySpendRate: number,
   daysLeft: number,
   confidence: string
 ): number {
   const isTargetCampaign = budget === 3000; // Identify our target campaign by budget
-  
+
+  console.log(`🔍 OVERSPEND SCORE START: spend=$${currentSpend}, budget=$${budget}, dailyRate=$${dailySpendRate.toFixed(2)}, daysLeft=${daysLeft}, confidence=${confidence}`);
+
   if (isTargetCampaign) {
     console.log(`🎯 [OVERSPEND TARGET] Starting overspend calculation`);
     console.log(`🎯 [OVERSPEND TARGET] Inputs: spend=$${currentSpend}, budget=$${budget}, dailyRate=$${dailySpendRate.toFixed(2)}, daysLeft=${daysLeft}, confidence=${confidence}`);
   }
   
   if (!budget || budget === 0 || daysLeft < 0) {
+    console.log(`🔍 EARLY RETURN: No budget data or campaign ended, returning 0`);
     if (isTargetCampaign) console.log(`🎯 [OVERSPEND TARGET] No budget data or campaign ended, returning 0`);
     return 0; // No budget data or campaign ended
   }
-  
+
+  console.log(`🔍 PASSED EARLY RETURN CHECK: Proceeding with calculation`);
+
   // Calculate projected total spend
   const projectedTotalSpend = currentSpend + (dailySpendRate * daysLeft);
   const projectedOverspend = Math.max(0, projectedTotalSpend - budget);
   const overspendPercentage = budget > 0 ? (projectedOverspend / budget) * 100 : 0;
+
+  console.log(`🔍 PROJECTION CALCULATED: totalSpend=$${projectedTotalSpend.toFixed(2)}, overspend=$${projectedOverspend.toFixed(2)}, percentage=${overspendPercentage.toFixed(2)}%`);
   
   if (isTargetCampaign) {
     console.log(`🎯 [OVERSPEND TARGET] Calculation: ${currentSpend} + (${dailySpendRate.toFixed(2)} × ${daysLeft}) = ${projectedTotalSpend.toFixed(2)}`);
@@ -293,20 +407,28 @@ export function calculateOverspendScore(
   
   // Adjust confidence based on data quality
   let confidenceMultiplier = 1;
-  switch (confidence.split('-')[0]) { // Handle confidence strings like '7-day-capped'
-    case '7-day':
+  const confidencePrefix = confidence.split('-')[0];
+  console.log(`🔍 CONFIDENCE DEBUG: full="${confidence}", prefix="${confidencePrefix}"`);
+
+  switch (confidencePrefix) { // Handle confidence strings like '7-day-capped'
+    case '7':
       confidenceMultiplier = 1;
+      console.log(`🔍 CONFIDENCE: Matched '7' -> multiplier=1`);
       break;
-    case '3-day':
+    case '3':
       confidenceMultiplier = 0.8;
+      console.log(`🔍 CONFIDENCE: Matched '3' -> multiplier=0.8`);
       break;
-    case '1-day':
+    case '1':
       confidenceMultiplier = 0.6;
+      console.log(`🔍 CONFIDENCE: Matched '1' -> multiplier=0.6`);
       break;
     case 'overall':
       confidenceMultiplier = 0.9;
+      console.log(`🔍 CONFIDENCE: Matched 'overall' -> multiplier=0.9`);
       break;
     default:
+      console.log(`🔍 CONFIDENCE ERROR: Unknown confidence prefix "${confidencePrefix}" from "${confidence}", returning 0`);
       if (isTargetCampaign) console.log(`🎯 [OVERSPEND TARGET] Unknown confidence, returning 0`);
       return 0;
   }
@@ -329,13 +451,21 @@ export function calculateOverspendScore(
   } else {
     baseScore = 0; // Very high overspend risk
   }
-  
+
   const finalScore = Math.round(baseScore * confidenceMultiplier * 10) / 10;
+
+  console.log(`🔍 Overspend calculation debug:`);
+  console.log(`  - Overspend percentage: ${overspendPercentage.toFixed(2)}%`);
+  console.log(`  - Base score: ${baseScore}`);
+  console.log(`  - Confidence multiplier: ${confidenceMultiplier}`);
+  console.log(`  - Final score: ${finalScore}`);
   
   if (isTargetCampaign) {
     console.log(`🎯 [OVERSPEND TARGET] Score calculation: base=${baseScore}, confidence=${confidenceMultiplier}, final=${finalScore}`);
   }
-  
+
+  console.log(`🔍 OVERSPEND SCORE END: Returning ${finalScore} for budget=$${budget}`);
+
   return finalScore;
 }
 
@@ -345,7 +475,7 @@ function calculateCompletionPercentage(contractTermsData: any[], campaignName: s
   
   // Find the campaign in contract terms data
   const contractTerms = contractTermsData.find(row => {
-    const possibleNameFields = ['NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
+    const possibleNameFields = ['CAMPAIGN ORDER NAME', 'NAME', 'CAMPAIGN', 'Campaign', 'name', 'campaign', 'Campaign Name', 'CAMPAIGN NAME', 'Name'];
     
     for (const field of possibleNameFields) {
       const rowCampaign = row[field];
@@ -640,7 +770,7 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
   return { budget, daysLeft };
 }
 
-export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = [], contractTermsData: any[] = []): CampaignHealthData {
+export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = [], contractTermsData: any[] = [], realPacingMetrics: any = null): CampaignHealthData {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
@@ -719,9 +849,27 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   const roasScore = calculateROASScore(roas);
   const ctrScore = calculateCTRScore(ctr);
   
-  // For now, use simplified pacing and burn rate (can be enhanced with real pacing data)
-  const expectedImpressions = totals.impressions * 1.1; // Assume 110% target for demo
-  const deliveryPacingScore = calculateDeliveryPacingScore(totals.impressions, expectedImpressions);
+  // Use real pacing data if available, otherwise fall back to simplified calculation
+  let expectedImpressions, deliveryPacingScore, actualPacingPercent;
+
+  if (realPacingMetrics) {
+    // Use real pacing metrics from processCampaigns
+    expectedImpressions = realPacingMetrics.expectedImpressions;
+    actualPacingPercent = realPacingMetrics.currentPacing * 100;
+    deliveryPacingScore = calculateDeliveryPacingScore(realPacingMetrics.actualImpressions, expectedImpressions);
+
+    console.log(`📊 Using real pacing metrics for ${campaignName}:`);
+    console.log(`  - Expected impressions: ${expectedImpressions}`);
+    console.log(`  - Actual impressions: ${realPacingMetrics.actualImpressions}`);
+    console.log(`  - Current pacing: ${actualPacingPercent.toFixed(1)}%`);
+  } else {
+    // Fallback to simplified calculation
+    expectedImpressions = totals.impressions * 1.1; // Assume 110% target for demo
+    deliveryPacingScore = calculateDeliveryPacingScore(totals.impressions, expectedImpressions);
+    actualPacingPercent = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
+
+    console.log(`⚠️ Using simplified pacing calculation for ${campaignName} (missing real pacing data)`);
+  }
   
   // Calculate required daily impressions from contract terms data
   let requiredDailyImpressions = 0;
@@ -783,14 +931,37 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
   }
   
   const burnRateData = calculateBurnRate(data, campaignName, requiredDailyImpressions);
-  const burnRateScore = calculateBurnRateScore(burnRateData, requiredDailyImpressions);
+
+  // Use real pacing metrics if available for burn rate scoring
+  const actualImpressions = realPacingMetrics ? realPacingMetrics.actualImpressions : totals.impressions;
+  const daysLeftForBurnRate = realPacingMetrics ? realPacingMetrics.daysUntilEnd : daysLeft;
+
+  const burnRateScore = calculateBurnRateScore(
+    burnRateData,
+    requiredDailyImpressions,
+    actualImpressions,
+    expectedImpressions,
+    daysLeftForBurnRate
+  );
   
-  // Get budget and days left from contract terms and pacing data
-  const { budget, daysLeft } = getBudgetAndDaysLeft(pacingData, campaignName, contractTermsData);
-  if (isTargetCampaign) {
-    console.log(`🚀 Target campaign budget from contract terms: $${budget}, Days left: ${daysLeft}`);
+  // Get budget and days left - prefer real pacing metrics if available
+  let budget, daysLeft;
+
+  if (realPacingMetrics) {
+    // Use budget and timeline from real pacing metrics (more reliable)
+    budget = realPacingMetrics.budget || 0;
+    daysLeft = realPacingMetrics.daysUntilEnd || 0;
+    console.log(`📊 Using budget and timeline from real pacing metrics: $${budget}, Days left: ${daysLeft}`);
   } else {
-    console.log(`Budget from contract terms: $${budget}, Days left: ${daysLeft}`);
+    // Fallback to contract terms calculation
+    const contractData = getBudgetAndDaysLeft(pacingData, campaignName, contractTermsData);
+    budget = contractData.budget;
+    daysLeft = contractData.daysLeft;
+    if (isTargetCampaign) {
+      console.log(`🚀 Target campaign budget from contract terms: $${budget}, Days left: ${daysLeft}`);
+    } else {
+      console.log(`Budget from contract terms: $${budget}, Days left: ${daysLeft}`);
+    }
   }
   
   // Calculate completion percentage from contract terms data instead of pacing data
@@ -890,10 +1061,8 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     (burnRateScore * 0.15) +
     (overspendScore * 0.15);
   
-  const pace = expectedImpressions > 0 ? (totals.impressions / expectedImpressions) * 100 : 0;
-  
-  // Calculate the actual values for display
-  const deliveryPacing = pace || 0;
+  // Calculate the actual values for display using real pacing if available
+  const deliveryPacing = actualPacingPercent || 0;
   const burnRateValue = burnRateData.sevenDayRate || burnRateData.threeDayRate || burnRateData.oneDayRate || 0;
   const burnRatePercentage = requiredDailyImpressions > 0 ? (burnRateValue / requiredDailyImpressions) * 100 : 0;
   
@@ -926,7 +1095,7 @@ export function calculateCampaignHealth(data: any[], campaignName: string, pacin
     overspendScore,
     healthScore: Math.round(healthScore * 10) / 10, // Round to 1 decimal
     burnRateConfidence: burnRateData.confidence,
-    pace,
+    pace: actualPacingPercent,
     ctr,
     roas,
     completionPercentage: Math.round(completionPercentage * 10) / 10, // Round to 1 decimal

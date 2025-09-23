@@ -1,19 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { DateRange } from "react-day-picker";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
-import CampaignHealthTab from "@/components/CampaignHealthTab";
-import { Pacing } from "@/components/Pacing";
-import StatusTab from "@/components/StatusTab";
 import { NotificationsTab } from "@/components/NotificationsTab";
 import CustomReportBuilder from "@/components/CustomReportBuilder";
 import CampaignSummaryTable from "@/components/CampaignSummaryTable";
+import { CampaignPerformanceChart } from "@/components/CampaignPerformanceChart";
+import { CampaignPacingCard } from "@/components/CampaignPacingCard";
+import CampaignHealthCard from "@/components/CampaignHealthCard";
 import { useSupabase } from "@/contexts/SupabaseContext";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { setToStartOfDay, setToEndOfDay, parseDateString } from "@/lib/utils";
@@ -41,6 +38,7 @@ const CampaignManager = ({
   const [campaignData, setCampaignData] = useState<any[]>([]);
   const [campaignPacingData, setCampaignPacingData] = useState<any[]>([]);
   const [campaignContractData, setCampaignContractData] = useState<any[]>([]);
+  const [allContractData, setAllContractData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -77,12 +75,13 @@ const CampaignManager = ({
         setCampaignData(formattedData);
 
         // Load contract terms data
-        const allContractData = await getContractTerms();
-        console.log('All contract data available:', allContractData);
+        const allContractTerms = await getContractTerms();
+        setAllContractData(allContractTerms);
+        console.log('All contract data available:', allContractTerms);
         console.log('Looking for campaign:', selectedCampaign);
 
         // Check different possible field names for campaign matching
-        const campaignContractTerms = allContractData.filter(row => {
+        const campaignContractTerms = allContractTerms.filter(row => {
           const matches = [
             row.campaign_order_name === selectedCampaign,
             row['CAMPAIGN ORDER NAME'] === selectedCampaign,
@@ -227,13 +226,6 @@ const CampaignManager = ({
     setActiveTab("dashboard");
   };
 
-  // Handle back to campaign list
-  const handleBackToCampaigns = () => {
-    setSelectedCampaign(null);
-    setCampaignData([]);
-    setCampaignPacingData([]);
-    setCampaignContractData([]);
-  };
 
   // Show campaign list
   if (!selectedCampaign) {
@@ -267,10 +259,6 @@ const CampaignManager = ({
           <p className="text-muted-foreground mb-6">
             No data found for campaign: {selectedCampaign}
           </p>
-          <Button onClick={handleBackToCampaigns}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Campaigns
-          </Button>
         </div>
       </div>
     );
@@ -280,71 +268,36 @@ const CampaignManager = ({
   return (
     <div className="space-y-6">
       {/* Header with campaign info and back button */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 truncate">
+          <h2 className="text-2xl font-bold text-gray-900 truncate mb-2">
             {selectedCampaign}
           </h2>
-          <div className="flex items-center gap-4 mt-2">
-            <Badge variant="secondary">
-              {campaignSummary.agency}
-            </Badge>
-            <Badge variant="outline">
-              {campaignSummary.advertiser}
-            </Badge>
-          </div>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleBackToCampaigns}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Campaigns
-        </Button>
-      </div>
-
-      {/* Contract Terms Section */}
-      {campaignContractData.length > 0 && (
-        <div className="mb-6">
-          {campaignContractData.map((contract, index) => (
-            <Card key={index} className="mb-4">
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">Start Date</span>
-                    <div className="text-sm font-medium">{contract['Start Date'] || 'Not specified'}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">End Date</span>
-                    <div className="text-sm font-medium">{contract['End Date'] || 'Not specified'}</div>
-                  </div>
+          {/* Contract info as subtitle */}
+          {campaignContractData.length > 0 && (
+            <div className="space-y-1">
+              {campaignContractData.map((contract, index) => (
+                <div key={index} className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                  <span>{contract['Start Date'] || 'Start: Not specified'} → {contract['End Date'] || 'End: Not specified'}</span>
                   {contract.budget && (
-                    <div>
-                      <span className="text-xs text-muted-foreground block mb-1">Budget</span>
-                      <div className="text-sm font-medium">{formatCurrency(parseFloat(contract.budget))}</div>
-                    </div>
+                    <span><strong>Budget:</strong> {formatCurrency(parseFloat(contract.budget))}</span>
                   )}
                   {(contract.cpm || contract.CPM) && (
-                    <div>
-                      <span className="text-xs text-muted-foreground block mb-1">CPM</span>
-                      <div className="text-sm font-medium">{formatCurrency(parseFloat(contract.cpm || contract.CPM))}</div>
-                    </div>
+                    <span><strong>CPM:</strong> {formatCurrency(parseFloat(contract.cpm || contract.CPM))}</span>
                   )}
                   {contract.goal && (
-                    <div>
-                      <span className="text-xs text-muted-foreground block mb-1">Goal</span>
-                      <div className="text-sm font-medium">{contract.goal}</div>
-                    </div>
+                    <span>Goal: {contract.goal}</span>
                   )}
                   {contract.impression_goal && (
-                    <div>
-                      <span className="text-xs text-muted-foreground block mb-1">Impression Goal</span>
-                      <div className="text-sm font-medium">{parseFloat(contract.impression_goal).toLocaleString()}</div>
-                    </div>
+                    <span><strong>Impression Goal:</strong> {parseFloat(contract.impression_goal).toLocaleString()}</span>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
 
       {/* Campaign summary metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -403,18 +356,32 @@ const CampaignManager = ({
         </Card>
       </div>
 
+      {/* Pacing and Health Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <CampaignPacingCard
+          campaignName={selectedCampaign}
+          contractTermsData={campaignContractData}
+          deliveryData={filteredCampaignData}
+          unfilteredData={campaignData}
+          dbContractTerms={allContractData}
+          pacingData={campaignPacingData}
+        />
+
+        <CampaignHealthCard
+          campaignName={selectedCampaign}
+          deliveryData={filteredCampaignData}
+          pacingData={campaignPacingData}
+          contractTermsData={campaignContractData}
+          unfilteredData={campaignData}
+          dbContractTerms={allContractData}
+        />
+      </div>
+
       {/* Tabbed content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
-          {(campaignPacingData.length > 0 || campaignContractData.length > 0) && (
-            <TabsTrigger value="health">Health</TabsTrigger>
-          )}
-          <TabsTrigger value="pacing">Pacing</TabsTrigger>
-          {campaignContractData.length > 0 && (
-            <TabsTrigger value="status">Status</TabsTrigger>
-          )}
           <TabsTrigger value="raw-data">Raw Data</TabsTrigger>
         </TabsList>
 
@@ -450,38 +417,8 @@ const CampaignManager = ({
           />
         </TabsContent>
 
-        {(campaignPacingData.length > 0 || campaignContractData.length > 0) && (
-          <TabsContent value="health" className="mt-6">
-            <CampaignHealthTab
-              data={filteredCampaignData}
-              pacingData={campaignPacingData}
-              contractTermsData={campaignContractData}
-            />
-          </TabsContent>
-        )}
 
-        <TabsContent value="pacing" className="mt-6">
-          <Pacing
-            data={filteredCampaignData}
-            unfilteredData={filteredCampaignData}
-            pacingData={campaignPacingData}
-            contractTermsData={campaignContractData}
-          />
-        </TabsContent>
 
-        {campaignContractData.length > 0 && (
-          <TabsContent value="status" className="mt-6">
-            <StatusTab
-              contractTermsData={campaignContractData}
-              deliveryData={filteredCampaignData}
-              globalMostRecentDate={
-                filteredCampaignData.length > 0
-                  ? new Date(Math.max(...filteredCampaignData.map(row => parseDateString(row.DATE)?.getTime() || 0).filter(Boolean)))
-                  : new Date()
-              }
-            />
-          </TabsContent>
-        )}
 
         <TabsContent value="raw-data" className="mt-6">
           <RawDataTableImproved

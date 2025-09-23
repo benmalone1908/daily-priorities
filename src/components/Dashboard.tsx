@@ -23,6 +23,7 @@ import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import CombinedMetricsChart from "./CombinedMetricsChart";
+import { DailyTotalsTable } from "./DailyTotalsTable";
 
 interface DashboardProps {
   data: any[];
@@ -55,6 +56,7 @@ interface DashboardProps {
   useGlobalFilters?: boolean;
   hideCharts?: string[];
   chartToggleComponent?: React.ReactNode;
+  chartModeSelector?: React.ReactNode;
   activeTab?: string;
   onChartTabChange?: (tab: string) => void;
   viewByDate?: boolean;
@@ -62,6 +64,7 @@ interface DashboardProps {
   contractTermsData?: any[];
   customBarMetric?: string;
   customLineMetric?: string;
+  showDailyTotalsTable?: boolean;
 }
 
 interface WeeklyData {
@@ -245,13 +248,15 @@ const Dashboard = ({
   useGlobalFilters = false,
   hideCharts = [],
   chartToggleComponent,
+  chartModeSelector,
   activeTab = "display",
   onChartTabChange,
   viewByDate = true,
   hideChartTitle = false,
   contractTermsData,
   customBarMetric = "IMPRESSIONS",
-  customLineMetric = "CLICKS"
+  customLineMetric = "CLICKS",
+  showDailyTotalsTable = true
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1120,15 +1125,39 @@ const Dashboard = ({
 
       {/* FIXED: Changed from AND (&&) to OR (||) logic for chart visibility */}
       {!(hideCharts.includes("metricsChart") && hideCharts.includes("revenueChart")) && (
-        <CombinedMetricsChart 
-          data={combinedChartData}
-          title="Campaign Performance"
-          chartToggleComponent={chartToggleComponent}
-          onTabChange={handleCombinedChartTabChange}
-          initialTab={activeTab}
-          customBarMetric={customBarMetric}
-          customLineMetric={customLineMetric}
-        />
+        <div className="space-y-4">
+          {/* Chart Mode Selector above table, aligned right - only show when table is visible */}
+          {showDailyTotalsTable && (
+            <div className="flex justify-end">
+              {chartModeSelector}
+            </div>
+          )}
+
+          <div className={`${showDailyTotalsTable ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : 'w-full'}`}>
+            {/* Performance Chart */}
+            <div className={showDailyTotalsTable ? 'lg:col-span-2' : 'w-full'}>
+              <CombinedMetricsChart
+                data={combinedChartData}
+                title=""
+                chartToggleComponent={chartToggleComponent}
+                onTabChange={handleCombinedChartTabChange}
+                initialTab={activeTab}
+                customBarMetric={customBarMetric}
+                customLineMetric={customLineMetric}
+                chartModeSelector={!showDailyTotalsTable ? chartModeSelector : undefined}
+              />
+            </div>
+            {/* Daily Totals Table */}
+            {showDailyTotalsTable && (
+              <div className="lg:col-span-1">
+                <DailyTotalsTable
+                  data={data}
+                  chartMode={activeTab as 'display' | 'attribution' | 'custom'}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Filter controls that were previously in the chart cards */}

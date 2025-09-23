@@ -24,6 +24,8 @@ interface CombinedMetricsChartProps {
   // New props for custom metrics
   customBarMetric?: string;
   customLineMetric?: string;
+  // Chart mode selector to be rendered inside the chart
+  chartModeSelector?: React.ReactNode;
 }
 
 // Helper function to get complete date range from data
@@ -129,14 +131,15 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
   return result;
 };
 
-const CombinedMetricsChart = ({ 
-  data, 
-  title = "Campaign Performance", 
+const CombinedMetricsChart = ({
+  data,
+  title = "Campaign Performance",
   chartToggleComponent,
   onTabChange,
   initialTab = "display",
   customBarMetric = "IMPRESSIONS",
-  customLineMetric = "CLICKS"
+  customLineMetric = "CLICKS",
+  chartModeSelector
 }: CombinedMetricsChartProps) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -296,7 +299,6 @@ const CombinedMetricsChart = ({
               boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
             }}
           />
-          <Legend />
           <Bar
             dataKey="IMPRESSIONS"
             fill="#4ade80"
@@ -334,7 +336,6 @@ const CombinedMetricsChart = ({
               boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
             }}
           />
-          <Legend />
           <Line
             type="monotone"
             dataKey="TRANSACTIONS"
@@ -377,7 +378,6 @@ const CombinedMetricsChart = ({
               boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)"
             }}
           />
-          <Legend />
           <Bar
             dataKey={customBarMetric}
             fill="#3b82f6"
@@ -407,8 +407,41 @@ const CombinedMetricsChart = ({
     <Card className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>{title}</CardTitle>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-6">
+            <CardTitle>{title}</CardTitle>
+            {/* Custom Legend */}
+            <div className="flex items-center space-x-4 text-xs">
+              {activeTab === "display" && (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-2 bg-green-400 opacity-80"></div>
+                    <span>Impressions</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-0.5 bg-amber-500"></div>
+                    <span>Clicks</span>
+                  </div>
+                </>
+              )}
+              {activeTab === "attribution" && (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-0.5 bg-red-500"></div>
+                    <span>Transactions</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-2 bg-purple-500 opacity-80"></div>
+                    <span>Attributed Sales</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {chartModeSelector && (
+              <div>{chartModeSelector}</div>
+            )}
             {chartToggleComponent && (
               <div>{chartToggleComponent}</div>
             )}
