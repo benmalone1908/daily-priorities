@@ -66,6 +66,7 @@ interface DashboardProps {
   customBarMetric?: string;
   customLineMetric?: string;
   showDailyTotalsTable?: boolean;
+  hideDashboardSparkCharts?: boolean;
 }
 
 interface WeeklyData {
@@ -257,7 +258,8 @@ const Dashboard = ({
   contractTermsData,
   customBarMetric = "IMPRESSIONS",
   customLineMetric = "CLICKS",
-  showDailyTotalsTable = true
+  showDailyTotalsTable = true,
+  hideDashboardSparkCharts = false
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1273,7 +1275,9 @@ const Dashboard = ({
       )}
 
       {/* Campaign Overview Spark Charts */}
-      <DashboardSparkCharts data={useGlobalFilters ? (metricsData || data) : data} />
+      {!hideDashboardSparkCharts && (
+        <DashboardSparkCharts data={useGlobalFilters ? (metricsData || data) : data} />
+      )}
 
       {/* Weekly comparison section */}
       <Card className="p-6">

@@ -1067,6 +1067,7 @@ const DashboardContent = ({
                   />
                 }
                 showDailyTotalsTable={false}
+                hideDashboardSparkCharts={true}
               />
             </div>
           </div>

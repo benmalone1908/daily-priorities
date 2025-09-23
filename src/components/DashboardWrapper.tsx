@@ -34,6 +34,8 @@ interface DashboardWrapperProps {
   contractTermsData?: any[];
   // Add prop to control whether to show the daily totals table
   showDailyTotalsTable?: boolean;
+  // Add prop to control whether to hide dashboard spark charts
+  hideDashboardSparkCharts?: boolean;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -311,6 +313,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       contractTermsData={props.contractTermsData}
       // Pass showDailyTotalsTable prop through
       showDailyTotalsTable={props.showDailyTotalsTable}
+      // Pass hideDashboardSparkCharts prop through
+      hideDashboardSparkCharts={props.hideDashboardSparkCharts}
     />
   );
 };

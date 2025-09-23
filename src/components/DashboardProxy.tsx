@@ -41,6 +41,7 @@ interface DashboardProxyProps {
   chartToggleComponent?: React.ReactNode;
   contractTermsData?: any[];
   showDailyTotalsTable?: boolean;
+  hideDashboardSparkCharts?: boolean;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -149,6 +150,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         customBarMetric={customBarMetric}
         customLineMetric={customLineMetric}
         showDailyTotalsTable={props.showDailyTotalsTable}
+        hideDashboardSparkCharts={props.hideDashboardSparkCharts}
       />
     </div>
   );
