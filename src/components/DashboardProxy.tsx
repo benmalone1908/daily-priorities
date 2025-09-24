@@ -46,14 +46,14 @@ interface DashboardProxyProps {
 
 // Wrapper component for passing props to Dashboard
 const DashboardProxy = (props: DashboardProxyProps) => {
-  const [chartMode, setChartMode] = useState<"display" | "attribution" | "custom">("display");
+  const [chartMode, setChartMode] = useState<"display" | "attribution" | "custom" | "spend">("display");
   const [activeTab, setActiveTab] = useState("display");
   const [viewByDate, setViewByDate] = useState(true);
   const [customBarMetric, setCustomBarMetric] = useState("IMPRESSIONS");
   const [customLineMetric, setCustomLineMetric] = useState("CLICKS");
 
   // Enhanced mode handler that properly updates both the mode and active tab
-  const handleModeChange = (mode: "display" | "attribution" | "custom") => {
+  const handleModeChange = (mode: "display" | "attribution" | "custom" | "spend") => {
     console.log(`DashboardProxy: Chart mode changed to ${mode}, setting activeTab to ${mode}`);
     setChartMode(mode);
     setActiveTab(mode);

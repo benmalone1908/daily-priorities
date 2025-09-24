@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  ResponsiveContainer, 
-  ComposedChart, 
-  Line, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  BarChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
 } from "recharts";
 import { formatNumber, parseDateString, formatDateSortable } from "@/lib/utils";
+import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import SparkChartModal from "./SparkChartModal";
 
 interface CombinedMetricsChartProps {
@@ -26,6 +28,8 @@ interface CombinedMetricsChartProps {
   customLineMetric?: string;
   // Chart mode selector to be rendered inside the chart
   chartModeSelector?: React.ReactNode;
+  // Raw data for spend calculations (with campaign names)
+  rawData?: any[];
 }
 
 // Helper function to get complete date range from data
@@ -139,11 +143,13 @@ const CombinedMetricsChart = ({
   initialTab = "display",
   customBarMetric = "IMPRESSIONS",
   customLineMetric = "CLICKS",
-  chartModeSelector
+  chartModeSelector,
+  rawData = []
 }: CombinedMetricsChartProps) => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
-  
+  const { extractAgencyInfo } = useCampaignFilter();
+
   console.log(`CombinedMetricsChart: Rendering with data length: ${data?.length}, activeTab: ${activeTab}, initialTab: ${initialTab}`);
   
   // Format functions for different metrics
@@ -235,6 +241,54 @@ const CombinedMetricsChart = ({
   // Get complete date range for filling gaps
   const completeDateRange = getCompleteDateRange(data);
 
+  // Function to process spend data for MediaJel Direct vs Channel Partners
+  const processSpendData = () => {
+    const dataToUse = rawData.length > 0 ? rawData : data;
+    const spendByDate = new Map();
+
+    dataToUse.forEach(row => {
+      const date = row.DATE || row.date;
+      if (!date || date === 'Totals') return;
+
+      const campaignName = row["CAMPAIGN ORDER NAME"] || row.campaignName || "";
+      let spend = Number(row.SPEND || row.spend || 0);
+
+      // Apply Orangellow CPM to $7 conversion
+      const { agency, abbreviation } = extractAgencyInfo(campaignName);
+      if (abbreviation === 'OG' || abbreviation === 'SM' || agency === 'Orangellow') {
+        // Convert CPM campaigns to $7 CPM equivalent
+        const impressions = Number(row.IMPRESSIONS || row.impressions || 0);
+        if (impressions > 0) {
+          spend = (impressions / 1000) * 7; // $7 CPM
+        }
+      }
+
+      // Determine if it's MediaJel Direct or Channel Partners
+      const isMediaJelDirect = agency === 'MediaJel Direct' || abbreviation === 'MJ';
+
+      if (!spendByDate.has(date)) {
+        spendByDate.set(date, {
+          date,
+          MediaJelDirect: 0,
+          ChannelPartners: 0
+        });
+      }
+
+      const dayData = spendByDate.get(date);
+      if (isMediaJelDirect) {
+        dayData.MediaJelDirect += spend;
+      } else {
+        dayData.ChannelPartners += spend;
+      }
+    });
+
+    return Array.from(spendByDate.values()).sort((a, b) => {
+      const dateA = parseDateString(a.date);
+      const dateB = parseDateString(b.date);
+      return dateA && dateB ? dateA.getTime() - dateB.getTime() : 0;
+    });
+  };
+
   // Process data to ensure we have all required fields and normalize dates
   const processedData = data
     .filter(item => item && (item.DATE || item.DAY_OF_WEEK))
@@ -261,8 +315,12 @@ const CombinedMetricsChart = ({
   // Check if we're dealing with day of week data
   const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
   
+  // For spend mode, use different data processing
+  const spendData = activeTab === "spend" ? processSpendData() : [];
+  const dataForChart = activeTab === "spend" ? spendData : processedData;
+
   // Fill missing dates with zero values for continuous trend lines (only for date-based data)
-  const filledData = fillMissingDatesForCombo(processedData, completeDateRange);
+  const filledData = activeTab === "spend" ? spendData : fillMissingDatesForCombo(processedData, completeDateRange);
   
   // Only sort if we're dealing with dates, not days of week
   const sortedData = !isDayOfWeekData && filledData.some(item => item.date && !isNaN(new Date(item.date).getTime()))
@@ -398,8 +456,64 @@ const CombinedMetricsChart = ({
           />
         </ComposedChart>
       );
+    } else if (activeTab === "spend") {
+      return (
+        <BarChart data={sortedData}>
+          <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+          <YAxis tickFormatter={(value) => `$${formatNumber(value)}`} tick={{ fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+          <Tooltip
+            formatter={(value: any, name: string) => [
+              `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              name === 'MediaJelDirect' ? 'MediaJel Direct' : 'Channel Partners'
+            ]}
+            labelFormatter={(label: string) => `Date: ${label}`}
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                const mediaJelValue = payload.find(p => p.dataKey === 'MediaJelDirect')?.value || 0;
+                const channelPartnersValue = payload.find(p => p.dataKey === 'ChannelPartners')?.value || 0;
+                const total = Number(mediaJelValue) + Number(channelPartnersValue);
+
+                return (
+                  <div className="bg-white/95 border border-gray-200 rounded p-3 shadow-lg">
+                    <p className="font-medium mb-2">{`Date: ${label}`}</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                        <span className="text-sm">MediaJel Direct: ${Number(mediaJelValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                        <span className="text-sm">Channel Partners: ${Number(channelPartnersValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="border-t border-gray-200 pt-1 mt-2">
+                        <span className="text-sm font-medium">Total: ${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          <Bar
+            dataKey="MediaJelDirect"
+            stackId="spend"
+            fill="#3b82f6"
+            name="MediaJel Direct"
+            barSize={barSize}
+          />
+          <Bar
+            dataKey="ChannelPartners"
+            stackId="spend"
+            fill="#fbbf24"
+            name="Channel Partners"
+            barSize={barSize}
+          />
+        </BarChart>
+      );
     }
-    
+
     return null;
   };
 
@@ -432,6 +546,18 @@ const CombinedMetricsChart = ({
                   <div className="flex items-center space-x-1">
                     <div className="w-3 h-2 bg-purple-500 opacity-80"></div>
                     <span>Attributed Sales</span>
+                  </div>
+                </>
+              )}
+              {activeTab === "spend" && (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-2 bg-blue-500"></div>
+                    <span>MediaJel Direct</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-2 bg-yellow-400"></div>
+                    <span>Channel Partners</span>
                   </div>
                 </>
               )}

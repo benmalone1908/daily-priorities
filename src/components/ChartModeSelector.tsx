@@ -2,8 +2,8 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChartModeSelectorProps {
-  mode: "display" | "attribution" | "custom";
-  onModeChange: (mode: "display" | "attribution" | "custom") => void;
+  mode: "display" | "attribution" | "custom" | "spend";
+  onModeChange: (mode: "display" | "attribution" | "custom" | "spend") => void;
 }
 
 export function ChartModeSelector({ mode, onModeChange }: ChartModeSelectorProps) {
@@ -17,6 +17,7 @@ export function ChartModeSelector({ mode, onModeChange }: ChartModeSelectorProps
         <SelectContent>
           <SelectItem value="display">Display</SelectItem>
           <SelectItem value="attribution">Attribution</SelectItem>
+          <SelectItem value="spend">Spend</SelectItem>
           <SelectItem value="custom">Custom</SelectItem>
         </SelectContent>
       </Select>

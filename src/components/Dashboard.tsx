@@ -1148,6 +1148,7 @@ const Dashboard = ({
                 customBarMetric={customBarMetric}
                 customLineMetric={customLineMetric}
                 chartModeSelector={!showDailyTotalsTable ? chartModeSelector : undefined}
+                rawData={data}
               />
             </div>
             {/* Daily Totals Table */}
