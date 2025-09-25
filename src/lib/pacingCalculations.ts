@@ -18,7 +18,7 @@ export const parseCampaignDate = (dateStr: string): Date => {
 export const calculateCampaignMetrics = (
   contractTerms: ContractTerms,
   deliveryData: PacingDeliveryData[],
-  globalMostRecentDate?: Date,
+  globalYesterdayDate?: Date,
   unfilteredDeliveryData?: PacingDeliveryData[]
 ): CampaignMetrics => {
   try {
@@ -42,38 +42,56 @@ export const calculateCampaignMetrics = (
     const startDate = parseCampaignDate(contractTerms['Start Date']);
     const endDate = parseCampaignDate(contractTerms['End Date']);
     
-    // Find the most recent date in delivery data for this campaign
+    // Find delivery dates for this campaign and use "yesterday" (second-most-recent) as reference
     const campaignDeliveryData = deliveryData.filter(row => row['CAMPAIGN ORDER NAME'] === contractTerms.Name);
     const deliveryDates = campaignDeliveryData
       .map(row => parseDateString(row.DATE))
       .filter(Boolean) as Date[];
-    
-    // Use campaign-specific most recent date if available, otherwise use global most recent date, fallback to today
-    const mostRecentDataDate = deliveryDates.length > 0 
-      ? new Date(Math.max(...deliveryDates.map(d => d.getTime())))
-      : globalMostRecentDate || new Date();
+
+    // Sort dates newest to oldest
+    deliveryDates.sort((a, b) => b.getTime() - a.getTime());
+
+    // Use "yesterday" (second-most-recent date) as reference for all calculations
+    // This avoids incomplete data from the most recent date and ensures consistency
+    let referenceDate: Date;
+    if (deliveryDates.length >= 2) {
+      // Use second-most-recent date (yesterday)
+      referenceDate = deliveryDates[1];
+    } else if (deliveryDates.length === 1) {
+      // Only one date available, use it
+      referenceDate = deliveryDates[0];
+    } else {
+      // Fallback to global yesterday date or today
+      referenceDate = globalYesterdayDate || new Date();
+    }
   
   // Calculate campaign duration (inclusive of both start and end dates)
   const totalCampaignDays = differenceInDays(endDate, startDate) + 1;
   
-  // Calculate days into campaign based on most recent data date
+  // Calculate days into campaign based on reference date (yesterday)
   const daysIntoCampaign = Math.max(0, Math.min(
-    differenceInDays(mostRecentDataDate, startDate),
+    differenceInDays(referenceDate, startDate) + 1, // +1 to include the reference date
     totalCampaignDays
   ));
-  
-  // Calculate days remaining from most recent data date to end date
-  const daysUntilEnd = Math.max(0, differenceInDays(endDate, mostRecentDataDate));
+
+  // Calculate days remaining from reference date to end date
+  const daysUntilEnd = Math.max(0, differenceInDays(endDate, referenceDate));
   
   
   // Calculate expected impressions (total goal / total days * days elapsed)
   const averageDailyImpressions = impressionGoal / totalCampaignDays;
   const expectedImpressions = averageDailyImpressions * daysIntoCampaign;
   
-  // Calculate actual impressions from unfiltered delivery data (if available) to get true totals
+  // Calculate actual impressions through reference date (yesterday) only
   const dataForCalculation = unfilteredDeliveryData || deliveryData;
   const actualImpressions = dataForCalculation
-    .filter(row => row['CAMPAIGN ORDER NAME'] === contractTerms.Name)
+    .filter(row => {
+      if (row['CAMPAIGN ORDER NAME'] !== contractTerms.Name) return false;
+
+      // Only include data through the reference date (yesterday)
+      const rowDate = parseDateString(row.DATE);
+      return rowDate && rowDate.getTime() <= referenceDate.getTime();
+    })
     .reduce((sum, row) => sum + parseInt(row.IMPRESSIONS.replace(/[,]/g, '') || '0'), 0);
   
   // Calculate current pacing (actual / expected)
@@ -82,6 +100,7 @@ export const calculateCampaignMetrics = (
   // Debug logging for pacing calculation
   if (currentPacing === 0 && actualImpressions > 0) {
     console.log(`\n=== PACING DEBUG: ${contractTerms.Name} ===`);
+    console.log(`Reference date (yesterday): ${referenceDate.toDateString()}`);
     console.log(`Expected impressions: ${expectedImpressions}`);
     console.log(`Actual impressions: ${actualImpressions}`);
     console.log(`Days into campaign: ${daysIntoCampaign}`);
@@ -96,15 +115,16 @@ export const calculateCampaignMetrics = (
   // Calculate remaining average needed per day
   const remainingAverageNeeded = daysUntilEnd > 0 ? remainingImpressions / daysUntilEnd : 0;
   
-  // Get yesterday's impressions (second most recent day in delivery data for this campaign)
-  const sortedCampaignDeliveryData = dataForCalculation
-    .filter(row => row['CAMPAIGN ORDER NAME'] === contractTerms.Name)
-    .map(row => ({ ...row, parsedDate: parseDateString(row.DATE) }))
-    .filter(row => row.parsedDate)
-    .sort((a, b) => b.parsedDate!.getTime() - a.parsedDate!.getTime());
-  
-  const yesterdayImpressions = sortedCampaignDeliveryData.length > 1 
-    ? parseInt(sortedCampaignDeliveryData[1].IMPRESSIONS.replace(/[,]/g, '') || '0')
+  // Get yesterday's impressions (from the reference date)
+  const yesterdayData = dataForCalculation
+    .filter(row => {
+      if (row['CAMPAIGN ORDER NAME'] !== contractTerms.Name) return false;
+      const rowDate = parseDateString(row.DATE);
+      return rowDate && rowDate.getTime() === referenceDate.getTime();
+    });
+
+  const yesterdayImpressions = yesterdayData.length > 0
+    ? parseInt(yesterdayData[0].IMPRESSIONS.replace(/[,]/g, '') || '0')
     : 0;
   
   // Calculate yesterday vs remaining needed
@@ -141,17 +161,22 @@ export const processCampaigns = (
   const processedCampaigns: ProcessedCampaign[] = [];
   const skippedCampaigns: string[] = [];
 
-  // Calculate global most recent date from unfiltered delivery data (if available), otherwise use filtered data
+  // Calculate global "yesterday" date (second-most-recent) from unfiltered delivery data
   const dataForGlobalDate = unfilteredDeliveryData || deliveryData;
   const allDeliveryDates = dataForGlobalDate
     .map(row => parseDateString(row.DATE))
     .filter(Boolean) as Date[];
-  
-  const globalMostRecentDate = allDeliveryDates.length > 0 
-    ? new Date(Math.max(...allDeliveryDates.map(d => d.getTime())))
-    : new Date();
 
-  console.log(`Global most recent date from all delivery data: ${globalMostRecentDate.toDateString()}`);
+  // Sort dates newest to oldest and use second-most-recent as global reference
+  allDeliveryDates.sort((a, b) => b.getTime() - a.getTime());
+
+  const globalYesterdayDate = allDeliveryDates.length >= 2
+    ? allDeliveryDates[1] // Second-most-recent (yesterday)
+    : allDeliveryDates.length === 1
+    ? allDeliveryDates[0] // Only one date available
+    : new Date(); // Fallback to today
+
+  console.log(`Global reference date (yesterday) from all delivery data: ${globalYesterdayDate.toDateString()}`);
 
   contractTermsData.forEach(contractTerms => {
     try {
@@ -166,7 +191,7 @@ export const processCampaigns = (
         return;
       }
 
-      const metrics = calculateCampaignMetrics(contractTerms, deliveryData, globalMostRecentDate, unfilteredDeliveryData);
+      const metrics = calculateCampaignMetrics(contractTerms, deliveryData, globalYesterdayDate, unfilteredDeliveryData);
 
       processedCampaigns.push({
         name: contractTerms.Name,

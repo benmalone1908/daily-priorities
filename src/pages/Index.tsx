@@ -1120,8 +1120,6 @@ const DashboardContent = ({
             <Pacing
               data={globalFilteredData}
               unfilteredData={data}
-              pacingData={pacingData}
-              contractTermsData={contractTermsData}
             />
           </div>
         </TabsContent>

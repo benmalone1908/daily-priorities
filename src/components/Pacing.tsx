@@ -312,11 +312,9 @@ const DetailedView: React.FC<DetailedViewProps> = ({ campaign }) => {
 interface PacingProps {
   data: any[];
   unfilteredData: any[];
-  pacingData: any[];
-  contractTermsData: any[];
 }
 
-export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData, pacingData, contractTermsData }) => {
+export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
   const [selectedCampaign, setSelectedCampaign] = useState<ProcessedCampaign | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dbContractTerms, setDbContractTerms] = useState<any[]>([]);
@@ -353,110 +351,65 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData, pacingData
         return [];
       }
 
+      // Only proceed if we have database contract terms
+      if (dbContractTerms.length === 0) {
+        console.log('📋 No database contract terms available for pacing analysis');
+        return [];
+      }
+
       // Get unique campaign names from data
       const campaignNamesInData = Array.from(new Set(data.map(row => row['CAMPAIGN ORDER NAME'])));
 
-      // Use database contract terms first, then uploaded contract terms, then derive from data
-      let contractTerms: ContractTerms[] = [];
-      let missing: string[] = [];
+      // Convert database contract terms to the expected format
+      const contractTerms: ContractTerms[] = dbContractTerms.map((row: any) => ({
+        Name: row.campaign_name,
+        'Start Date': row.start_date,
+        'End Date': row.end_date,
+        Budget: row.budget.toString(),
+        CPM: row.cpm.toString(),
+        'Impressions Goal': row.impressions_goal.toString()
+      }));
 
-      if (dbContractTerms.length > 0) {
-        // Convert database contract terms to the expected format
-        contractTerms = dbContractTerms.map((row: any) => ({
-          Name: row.campaign_name,
-          'Start Date': row.start_date,
-          'End Date': row.end_date,
-          Budget: row.budget.toString(),
-          CPM: row.cpm.toString(),
-          'Impressions Goal': row.impressions_goal.toString()
-        }));
+      // Find campaigns that are missing contract terms
+      const campaignsWithContracts = new Set(dbContractTerms.map(t => t.campaign_name));
+      const missing = campaignNamesInData.filter(name => !campaignsWithContracts.has(name));
 
-        // Find campaigns that are missing contract terms
-        const campaignsWithContracts = new Set(dbContractTerms.map(t => t.campaign_name));
-        missing = campaignNamesInData.filter(name => !campaignsWithContracts.has(name));
+      // Calculate detailed data for missing campaigns and filter out campaigns with zero impressions on most recent day
+      const missingDetails = missing.map(campaignName => {
+        const campaignRows = data.filter(row => row['CAMPAIGN ORDER NAME'] === campaignName);
 
-        // Calculate detailed data for missing campaigns and filter out campaigns with zero impressions on most recent day
-        const missingDetails = missing.map(campaignName => {
-          const campaignRows = data.filter(row => row['CAMPAIGN ORDER NAME'] === campaignName);
+        const dates = campaignRows
+          .map(row => parseDateString(row.DATE))
+          .filter(Boolean) as Date[];
+        dates.sort((a, b) => a.getTime() - b.getTime());
 
-          const dates = campaignRows
-            .map(row => parseDateString(row.DATE))
-            .filter(Boolean) as Date[];
-          dates.sort((a, b) => a.getTime() - b.getTime());
-
-          // Find the most recent day's data
-          const mostRecentDate = dates[dates.length - 1];
-          const mostRecentRow = campaignRows.find(row => {
-            const rowDate = parseDateString(row.DATE);
-            return rowDate && rowDate.getTime() === mostRecentDate?.getTime();
-          });
-
-          // Check if most recent day has zero impressions (not blank, but actual zero)
-          const mostRecentImpressions = mostRecentRow ? parseInt(mostRecentRow.IMPRESSIONS?.toString().replace(/,/g, '') || '0') : 0;
-          const hasZeroImpressionsOnMostRecentDay = mostRecentRow && mostRecentRow.IMPRESSIONS !== undefined && mostRecentRow.IMPRESSIONS !== null && mostRecentRow.IMPRESSIONS !== '' && mostRecentImpressions === 0;
-
-          const totalImpressions = campaignRows.reduce((sum, row) =>
-            sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
-
-          return {
-            name: campaignName,
-            firstDate: dates[0] ? dates[0].toLocaleDateString() : 'Unknown',
-            lastDate: dates[dates.length - 1] ? dates[dates.length - 1].toLocaleDateString() : 'Unknown',
-            totalImpressions,
-            hasZeroImpressionsOnMostRecentDay
-          };
-        }).filter(campaign => !campaign.hasZeroImpressionsOnMostRecentDay); // Filter out campaigns with zero impressions on most recent day
-
-        // Update missing contracts to only include campaigns that aren't filtered out
-        missing = missingDetails.map(campaign => campaign.name);
-
-        setMissingContractsData(missingDetails);
-
-        console.log(`📋 Using ${contractTerms.length} database contract terms`);
-        console.log(`⚠️ Found ${missing.length} campaigns without contract terms:`, missing);
-      } else if (contractTermsData.length > 0) {
-        // Fallback to uploaded contract terms data
-        contractTerms = contractTermsData.map((row: any) => ({
-          Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
-          'Start Date': row['Start Date'] || row.START_DATE || '',
-          'End Date': row['End Date'] || row.END_DATE || '',
-          Budget: row.Budget || row.BUDGET || '',
-          CPM: row.CPM || row.cpm || '',
-          'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
-        }));
-
-        console.log(`📋 Using ${contractTerms.length} uploaded contract terms`);
-      } else {
-        // Try to derive contract terms from campaign data
-        const campaignNames = Array.from(new Set(data.map(row => row['CAMPAIGN ORDER NAME'])));
-        contractTerms = campaignNames.map(name => {
-          // Find all rows for this campaign to determine date range and totals
-          const campaignRows = data.filter(row => row['CAMPAIGN ORDER NAME'] === name);
-          
-          const dates = campaignRows
-            .map(row => parseDateString(row.DATE))
-            .filter(Boolean) as Date[];
-          dates.sort((a, b) => a.getTime() - b.getTime());
-          const startDate = dates[0];
-          const endDate = dates[dates.length - 1];
-          
-          // Calculate totals for this campaign
-          const totalImpressions = campaignRows.reduce((sum, row) => sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
-          const totalSpend = campaignRows.reduce((sum, row) => sum + (parseFloat(row.SPEND?.toString().replace(/[$,]/g, '') || '0') || 0), 0);
-          
-          // Estimate CPM from spend and impressions
-          const estimatedCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
-          
-          return {
-            Name: name,
-            'Start Date': startDate ? startDate.toISOString().split('T')[0] : '',
-            'End Date': endDate ? endDate.toISOString().split('T')[0] : '',
-            Budget: totalSpend.toString(),
-            CPM: estimatedCPM.toFixed(2),
-            'Impressions Goal': Math.round(totalImpressions * 1.1).toString() // Assume 10% buffer over actual
-          };
+        // Find the most recent day's data
+        const mostRecentDate = dates[dates.length - 1];
+        const mostRecentRow = campaignRows.find(row => {
+          const rowDate = parseDateString(row.DATE);
+          return rowDate && rowDate.getTime() === mostRecentDate?.getTime();
         });
-      }
+
+        // Check if most recent day has zero impressions (not blank, but actual zero)
+        const mostRecentImpressions = mostRecentRow ? parseInt(mostRecentRow.IMPRESSIONS?.toString().replace(/,/g, '') || '0') : 0;
+        const hasZeroImpressionsOnMostRecentDay = mostRecentRow && mostRecentRow.IMPRESSIONS !== undefined && mostRecentRow.IMPRESSIONS !== null && mostRecentRow.IMPRESSIONS !== '' && mostRecentImpressions === 0;
+
+        const totalImpressions = campaignRows.reduce((sum, row) =>
+          sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
+
+        return {
+          name: campaignName,
+          firstDate: dates[0] ? dates[0].toLocaleDateString() : 'Unknown',
+          lastDate: dates[dates.length - 1] ? dates[dates.length - 1].toLocaleDateString() : 'Unknown',
+          totalImpressions,
+          hasZeroImpressionsOnMostRecentDay
+        };
+      }).filter(campaign => !campaign.hasZeroImpressionsOnMostRecentDay); // Filter out campaigns with zero impressions on most recent day
+
+      setMissingContractsData(missingDetails);
+      setMissingContracts(missingDetails.map(c => c.name));
+      console.log(`📋 Using ${contractTerms.length} database contract terms`);
+      console.log(`⚠️ Found ${missingDetails.length} campaigns without contract terms:`, missingDetails.map(c => c.name));
 
       // Transform delivery data (use filtered data for display/calculations)
       const deliveryData: PacingDeliveryData[] = data.map((row: any) => ({
@@ -476,14 +429,11 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData, pacingData
 
       const processedCampaigns = processCampaigns(contractTerms, deliveryData, unfilteredDeliveryData);
 
-      // Update missing contracts state
-      setMissingContracts(missing);
-
       if (processedCampaigns.length === 0) {
-        setError('No campaigns could be processed from existing data. Contract terms may be missing.');
+        setError('No campaigns could be processed. All campaigns may be missing contract terms or delivery data.');
       } else if (processedCampaigns.length < contractTerms.length) {
         const skippedCount = contractTerms.length - processedCampaigns.length;
-        setError(`Successfully processed ${processedCampaigns.length} campaigns. ${skippedCount} campaigns were skipped due to missing or invalid data.`);
+        setError(`Successfully processed ${processedCampaigns.length} campaigns. ${skippedCount} campaigns were skipped due to missing delivery data.`);
       } else {
         setError(null);
       }
@@ -493,7 +443,7 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData, pacingData
       setError(err instanceof Error ? err.message : 'Error processing campaign data');
       return [];
     }
-  }, [data, unfilteredData, pacingData, contractTermsData, dbContractTerms]);
+  }, [data, unfilteredData, dbContractTerms]);
 
   // Modal handlers
   const handleCampaignClick = (campaign: ProcessedCampaign) => {
