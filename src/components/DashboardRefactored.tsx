@@ -14,7 +14,7 @@ import {
 import { DashboardProps } from "@/types/dashboard";
 
 // Import existing components that we'll refactor later
-import CombinedMetricsChart from "./CombinedMetricsChart";
+import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
 import { DailyTotalsTable } from "./DailyTotalsTable";
 import MetricCard from "./MetricCard";
 import DashboardSparkCharts from "./DashboardSparkCharts";

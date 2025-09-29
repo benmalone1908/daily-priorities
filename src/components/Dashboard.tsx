@@ -22,7 +22,7 @@ import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
-import CombinedMetricsChart from "./CombinedMetricsChart";
+import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
 import { DailyTotalsTable } from "./DailyTotalsTable";
 import DashboardSparkCharts from "./DashboardSparkCharts";
 

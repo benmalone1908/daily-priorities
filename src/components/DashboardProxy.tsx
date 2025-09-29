@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
-import CombinedMetricsChart from "./CombinedMetricsChart";
+import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
 import { ChartModeSelector } from "./ChartModeSelector";
 import { CustomMetricSelector } from "./CustomMetricSelector";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
