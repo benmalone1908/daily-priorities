@@ -458,7 +458,7 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <Target className="h-5 w-5 text-gray-600" />
-        <h2 className="text-xl font-semibold text-gray-900">Pacing 2 Report</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Campaign Pacing</h2>
       </div>
 
       {campaigns.length === 0 ? (
