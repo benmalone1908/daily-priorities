@@ -109,20 +109,11 @@ const SparkChart = ({
   return (
     <Card className={`hover:shadow-md transition-shadow cursor-pointer ${className}`}>
       <CardHeader className="pb-2">
-        {/* Header with title and agency info */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-sm font-medium leading-tight truncate" title={item.name}>
-              {item.name}
-            </CardTitle>
-            {item.agency && (
-              <div className="flex items-center gap-1 mt-1">
-                <Building className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground truncate" title={item.agency}>
-                  {item.agency}
-                </span>
-              </div>
-            )}
+        {/* Metric header with expand button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <config.icon className="h-4 w-4" style={{ color: config.color }} />
+            <span className="text-xs font-medium text-muted-foreground">{config.title}</span>
           </div>
           <button
             onClick={handleChartClick}
@@ -133,20 +124,14 @@ const SparkChart = ({
           </button>
         </div>
 
-        {/* Metric row */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
-            <config.icon className="h-4 w-4" style={{ color: config.color }} />
-            <span className="text-xs font-medium text-muted-foreground">{config.title}</span>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-semibold">{config.formatter(currentValue)}</div>
-            {Math.abs(trend) >= 0.1 && (
-              <div className={`text-xs ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
-              </div>
-            )}
-          </div>
+        {/* Value and trend */}
+        <div className="flex items-baseline justify-between pt-2">
+          <div className="text-lg font-semibold">{config.formatter(currentValue)}</div>
+          {Math.abs(trend) >= 0.1 && (
+            <div className={`text-xs font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
+            </div>
+          )}
         </div>
       </CardHeader>
 
@@ -172,7 +157,6 @@ const SparkChart = ({
                 connectNulls={false}
                 isAnimationActive={false}
               />
-              <Tooltip content={<CustomTooltip />} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

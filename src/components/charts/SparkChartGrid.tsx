@@ -207,34 +207,30 @@ const SparkChartGrid = ({
         </div>
       )}
 
-      {/* Metric Grid */}
-      {metrics.map(metric => {
-        const config = getMetricConfig(metric);
-
-        return (
-          <div key={metric} className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <config.icon className="h-5 w-5" style={{ color: config.color }} />
-              <h3 className="text-lg font-semibold">{config.title}</h3>
-              <span className="text-sm text-muted-foreground">
-                ({items.length} {filters.viewMode === "campaign" ? "campaigns" : "advertisers"})
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-              {items.map(item => (
-                <SparkChart
-                  key={`${item.name}-${metric}`}
-                  item={item}
-                  metric={metric}
-                  config={config}
-                  onChartClick={onChartClick}
-                />
-              ))}
+      {/* Campaign/Advertiser Grid - one row per item with all metrics */}
+      <div className="space-y-6">
+        {items.map(item => (
+          <div key={item.name} className="space-y-2">
+            <h3 className="text-sm font-semibold text-muted-foreground px-1">
+              {item.name}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {metrics.map(metric => {
+                const config = getMetricConfig(metric);
+                return (
+                  <SparkChart
+                    key={`${item.name}-${metric}`}
+                    item={item}
+                    metric={metric}
+                    config={config}
+                    onChartClick={onChartClick}
+                  />
+                );
+              })}
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 };
