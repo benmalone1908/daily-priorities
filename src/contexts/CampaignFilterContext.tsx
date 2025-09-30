@@ -13,6 +13,7 @@ export const AGENCY_MAPPING: Record<string, string> = {
   'FLWR': 'The Flowery',
   'HD': 'Highday',
   'HG': 'Happy Greens',
+  'HR': 'HighRewards',
   'HRB': 'Herb.co',
   'KAI': 'Kartel.AI',
   'LP': 'Lettuce Print',
@@ -79,7 +80,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     wwxDash: /-WWX-/,
     newFormat: /^\d+(?:\/\d+)?:\s*[^:]+:\s*([^-]+)/,
     newFormatNoSpace: /^\d+(?:\/\d+)?:[^:]+:([^-]+)/,  // Handle cases without spaces
-    agencyPrefixes: new RegExp(`(SM|2RS|6D|BLO|CB|CN|DJ|FDD|FLD|FLWR|HD|HG|HRB|KAI|LP|MJ|NLMC|NP|OG|PRP|TCC|TF|TRN|TST|W&T|WWX):\\\\s+(.*?)(?=-)`, 'i')
+    agencyPrefixes: new RegExp(`(SM|2RS|6D|BLO|CB|CN|DJ|FDD|FLD|FLWR|HD|HG|HR|HRB|KAI|LP|MJ|NLMC|NP|OG|PRP|TCC|TF|TRN|TST|W&T|WWX):\\\\s+(.*?)(?=-)`, 'i')
   }), []);
 
   // Helper function to extract agency information from campaign name with caching
