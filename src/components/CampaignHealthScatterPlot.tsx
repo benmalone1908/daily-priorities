@@ -7,6 +7,7 @@ import { ZoomIn, ZoomOut, RotateCcw, X } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import QuadrantZoomModal from "./QuadrantZoomModal";
 import { calculateTooltipPosition, getTooltipZIndex, createScrollHandler } from "@/utils/tooltipPositioning";
+import { formatNumber, formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface CampaignHealthScatterPlotProps {
   healthData: CampaignHealthData[];
@@ -66,7 +67,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     const coordinateGroups = new Map<string, CampaignHealthData[]>();
     
     healthData.forEach(campaign => {
-      const key = `${campaign.completionPercentage.toFixed(1)}-${campaign.healthScore.toFixed(1)}`;
+      const key = `${formatNumber(campaign.completionPercentage, { decimals: 1 })}-${formatNumber(campaign.healthScore, { decimals: 1 })}`;
       if (!coordinateGroups.has(key)) {
         coordinateGroups.set(key, []);
       }
@@ -74,7 +75,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
     });
 
     return healthData.map(campaign => {
-      const key = `${campaign.completionPercentage.toFixed(1)}-${campaign.healthScore.toFixed(1)}`;
+      const key = `${formatNumber(campaign.completionPercentage, { decimals: 1 })}-${formatNumber(campaign.healthScore, { decimals: 1 })}`;
       const groupSize = coordinateGroups.get(key)?.length || 1;
       
       return {
@@ -304,15 +305,15 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">
             <span className={confidence === 'high' ? 'font-medium text-green-700' : ''}>1-Day Rate:</span>
-            <span className={confidence === 'high' ? 'font-medium text-green-700' : ''}>{oneDayRate.toLocaleString()} impressions ({oneDayPercentage.toFixed(1)}%)</span>
+            <span className={confidence === 'high' ? 'font-medium text-green-700' : ''}>{formatNumber(oneDayRate)} impressions ({formatPercentage(oneDayPercentage / 100, { multipliedBy100: true })})</span>
           </div>
           <div className="flex justify-between">
             <span className={confidence === 'medium' ? 'font-medium text-yellow-700' : ''}>3-Day Rate:</span>
-            <span className={confidence === 'medium' ? 'font-medium text-yellow-700' : ''}>{threeDayRate.toLocaleString()} impressions ({threeDayPercentage.toFixed(1)}%)</span>
+            <span className={confidence === 'medium' ? 'font-medium text-yellow-700' : ''}>{formatNumber(threeDayRate)} impressions ({formatPercentage(threeDayPercentage / 100, { multipliedBy100: true })})</span>
           </div>
           <div className="flex justify-between">
             <span className={confidence === 'low' ? 'font-medium text-red-700' : ''}>7-Day Rate:</span>
-            <span className={confidence === 'low' ? 'font-medium text-red-700' : ''}>{sevenDayRate.toLocaleString()} impressions ({sevenDayPercentage.toFixed(1)}%)</span>
+            <span className={confidence === 'low' ? 'font-medium text-red-700' : ''}>{formatNumber(sevenDayRate)} impressions ({formatPercentage(sevenDayPercentage / 100, { multipliedBy100: true })})</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Confidence:</span>
@@ -341,7 +342,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
           </span>
           {zoomState.level > 0 && (
             <span className="text-xs text-gray-500">
-              ({zoomState.xMin.toFixed(0)}-{zoomState.xMax.toFixed(0)}%, {zoomState.yMin.toFixed(1)}-{zoomState.yMax.toFixed(1)})
+              ({formatNumber(zoomState.xMin, { decimals: 0 })}-{formatNumber(zoomState.xMax, { decimals: 0 })}%, {formatNumber(zoomState.yMin, { decimals: 1 })}-{formatNumber(zoomState.yMax, { decimals: 1 })})
             </span>
           )}
         </div>
@@ -467,28 +468,28 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                 </div>
                 <div className="flex justify-between">
                   <span>ROAS:</span>
-                  <span className="font-medium">{tooltipState.campaigns[0].roas.toFixed(1)}x (Score: {tooltipState.campaigns[0].roasScore})</span>
+                  <span className="font-medium">{formatNumber(tooltipState.campaigns[0].roas, { decimals: 1 })}x (Score: {tooltipState.campaigns[0].roasScore})</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Delivery Pacing:</span>
-                  <span className="font-medium">{tooltipState.campaigns[0].deliveryPacing.toFixed(1)}% (Score: {tooltipState.campaigns[0].deliveryPacingScore})</span>
+                  <span className="font-medium">{formatPercentage(tooltipState.campaigns[0].deliveryPacing / 100, { multipliedBy100: true })} (Score: {tooltipState.campaigns[0].deliveryPacingScore})</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Burn Rate:</span>
-                  <span className="font-medium">{tooltipState.campaigns[0].burnRatePercentage.toFixed(1)}% (Score: {tooltipState.campaigns[0].burnRateScore})</span>
+                  <span className="font-medium">{formatPercentage(tooltipState.campaigns[0].burnRatePercentage / 100, { multipliedBy100: true })} (Score: {tooltipState.campaigns[0].burnRateScore})</span>
                 </div>
                 <div className="flex justify-between">
                   <span>CTR:</span>
-                  <span className="font-medium">{tooltipState.campaigns[0].ctr.toFixed(3)}% (Score: {tooltipState.campaigns[0].ctrScore})</span>
+                  <span className="font-medium">{formatPercentage(tooltipState.campaigns[0].ctr / 100, { multipliedBy100: true, decimals: 3 })} (Score: {tooltipState.campaigns[0].ctrScore})</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Overspend:</span>
-                  <span className="font-medium">${tooltipState.campaigns[0].overspend.toFixed(2)} (Score: {tooltipState.campaigns[0].overspendScore})</span>
+                  <span className="font-medium">{formatCurrency(tooltipState.campaigns[0].overspend)} (Score: {tooltipState.campaigns[0].overspendScore})</span>
                 </div>
                 <div className="border-t pt-1 mt-1">
                   <div className="flex justify-between">
                     <span>Completion:</span>
-                    <span className="font-medium">{tooltipState.campaigns[0].completionPercentage.toFixed(1)}%</span>
+                    <span className="font-medium">{formatPercentage(tooltipState.campaigns[0].completionPercentage / 100, { multipliedBy100: true })}</span>
                   </div>
                 </div>
                 {renderBurnRateDetails(tooltipState.campaigns[0])}
@@ -504,7 +505,7 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                       <span className="font-medium text-sm break-words flex-1">{campaign.campaignName}</span>
                       <div className="flex items-center gap-2 text-xs flex-shrink-0">
                         <span>Score: {campaign.healthScore}</span>
-                        <span>Complete: {campaign.completionPercentage.toFixed(1)}%</span>
+                        <span>Complete: {formatPercentage(campaign.completionPercentage / 100, { multipliedBy100: true })}</span>
                       </div>
                     </div>
                   </AccordionTrigger>
@@ -512,23 +513,23 @@ const CampaignHealthScatterPlot = ({ healthData }: CampaignHealthScatterPlotProp
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
                         <span>ROAS:</span>
-                        <span className="font-medium">{campaign.roas.toFixed(1)}x (Score: {campaign.roasScore})</span>
+                        <span className="font-medium">{formatNumber(campaign.roas, { decimals: 1 })}x (Score: {campaign.roasScore})</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Delivery Pacing:</span>
-                        <span className="font-medium">{campaign.deliveryPacing.toFixed(1)}% (Score: {campaign.deliveryPacingScore})</span>
+                        <span className="font-medium">{formatPercentage(campaign.deliveryPacing / 100, { multipliedBy100: true })} (Score: {campaign.deliveryPacingScore})</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Burn Rate:</span>
-                        <span className="font-medium">{campaign.burnRatePercentage.toFixed(1)}% (Score: {campaign.burnRateScore})</span>
+                        <span className="font-medium">{formatPercentage(campaign.burnRatePercentage / 100, { multipliedBy100: true })} (Score: {campaign.burnRateScore})</span>
                       </div>
                       <div className="flex justify-between">
                         <span>CTR:</span>
-                        <span className="font-medium">{campaign.ctr.toFixed(3)}% (Score: {campaign.ctrScore})</span>
+                        <span className="font-medium">{formatPercentage(campaign.ctr / 100, { multipliedBy100: true, decimals: 3 })} (Score: {campaign.ctrScore})</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Overspend:</span>
-                        <span className="font-medium">${campaign.overspend.toFixed(2)} (Score: {campaign.overspendScore})</span>
+                        <span className="font-medium">{formatCurrency(campaign.overspend)} (Score: {campaign.overspendScore})</span>
                       </div>
                       {renderBurnRateDetails(campaign)}
                     </div>

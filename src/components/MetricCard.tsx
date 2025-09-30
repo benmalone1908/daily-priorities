@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
-import { formatNumber as formatNum } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatPercentage } from "@/lib/formatters";
 import AnomalyDetails from "./AnomalyDetails";
 
 interface MetricCardProps {
@@ -17,9 +17,9 @@ const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps
   
   const formatValue = (value: number) => {
     if (metric === "REVENUE") {
-      return `$${Math.round(value).toLocaleString()}`;
+      return formatCurrency(value, { compact: true });
     }
-    return formatNum(value);
+    return formatNumber(value);
   };
   
   return (
@@ -64,7 +64,7 @@ const MetricCard = ({ title, anomalies, metric, anomalyPeriod }: MetricCardProps
                       <TrendingDown className="h-3.5 w-3.5 text-blue-500 mr-1" />
                     )}
                     <span className={`text-xs font-semibold ${isIncrease ? "text-red-500" : "text-blue-500"}`}>
-                      {isIncrease ? "+" : ""}{anomaly.deviation.toFixed(1)}%
+                      {isIncrease ? "+" : ""}{formatPercentage(anomaly.deviation / 100, { multipliedBy100: true })}
                     </span>
                   </div>
                 </div>
