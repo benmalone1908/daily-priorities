@@ -7,12 +7,14 @@ export const AGENCY_MAPPING: Record<string, string> = {
   'BLO': 'Be Local One',
   'CB': 'Crystal Bol',
   'CN': 'Cannabis Now',
+  'DJ': 'DispJoy',
   'FDD': 'Fat Dawgs Digital',
   'FLD': 'Fieldtest',
   'FLWR': 'The Flowery',
   'HD': 'Highday',
   'HG': 'Happy Greens',
   'HRB': 'Herb.co',
+  'KAI': 'Kartel.AI',
   'LP': 'Lettuce Print',
   'MJ': 'MediaJel Direct',
   'NLMC': 'NLMC',
@@ -76,7 +78,7 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
     wwxDash: /-WWX-/,
     newFormat: /^\d+(?:\/\d+)?:\s*[^:]+:\s*([^-]+)/,
     newFormatNoSpace: /^\d+(?:\/\d+)?:[^:]+:([^-]+)/,  // Handle cases without spaces
-    agencyPrefixes: new RegExp(`(SM|2RS|6D|BLO|CB|CN|FDD|FLD|FLWR|HD|HG|HRB|LP|MJ|NLMC|NP|OG|PRP|TCC|TF|TRN|W&T|WWX):\\\\s+(.*?)(?=-)`, 'i')
+    agencyPrefixes: new RegExp(`(SM|2RS|6D|BLO|CB|CN|DJ|FDD|FLD|FLWR|HD|HG|HRB|KAI|LP|MJ|NLMC|NP|OG|PRP|TCC|TF|TRN|W&T|WWX):\\\\s+(.*?)(?=-)`, 'i')
   }), []);
 
   // Helper function to extract agency information from campaign name with caching
