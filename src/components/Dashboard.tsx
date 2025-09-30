@@ -23,7 +23,7 @@ import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
 import { formatNumber, formatCurrency, formatCTRPercentage, formatTransactions, formatAOVValue } from "@/lib/formatters";
-import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
+import CombinedMetricsChart from "./CombinedMetricsChart";
 import { DailyTotalsTable } from "./DailyTotalsTable";
 import DashboardSparkCharts from "./DashboardSparkCharts";
 

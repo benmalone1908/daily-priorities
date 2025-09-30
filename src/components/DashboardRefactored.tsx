@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import MetricCard from "./MetricCard";
 import { normalizeDate } from "@/lib/utils";
-import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
+import CombinedMetricsChart from "./CombinedMetricsChart";
 import { DailyTotalsTable } from "./DailyTotalsTable";
 import DashboardSparkCharts from "./DashboardSparkCharts";
 
