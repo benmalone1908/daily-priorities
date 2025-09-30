@@ -6,7 +6,7 @@ import DashboardWrapper from "@/components/DashboardWrapper";
 import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import { NotificationsTab } from "@/components/NotificationsTab";
-import CustomReportBuilder from "@/components/CustomReportBuilderRefactored";
+import CustomReportBuilder from "@/components/CustomReportBuilder";
 import CampaignSummaryTable from "@/components/CampaignSummaryTable";
 import { CampaignPerformanceChart } from "@/components/CampaignPerformanceChart";
 import { CampaignPacingCard } from "@/components/CampaignPacingCard";

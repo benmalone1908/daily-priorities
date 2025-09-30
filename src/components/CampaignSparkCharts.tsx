@@ -7,7 +7,7 @@ import { CampaignSparkChartsProps } from "@/types/sparkCharts";
  * Refactored CampaignSparkCharts - reduced from 1,112 lines
  * to a clean, maintainable component using extracted hooks and components
  */
-const CampaignSparkChartsRefactored = ({
+const CampaignSparkCharts = ({
   data,
   dateRange,
   useGlobalFilters = false
@@ -65,4 +65,4 @@ const CampaignSparkChartsRefactored = ({
   );
 };
 
-export default CampaignSparkChartsRefactored;
+export default CampaignSparkCharts;
