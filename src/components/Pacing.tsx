@@ -1,47 +1,458 @@
-import React from 'react';
-import { Target, AlertTriangle, AlertCircle } from 'lucide-react';
-import { Card } from "@/components/ui/card";
+import React, { useState, useMemo, useEffect } from 'react';
+import { format } from 'date-fns';
+import { AlertCircle, TrendingUp, TrendingDown, Target, Calendar, Eye, AlertTriangle } from 'lucide-react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { usePacing } from '@/hooks/usePacing';
+import { processCampaigns } from '@/lib/pacingCalculations';
+import type { ContractTerms, PacingDeliveryData, ProcessedCampaign } from '@/types/pacing';
+import { parseDateString } from '@/lib/utils';
+
+// Import new components
 import { SummaryCards } from './pacing/SummaryCards';
 import { CampaignOverviewTable } from './pacing/CampaignOverviewTable';
 import { Modal } from './pacing/Modal';
+import { useCampaignUtils, formatCurrency, formatNumber, formatPercentage, getPacingColor } from '@/lib/pacingUtils';
+import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { toast } from 'sonner';
 import { MissingContractsModal } from './MissingContractsModal';
-import { DetailedCampaignView } from './pacing/DetailedCampaignView';
-import type { CampaignDataRow } from '@/types/campaign';
 
-interface PacingProps {
-  data: CampaignDataRow[];
-  unfilteredData: CampaignDataRow[];
+// Helper function for pacing icons
+const getPacingIcon = (pacing: number) => {
+  if (pacing > 1) return <TrendingUp className="h-4 w-4" />;
+  return <TrendingDown className="h-4 w-4" />;
+};
+
+
+// Detailed campaign view component (used in modal)
+const DetailedCampaignView: React.FC<{ campaign: ProcessedCampaign }> = ({ campaign }) => {
+  const { metrics } = campaign;
+
+  return (
+    <div className="space-y-6">
+      {/* Campaign Timeline */}
+      <Card className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Flight Dates
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {format(metrics.startDate, 'MMM dd')} - {format(metrics.endDate, 'MMM dd, yyyy')}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Days Into Campaign
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {metrics.daysIntoCampaign}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Days Until End
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {metrics.daysUntilEnd}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Expected Impressions</h3>
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Eye className="h-4 w-4 text-indigo-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.expectedImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Actual Impressions</h3>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Eye className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.actualImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Current Pacing</h3>
+              <div className={`p-2 rounded-lg ${
+                metrics.currentPacing >= 0.95 && metrics.currentPacing <= 1.05 
+                  ? 'bg-green-100' 
+                  : metrics.currentPacing >= 0.85 && metrics.currentPacing <= 1.15
+                  ? 'bg-yellow-100'
+                  : 'bg-red-100'
+              }`}>
+                <div className={getPacingColor(metrics.currentPacing)}>
+                  {metrics.currentPacing > 1 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                </div>
+              </div>
+            </div>
+            <div className={`text-2xl font-bold ${getPacingColor(metrics.currentPacing)}`}>
+              {formatPercentage(metrics.currentPacing)}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {metrics.currentPacing > 1 ? 'Ahead of pace' : 'Behind pace'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Remaining Impressions</h3>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Target className="h-4 w-4 text-orange-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.remainingImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Daily Average Needed</h3>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Target className="h-4 w-4 text-purple-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.remainingAverageNeeded)}</div>
+            <p className="text-xs text-gray-500 mt-1">per remaining day</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Yesterday's Impressions</h3>
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <Eye className="h-4 w-4 text-cyan-600" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.yesterdayImpressions)}</div>
+              <div className={`text-sm font-semibold ${getPacingColor(metrics.yesterdayVsNeeded)}`}>
+                {formatPercentage(metrics.yesterdayVsNeeded)}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">of daily target</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+interface DetailedViewProps {
+  campaign: ProcessedCampaign;
 }
 
-/**
- * Pacing component - significantly reduced from 528 lines
- * Uses extracted usePacing hook and modular components for better maintainability
- */
-export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
-  const { state, actions, data: pacingData } = usePacing({ data, unfilteredData });
-  const { campaigns } = pacingData;
-  const {
-    selectedCampaign,
-    error,
-    missingContracts,
-    missingContractsData,
-    showMissingModal,
-    isLoading
-  } = state;
-  const { handleCampaignClick, handleModalClose, setShowMissingModal } = actions;
+const DetailedView: React.FC<DetailedViewProps> = ({ campaign }) => {
+  const { metrics } = campaign;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Loading contract terms...</p>
-        </div>
+  return (
+    <div className="space-y-6">
+      {/* Campaign Timeline */}
+      <Card className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Flight Dates
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {format(metrics.startDate, 'MMM dd')} - {format(metrics.endDate, 'MMM dd, yyyy')}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Days Into Campaign
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {metrics.daysIntoCampaign}
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-600 uppercase tracking-wide mb-1">
+                <Calendar className="h-4 w-4" />
+                Days Until End
+              </div>
+              <div className="text-lg font-semibold text-gray-900">
+                {metrics.daysUntilEnd}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Expected Impressions</h3>
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Eye className="h-4 w-4 text-indigo-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.expectedImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Actual Impressions</h3>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Eye className="h-4 w-4 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.actualImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Current Pacing</h3>
+              <div className={`p-2 rounded-lg ${
+                metrics.currentPacing >= 0.95 && metrics.currentPacing <= 1.05 
+                  ? 'bg-green-100' 
+                  : metrics.currentPacing >= 0.85 && metrics.currentPacing <= 1.15
+                  ? 'bg-yellow-100'
+                  : 'bg-red-100'
+              }`}>
+                <div className={getPacingColor(metrics.currentPacing)}>
+                  {getPacingIcon(metrics.currentPacing)}
+                </div>
+              </div>
+            </div>
+            <div className={`text-2xl font-bold ${getPacingColor(metrics.currentPacing)}`}>
+              {formatPercentage(metrics.currentPacing)}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {metrics.currentPacing > 1 ? 'Ahead of pace' : 'Behind pace'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Remaining Impressions</h3>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Target className="h-4 w-4 text-orange-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.remainingImpressions)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Daily Average Needed</h3>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Target className="h-4 w-4 text-purple-600" />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.remainingAverageNeeded)}</div>
+            <p className="text-xs text-gray-500 mt-1">per remaining day</p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Yesterday's Impressions</h3>
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <Eye className="h-4 w-4 text-cyan-600" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-bold text-gray-900">{formatNumber(metrics.yesterdayImpressions)}</div>
+              <div className={`text-sm font-semibold ${getPacingColor(metrics.yesterdayVsNeeded)}`}>
+                {formatPercentage(metrics.yesterdayVsNeeded)}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">of daily target</p>
+          </CardContent>
+        </Card>
       </div>
-    );
-  }
+    </div>
+  );
+};
+
+interface PacingProps {
+  data: any[];
+  unfilteredData: any[];
+}
+
+export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
+  const [selectedCampaign, setSelectedCampaign] = useState<ProcessedCampaign | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dbContractTerms, setDbContractTerms] = useState<any[]>([]);
+  const [missingContracts, setMissingContracts] = useState<string[]>([]);
+  const [missingContractsData, setMissingContractsData] = useState<Array<{name: string; firstDate: string; lastDate: string; totalImpressions: number}>>([]);
+  const [showMissingModal, setShowMissingModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { selectedAgencies, selectedAdvertisers, selectedCampaigns } = useCampaignFilter();
+  const { getContractTerms } = useSupabase();
+
+  // Load contract terms from database
+  useEffect(() => {
+    const loadContractTerms = async () => {
+      try {
+        setIsLoading(true);
+        const dbTerms = await getContractTerms();
+        setDbContractTerms(dbTerms);
+        console.log(`📋 Loaded ${dbTerms.length} contract terms from database`);
+      } catch (error) {
+        console.error('Error loading contract terms:', error);
+        toast.error('Failed to load contract terms from database');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadContractTerms();
+  }, [getContractTerms]);
+
+  // Transform existing data to pacing format
+  const campaigns = useMemo(() => {
+    try {
+      if (data.length === 0) {
+        return [];
+      }
+
+      // Only proceed if we have database contract terms
+      if (dbContractTerms.length === 0) {
+        console.log('📋 No database contract terms available for pacing analysis');
+        return [];
+      }
+
+      // Get unique campaign names from data
+      const campaignNamesInData = Array.from(new Set(data.map(row => row['CAMPAIGN ORDER NAME'])));
+
+      // Convert database contract terms to the expected format
+      const contractTerms: ContractTerms[] = dbContractTerms.map((row: any) => ({
+        Name: row.campaign_name,
+        'Start Date': row.start_date,
+        'End Date': row.end_date,
+        Budget: row.budget.toString(),
+        CPM: row.cpm.toString(),
+        'Impressions Goal': row.impressions_goal.toString()
+      }));
+
+      // Find campaigns that are missing contract terms
+      const campaignsWithContracts = new Set(dbContractTerms.map(t => t.campaign_name));
+      const missing = campaignNamesInData.filter(name => !campaignsWithContracts.has(name));
+
+      // Calculate detailed data for missing campaigns and filter out campaigns with zero impressions on most recent day
+      const missingDetails = missing.map(campaignName => {
+        const campaignRows = data.filter(row => row['CAMPAIGN ORDER NAME'] === campaignName);
+
+        const dates = campaignRows
+          .map(row => parseDateString(row.DATE))
+          .filter(Boolean) as Date[];
+        dates.sort((a, b) => a.getTime() - b.getTime());
+
+        // Find the most recent day's data
+        const mostRecentDate = dates[dates.length - 1];
+        const mostRecentRow = campaignRows.find(row => {
+          const rowDate = parseDateString(row.DATE);
+          return rowDate && rowDate.getTime() === mostRecentDate?.getTime();
+        });
+
+        // Check if most recent day has zero impressions (not blank, but actual zero)
+        const mostRecentImpressions = mostRecentRow ? parseInt(mostRecentRow.IMPRESSIONS?.toString().replace(/,/g, '') || '0') : 0;
+        const hasZeroImpressionsOnMostRecentDay = mostRecentRow && mostRecentRow.IMPRESSIONS !== undefined && mostRecentRow.IMPRESSIONS !== null && mostRecentRow.IMPRESSIONS !== '' && mostRecentImpressions === 0;
+
+        const totalImpressions = campaignRows.reduce((sum, row) =>
+          sum + (parseInt(row.IMPRESSIONS?.toString().replace(/,/g, '') || '0') || 0), 0);
+
+        return {
+          name: campaignName,
+          firstDate: dates[0] ? dates[0].toLocaleDateString() : 'Unknown',
+          lastDate: dates[dates.length - 1] ? dates[dates.length - 1].toLocaleDateString() : 'Unknown',
+          totalImpressions,
+          hasZeroImpressionsOnMostRecentDay
+        };
+      }).filter(campaign => !campaign.hasZeroImpressionsOnMostRecentDay); // Filter out campaigns with zero impressions on most recent day
+
+      setMissingContractsData(missingDetails);
+      setMissingContracts(missingDetails.map(c => c.name));
+      console.log(`📋 Using ${contractTerms.length} database contract terms`);
+      console.log(`⚠️ Found ${missingDetails.length} campaigns without contract terms:`, missingDetails.map(c => c.name));
+
+      // Transform delivery data (use filtered data for display/calculations)
+      const deliveryData: PacingDeliveryData[] = data.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      // Transform unfiltered data for global date calculation (use all data)
+      const unfilteredDeliveryData: PacingDeliveryData[] = unfilteredData.map((row: any) => ({
+        DATE: row.DATE || '',
+        'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
+        IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
+        SPEND: row.SPEND?.toString() || '0'
+      }));
+
+      const processedCampaigns = processCampaigns(contractTerms, deliveryData, unfilteredDeliveryData);
+
+      if (processedCampaigns.length === 0) {
+        setError('No campaigns could be processed. All campaigns may be missing contract terms or delivery data.');
+      } else if (processedCampaigns.length < contractTerms.length) {
+        const skippedCount = contractTerms.length - processedCampaigns.length;
+        setError(`Successfully processed ${processedCampaigns.length} campaigns. ${skippedCount} campaigns were skipped due to missing delivery data.`);
+      } else {
+        setError(null);
+      }
+
+      return processedCampaigns;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error processing campaign data');
+      return [];
+    }
+  }, [data, unfilteredData, dbContractTerms]);
+
+  // Modal handlers
+  const handleCampaignClick = (campaign: ProcessedCampaign) => {
+    setSelectedCampaign(campaign);
+  };
+
+  const handleModalClose = () => {
+    setSelectedCampaign(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -56,7 +467,7 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
             <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Campaign Data Available</h3>
             <p className="text-gray-600">
-              {data.length === 0
+              {data.length === 0 
                 ? "Please upload campaign data in the main dashboard first."
                 : "Processing campaign data for pacing analysis..."
               }
@@ -67,10 +478,7 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
         <div className="space-y-6">
           {/* Missing Contract Terms Warning */}
           {missingContracts.length > 0 && (
-            <Alert
-              className="border-yellow-200 bg-yellow-50 cursor-pointer hover:bg-yellow-100 transition-colors"
-              onClick={() => setShowMissingModal(true)}
-            >
+            <Alert className="border-yellow-200 bg-yellow-50 cursor-pointer hover:bg-yellow-100 transition-colors" onClick={() => setShowMissingModal(true)}>
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
               <AlertDescription className="text-yellow-800">
                 <strong>Missing Contract Terms:</strong> {missingContracts.length} campaign{missingContracts.length > 1 ? 's are' : ' is'} missing contract terms in database. <span className="underline">Click to view details</span>
@@ -82,12 +490,12 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
           <SummaryCards campaigns={campaigns} />
 
           {/* Campaign Overview Table */}
-          <CampaignOverviewTable
+          <CampaignOverviewTable 
             campaigns={campaigns}
             onCampaignClick={handleCampaignClick}
-            selectedAgencies={[]}
-            selectedAdvertisers={[]}
-            selectedCampaigns={[]}
+            selectedAgencies={selectedAgencies}
+            selectedAdvertisers={selectedAdvertisers}
+            selectedCampaigns={selectedCampaigns}
           />
         </div>
       )}
@@ -108,7 +516,6 @@ export const Pacing: React.FC<PacingProps> = ({ data, unfilteredData }) => {
         missingCampaigns={missingContractsData}
       />
 
-      {/* Error Display */}
       {error && (
         <Card className="border-yellow-200 bg-yellow-50 p-4">
           <div className="flex items-start gap-2 text-yellow-800">
