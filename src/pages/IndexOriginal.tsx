@@ -26,7 +26,7 @@ import RawDataTableImproved from "@/components/RawDataTableImproved";
 import PacingFileUpload from "@/components/PacingFileUpload";
 import CampaignHealthTab from "@/components/CampaignHealthTab";
 import { Pacing } from "@/components/Pacing";
-import CustomReportBuilder from "@/components/CustomReportBuilder";
+import CustomReportBuilder from "@/components/CustomReportBuilderRefactored";
 import StatusTab from "@/components/StatusTab";
 import { ClearDatabaseDialog } from "@/components/ClearDatabaseDialog";
 import { NotificationsTab } from "@/components/NotificationsTab";

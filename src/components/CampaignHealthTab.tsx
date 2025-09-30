@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from "react";
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
-import CampaignHealthScatterPlot from "./CampaignHealthScatterPlot";
+import CampaignHealthScatterPlot from "./CampaignHealthScatterPlotRefactored";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";

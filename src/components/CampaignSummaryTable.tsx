@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { formatNumber, formatCurrency } from "@/lib/formatters";
 
 interface CampaignSummaryTableProps {
   data: any[];
@@ -162,24 +163,7 @@ const CampaignSummaryTable = ({ data, useGlobalFilters = false, onCampaignSelect
   };
 
   // Helper function to format numbers
-  const formatNumber = (value: number, decimals: number = 0) => {
-    if (value >= 1000000) {
-      return (value / 1000000).toFixed(1) + 'M';
-    } else if (value >= 1000) {
-      return (value / 1000).toFixed(1) + 'K';
-    }
-    return value.toFixed(decimals);
-  };
-
-  // Helper function to format currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  // Using centralized formatters from @/lib/formatters
 
   // Helper function to encode campaign name for URL
   const encodeCampaignName = (name: string) => {
@@ -314,10 +298,10 @@ const CampaignSummaryTable = ({ data, useGlobalFilters = false, onCampaignSelect
                   </button>
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatNumber(summary.impressions)}
+                  {formatNumber(summary.impressions, { compact: true })}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatNumber(summary.clicks)}
+                  {formatNumber(summary.clicks, { compact: true })}
                 </TableCell>
                 <TableCell className="text-right">
                   {summary.ctr.toFixed(2)}%
@@ -326,7 +310,7 @@ const CampaignSummaryTable = ({ data, useGlobalFilters = false, onCampaignSelect
                   {formatCurrency(summary.revenue)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatNumber(summary.transactions)}
+                  {formatNumber(summary.transactions, { compact: true })}
                 </TableCell>
                 <TableCell className="text-right">
                   {summary.roas.toFixed(2)}x

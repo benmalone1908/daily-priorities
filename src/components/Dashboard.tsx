@@ -22,6 +22,7 @@ import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
 import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { formatNumber, formatCurrency, formatCTRPercentage, formatTransactions, formatAOVValue } from "@/lib/formatters";
 import CombinedMetricsChart from "./CombinedMetricsChartRefactored";
 import { DailyTotalsTable } from "./DailyTotalsTable";
 import DashboardSparkCharts from "./DashboardSparkCharts";
@@ -106,33 +107,7 @@ const calculateAOV = (revenue: number, transactions: number): number => {
   return revenue / transactions;
 };
 
-// Format utility functions
-const formatCTR = (value: number): string => {
-  try {
-    return `${value.toFixed(2)}%`;
-  } catch (error) {
-    console.error("Error formatting CTR:", error);
-    return "0.00%";
-  }
-};
-
-const formatTransactions = (value: number): string => {
-  try {
-    return value.toLocaleString();
-  } catch (error) {
-    console.error("Error formatting transactions:", error);
-    return "0";
-  }
-};
-
-const formatAOV = (value: number): string => {
-  try {
-    return `$${value.toFixed(2)}`;
-  } catch (error) {
-    console.error("Error formatting AOV:", error);
-    return "$0.00";
-  }
-};
+// Format utility functions - now using centralized formatters
 
 // Data aggregation functions
 const getAggregatedData = (data: any[]): any[] => {
@@ -900,23 +875,9 @@ const Dashboard = ({
     }
   }, [revenueViewMode, revenueData, data]);
 
-  const formatNumber = (value: number) => {
-    try {
-      return value.toLocaleString();
-    } catch (error) {
-      console.error("Error formatting number:", error);
-      return "0";
-    }
-  };
+  // Using centralized formatNumber from @/lib/formatters
 
-  const formatRevenue = (value: number) => {
-    try {
-      return `$${Math.round(value).toLocaleString()}`;
-    } catch (error) {
-      console.error("Error formatting revenue:", error);
-      return "$0";
-    }
-  };
+  // Using centralized formatCurrency from @/lib/formatters (with compact: true)
 
   const formatDate = (dateString: string) => {
     try {
@@ -1383,7 +1344,7 @@ const Dashboard = ({
                     title: "CTR",
                     current: ctr,
                     previous: previousCtr,
-                    format: formatCTR
+                    format: formatCTRPercentage
                   },
                   {
                     title: "Transactions",
@@ -1395,13 +1356,13 @@ const Dashboard = ({
                     title: "Attributed Sales",
                     current: period.REVENUE,
                     previous: previousPeriod?.REVENUE,
-                    format: formatRevenue
+                    format: (value: number) => formatCurrency(value, { compact: true })
                   },
                   {
                     title: "AOV",
                     current: aov,
                     previous: previousAov,
-                    format: formatAOV
+                    format: formatAOVValue
                   },
                   {
                     title: "ROAS",
