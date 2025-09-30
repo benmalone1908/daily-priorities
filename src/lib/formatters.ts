@@ -140,15 +140,15 @@ export const formatCTRPercentage = (ctrPercentage: number | undefined | null): s
 };
 
 /**
- * Formats transaction numbers with proper pluralization
+ * Formats transaction numbers (just the number, without "transactions" label)
  */
 export const formatTransactions = (value: number | undefined | null): string => {
   if (value === undefined || value === null || isNaN(value)) {
-    return '0 transactions';
+    return '0';
   }
 
   const rounded = Math.round(value);
-  return `${formatNumber(rounded)} transaction${rounded === 1 ? '' : 's'}`;
+  return formatNumber(rounded);
 };
 
 /**
