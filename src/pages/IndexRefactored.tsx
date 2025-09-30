@@ -24,7 +24,7 @@ import GlobalFilters from "@/components/GlobalFilters";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import PacingFileUpload from "@/components/PacingFileUpload";
 import CampaignHealthTab from "@/components/CampaignHealthTab";
-import { PacingRefactored as Pacing } from "@/components/PacingRefactored";
+import { Pacing } from "@/components/Pacing";
 import CustomReportBuilder from "@/components/CustomReportBuilderRefactored";
 import StatusTab from "@/components/StatusTab";
 import { ClearDatabaseDialog } from "@/components/ClearDatabaseDialog";
