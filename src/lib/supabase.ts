@@ -64,3 +64,38 @@ export type Database = {
     }
   }
 }
+
+// Helper functions to get last upload timestamps
+export async function getLastCampaignUpload(): Promise<Date | null> {
+  try {
+    const { data, error } = await supabase
+      .from('campaign_data')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !data) return null
+    return data.created_at ? new Date(data.created_at) : null
+  } catch (error) {
+    console.error('Error fetching last campaign upload:', error)
+    return null
+  }
+}
+
+export async function getLastContractUpload(): Promise<Date | null> {
+  try {
+    const { data, error } = await supabase
+      .from('contract_terms')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error || !data) return null
+    return data.created_at ? new Date(data.created_at) : null
+  } catch (error) {
+    console.error('Error fetching last contract upload:', error)
+    return null
+  }
+}

@@ -14,6 +14,8 @@ interface SidebarLayoutProps {
   children: React.ReactNode;
   header?: React.ReactNode;
   className?: string;
+  lastCampaignUpload?: Date | null;
+  lastContractUpload?: Date | null;
 }
 
 const SidebarLayout: React.FC<SidebarLayoutProps> = ({
@@ -27,7 +29,9 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({
   onUploadCSV,
   children,
   header,
-  className
+  className,
+  lastCampaignUpload,
+  lastContractUpload
 }) => {
   return (
     <div className={cn("flex h-screen bg-gray-50", className)}>
@@ -41,6 +45,8 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({
         hasAllData={hasAllData}
         onClearDatabase={onClearDatabase}
         onUploadCSV={onUploadCSV}
+        lastCampaignUpload={lastCampaignUpload}
+        lastContractUpload={lastContractUpload}
       />
 
       {/* Main Content Area */}

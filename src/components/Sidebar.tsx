@@ -30,6 +30,8 @@ interface SidebarProps {
   onClearDatabase?: () => void;
   onUploadCSV?: () => void;
   className?: string;
+  lastCampaignUpload?: Date | null;
+  lastContractUpload?: Date | null;
 }
 
 interface NavItem {
@@ -48,12 +50,34 @@ const Sidebar: React.FC<SidebarProps> = ({
   hasAllData,
   onClearDatabase,
   onUploadCSV,
-  className
+  className,
+  lastCampaignUpload,
+  lastContractUpload
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
   const { logout } = useAuth();
+
+  // Format timestamp in Pacific Time
+  const formatTimestamp = (date: Date | null | undefined): string => {
+    if (!date) return 'Never';
+
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).format(date);
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid date';
+    }
+  };
 
   const navItems: NavItem[] = [
     {
@@ -190,6 +214,27 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-sm font-medium">Upload CSV</span>
               )}
             </Button>
+          )}
+
+          {/* Last Upload Timestamps */}
+          {!isCollapsed && (lastCampaignUpload || lastContractUpload) && (
+            <div className="space-y-2 pt-2 px-2">
+              <div className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">
+                Data Last Updated
+              </div>
+              {lastCampaignUpload && (
+                <div>
+                  <div className="text-[11px] font-medium text-gray-700">Campaign Data</div>
+                  <div className="text-[11px] text-gray-500">{formatTimestamp(lastCampaignUpload)} PT</div>
+                </div>
+              )}
+              {lastContractUpload && (
+                <div>
+                  <div className="text-[11px] font-medium text-gray-700">Contract Terms</div>
+                  <div className="text-[11px] text-gray-500">{formatTimestamp(lastContractUpload)} PT</div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Clear Database Button */}

@@ -11,6 +11,7 @@ import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString, formatDateSortable } from "@/lib/utils";
 import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
 import { useSupabase } from "@/contexts/SupabaseContext";
+import { getLastCampaignUpload, getLastContractUpload } from "@/lib/supabase";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { ChartToggle } from "@/components/ChartToggle";
 import { Card } from "@/components/ui/card";
@@ -531,7 +532,9 @@ const DashboardContent = ({
   showClearDialog,
   setShowClearDialog,
   showUnifiedUpload,
-  setShowUnifiedUpload
+  setShowUnifiedUpload,
+  lastCampaignUpload,
+  lastContractUpload
 }: {
   data: any[];
   pacingData: any[];
@@ -547,6 +550,8 @@ const DashboardContent = ({
   setShowClearDialog: (show: boolean) => void;
   showUnifiedUpload: boolean;
   setShowUnifiedUpload: (show: boolean) => void;
+  lastCampaignUpload: Date | null;
+  lastContractUpload: Date | null;
 }) => {
   // Calculate available date range from data to constrain date picker
   const availableDateRange = useMemo(() => {
@@ -1028,6 +1033,8 @@ const DashboardContent = ({
         onUploadCSV={() => setShowUnifiedUpload(true)}
         header={headerContent}
         className="animate-fade-in"
+        lastCampaignUpload={lastCampaignUpload}
+        lastContractUpload={lastContractUpload}
       >
         <div className="px-4 lg:px-6 pb-4 lg:pb-6 pt-8">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -1183,12 +1190,12 @@ const DashboardContent = ({
         isOpen={showClearDialog}
         onClose={() => setShowClearDialog(false)}
         onSuccess={() => {
-          // Refresh the page data after clearing
-          setData([]);
-          setContractTermsData([]);
-          setPacingData([]);
-          setShowDashboard(false);
-          toast.success("Database cleared successfully");
+          toast.success("Database cleared successfully. Reloading...");
+          setShowClearDialog(false);
+          // Reload the page to refresh all data
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
         }}
       />
     </>
@@ -1197,7 +1204,7 @@ const DashboardContent = ({
 
 
 const Index = () => {
-  const { upsertCampaignData, getCampaignData, loadAllDataInBackground, getContractTerms } = useSupabase();
+  const { upsertCampaignData, getCampaignData, loadAllDataInBackground, getContractTerms, upsertContractTerms } = useSupabase();
   const [data, setData] = useState<any[]>([]);
   const [pacingData, setPacingData] = useState<any[]>([]);
   const [contractTermsData, setContractTermsData] = useState<any[]>([]);
@@ -1209,25 +1216,27 @@ const Index = () => {
   const [hasAllData, setHasAllData] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showUnifiedUpload, setShowUnifiedUpload] = useState(false);
+  const [lastCampaignUpload, setLastCampaignUpload] = useState<Date | null>(null);
+  const [lastContractUpload, setLastContractUpload] = useState<Date | null>(null);
 
   // Load all data at startup
   useEffect(() => {
     const loadAllDataFromSupabase = async () => {
       try {
-        setLoadingProgress('Loading all campaign data...');
+        setLoadingProgress('Loading recent campaign data...');
 
-        // Load all data at startup
-        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, false);
+        // Load recent data only at startup (last 90 days) for fast initial load
+        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, true);
 
         if (campaignData.length > 0) {
-          setLoadingProgress('Processing all data...');
+          setLoadingProgress('Processing data...');
           const transformedData = transformDataFormat(campaignData);
 
           setData(transformedData);
           setDateRange(undefined);
           setShowDashboard(true);
-          setHasAllData(true); // Mark that we have all data
-          console.log(`✅ All data loaded: ${transformedData.length} total rows loaded`);
+          setHasAllData(false); // Mark that we don't have all data yet (just recent)
+          console.log(`✅ Recent data loaded: ${transformedData.length} rows (last 90 days)`);
         }
 
         // Load contract terms from Supabase
@@ -1261,6 +1270,20 @@ const Index = () => {
         } catch (contractError) {
           console.error("Failed to load contract terms:", contractError);
           // Don't fail the entire load if contract terms fail
+        }
+
+        // Load last upload timestamps
+        setLoadingProgress('Loading upload timestamps...');
+        try {
+          const [campaignTimestamp, contractTimestamp] = await Promise.all([
+            getLastCampaignUpload(),
+            getLastContractUpload()
+          ]);
+          setLastCampaignUpload(campaignTimestamp);
+          setLastContractUpload(contractTimestamp);
+        } catch (timestampError) {
+          console.error("Failed to load upload timestamps:", timestampError);
+          // Don't fail the entire load if timestamps fail
         }
 
       } catch (error) {
@@ -1569,6 +1592,7 @@ const Index = () => {
                   };
                 });
                 setData(refreshedData);
+                setShowDashboard(true); // Show dashboard after data is loaded
                 console.log(`Refreshed with ${refreshedData.length} total records from Supabase`);
               }
             } catch (error) {
@@ -1604,7 +1628,7 @@ const Index = () => {
     }
   };
 
-  const handleContractTermsLoaded = (uploadedContractTermsData: any[]) => {
+  const handleContractTermsLoaded = async (uploadedContractTermsData: any[]) => {
     try {
       if (!Array.isArray(uploadedContractTermsData) || uploadedContractTermsData.length === 0) {
         toast.error("Invalid contract terms data format received");
@@ -1614,6 +1638,44 @@ const Index = () => {
       console.log(`Loaded ${uploadedContractTermsData.length} rows of contract terms data`);
       setContractTermsData(uploadedContractTermsData);
       toast.success(`Successfully loaded ${uploadedContractTermsData.length} contract terms`);
+
+      // Save to Supabase
+      try {
+        console.log('🔄 Starting contract terms sync to Supabase...');
+        const supabaseContractTerms = uploadedContractTermsData.map(term => {
+          // Parse dates from MM/DD/YYYY format to YYYY-MM-DD format for database
+          const parseDate = (dateStr: string): string => {
+            const [month, day, year] = dateStr.split('/');
+            const fullYear = year.length === 2 ? `20${year}` : year;
+            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          };
+
+          return {
+            campaign_name: term.Name,
+            start_date: parseDate(term['Start Date']),
+            end_date: parseDate(term['End Date']),
+            budget: Math.round(Number(term.Budget)),
+            cpm: Number(term.CPM),
+            impressions_goal: Math.round(Number(term['Impressions Goal']))
+          };
+        });
+
+        console.log('📊 Prepared contract terms for upload:', supabaseContractTerms.length, 'records');
+        console.log('Sample contract term:', supabaseContractTerms[0]);
+
+        // Clear existing records first, then insert new ones
+        await upsertContractTerms(supabaseContractTerms, true);
+        console.log(`✅ Successfully synced ${supabaseContractTerms.length} contract terms to Supabase`);
+
+        // Refresh the contract timestamp after upload
+        console.log('🔄 Refreshing contract timestamp...');
+        const contractTimestamp = await getLastContractUpload();
+        console.log('📅 New contract timestamp:', contractTimestamp);
+        setLastContractUpload(contractTimestamp);
+      } catch (error) {
+        console.error("❌ Failed to sync contract terms to Supabase:", error);
+        toast.error("Failed to save contract terms to database");
+      }
     } catch (error) {
       console.error("Error processing contract terms data:", error);
       toast.error("Failed to process the contract terms data");
@@ -1681,6 +1743,8 @@ const Index = () => {
             setShowClearDialog={setShowClearDialog}
             showUnifiedUpload={showUnifiedUpload}
             setShowUnifiedUpload={setShowUnifiedUpload}
+            lastCampaignUpload={lastCampaignUpload}
+            lastContractUpload={lastContractUpload}
           />
         )}
 

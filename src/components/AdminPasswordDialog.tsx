@@ -38,6 +38,8 @@ export const AdminPasswordDialog = ({
     try {
       // Get admin password from environment variables
       const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+      console.log('Admin password from env:', adminPassword);
+      console.log('Entered password:', password);
 
       if (password === adminPassword) {
         toast.success("Admin authentication successful");
