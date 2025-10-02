@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { LineChart, Line, Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
@@ -5,15 +6,14 @@ import { DateRange } from 'react-day-picker';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface SparkChartComponentProps {
-  data: any[];
+  data: CampaignDataRow[];
   metric: string;
   dateRange: DateRange;
   title: string;
   simplified?: boolean;
 }
 
-const SparkChartComponent: React.FC<SparkChartComponentProps> = ({
-  data,
+const SparkChartComponent: React.FC<SparkChartComponentProps> = ({ data,
   metric,
   dateRange,
   title,
@@ -21,7 +21,7 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({
 }) => {
   // Process data for the specific metric
   const processedData = useMemo(() => {
-    const dateGroups = new Map<string, any>();
+    const dateGroups = new Map<string, unknown>();
     
     // Filter data by date range
     const filteredData = data.filter(row => {
@@ -128,7 +128,7 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({
         formatter = (v: number) => `$${Math.round(v).toLocaleString()}`;
         break;
 
-      case 'roas':
+      case 'roas': {
         const totalRevenue = processedData.reduce((sum, d) => sum + d.REVENUE, 0);
         const totalSpend = processedData.reduce((sum, d) => sum + d.SPEND, 0);
         total = totalSpend > 0 ? totalRevenue / totalSpend : 0;
@@ -140,6 +140,7 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({
         color = '#d946ef';
         formatter = (v: number) => v.toFixed(2);
         break;
+      }
     }
 
     return { total, trend, color, formatter };

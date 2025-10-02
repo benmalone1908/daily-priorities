@@ -53,7 +53,7 @@ export const ensureOptionFormat = (input: string[] | Option[]): Option[] => {
 /**
  * Debug utility to log option formats
  */
-export const debugLogOptions = (label: string, options: any[]): void => {
+export const debugLogOptions = (label: string, options: (string | Option)[]): void => {
   console.log(`DEBUG - ${label} count: ${options?.length || 0}`);
   if (options && options.length > 0) {
     console.log(`DEBUG - ${label} first few items:`, options.slice(0, 3));

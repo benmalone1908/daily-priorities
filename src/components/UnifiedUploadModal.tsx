@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,8 +10,8 @@ import Papa from 'papaparse';
 interface UnifiedUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDeliveryDataLoaded?: (data: any[]) => void;
-  onContractTermsLoaded?: (data: any[]) => void;
+  onDeliveryDataLoaded?: (data: CampaignDataRow[]) => void;
+  onContractTermsLoaded?: (data: CampaignDataRow[]) => void;
 }
 
 type FileType = 'delivery' | 'contract-terms' | '';
@@ -52,7 +53,7 @@ const UnifiedUploadModal: React.FC<UnifiedUploadModalProps> = ({
           return;
         }
 
-        const data = results.data as any[];
+        const data = results.data as unknown[];
 
         if (selectedFileType === 'delivery') {
           // Validate delivery data columns

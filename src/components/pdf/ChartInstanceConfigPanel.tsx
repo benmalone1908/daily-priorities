@@ -35,7 +35,7 @@ const ChartInstanceConfigPanel = ({
   dataEngine
 }: ChartInstanceConfigPanelProps) => {
   const [localInstance, setLocalInstance] = useState<ChartInstance>(instance);
-  const [dataPreview, setDataPreview] = useState<any>(null);
+  const [dataPreview, setDataPreview] = useState<unknown>(null);
   const template = getTemplateById(instance.templateId);
 
   // Sync with parent instance changes

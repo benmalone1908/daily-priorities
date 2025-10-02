@@ -16,11 +16,11 @@ const CampaignHealthTable = ({ healthData }: CampaignHealthTableProps) => {
   const [filterBy, setFilterBy] = useState<"all" | "healthy" | "warning" | "critical">("all");
 
   const filteredAndSortedData = useMemo(() => {
-    let filtered = healthData.filter(campaign => {
+    const filtered = healthData.filter(campaign => {
       const matchesSearch = campaign.campaignName.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       if (!matchesSearch) return false;
-      
+
       if (filterBy === "all") return true;
       if (filterBy === "healthy") return campaign.healthScore >= 7;
       if (filterBy === "warning") return campaign.healthScore >= 4 && campaign.healthScore < 7;
@@ -70,7 +70,7 @@ const CampaignHealthTable = ({ healthData }: CampaignHealthTableProps) => {
           />
         </div>
         
-        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as "name" | "health" | "spend" | "revenue")}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
@@ -81,8 +81,8 @@ const CampaignHealthTable = ({ healthData }: CampaignHealthTableProps) => {
             <SelectItem value="revenue">Attributed Sales</SelectItem>
           </SelectContent>
         </Select>
-        
-        <Select value={filterBy} onValueChange={(value: any) => setFilterBy(value)}>
+
+        <Select value={filterBy} onValueChange={(value) => setFilterBy(value as "all" | "healthy" | "warning" | "critical")}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filter by..." />
           </SelectTrigger>

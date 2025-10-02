@@ -1,4 +1,5 @@
 
+import { CampaignDataRow } from '@/types/campaign';
 import { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
 import CombinedMetricsChart from "./CombinedMetricsChart";
@@ -7,11 +8,13 @@ import { CustomMetricSelector } from "./CustomMetricSelector";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { CalendarDays, Calendar } from "lucide-react";
 
+import { ContractTermsRow } from '@/types/dashboard';
+
 // Define props interface to match Dashboard component
 interface DashboardProxyProps {
-  data: any[];
-  metricsData: any[];
-  revenueData: any[];
+  data: CampaignDataRow[];
+  metricsData: CampaignDataRow[];
+  revenueData: CampaignDataRow[];
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
@@ -27,10 +30,10 @@ interface DashboardProxyProps {
   sortedCampaignOptions: string[];
   sortedAdvertiserOptions: string[];
   sortedAgencyOptions: string[];
-  formattedCampaignOptions: any[];
-  formattedAdvertiserOptions: any[];
-  formattedAgencyOptions: any[];
-  aggregatedMetricsData: any[];
+  formattedCampaignOptions: unknown[];
+  formattedAdvertiserOptions: unknown[];
+  formattedAgencyOptions: unknown[];
+  aggregatedMetricsData: CampaignDataRow[];
   agencyToAdvertisersMap: Record<string, Set<string>>;
   agencyToCampaignsMap: Record<string, Set<string>>;
   advertiserToCampaignsMap: Record<string, Set<string>>;
@@ -39,7 +42,7 @@ interface DashboardProxyProps {
   useGlobalFilters?: boolean;
   hideCharts?: string[];
   chartToggleComponent?: React.ReactNode;
-  contractTermsData?: any[];
+  contractTermsData?: ContractTermsRow[];
   showDailyTotalsTable?: boolean;
   hideDashboardSparkCharts?: boolean;
 }

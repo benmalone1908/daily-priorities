@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import type { ProcessedCampaign } from '@/types/pacing';
 import { Calendar, TrendingUp, TrendingDown, Target, ChevronUp, ChevronDown, ChevronsUpDown, Filter } from 'lucide-react';
-import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { useCampaignFilter } from '@/contexts/use-campaign-filter';
 import { formatPercentage, getPacingColor } from '@/lib/pacingUtils';
 import { severityLevels, getSeverityLevel, getSeverityBadge, type SeverityLevel } from '@/lib/severityLevels';
 
@@ -75,8 +75,8 @@ export const CampaignOverviewTable: React.FC<CampaignOverviewTableProps> = ({
     }
 
     return [...filtered].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: unknown;
+      let bValue: unknown;
 
       switch (sortField) {
         case 'name':

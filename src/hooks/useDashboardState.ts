@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AnomalyDetectionResult } from '@/types/anomaly';
 
 // Types for state management
 export type ChartViewMode = "date" | "dayOfWeek";
@@ -33,7 +34,7 @@ export interface DashboardState {
 
   // Data states
   weeklyDataState: WeeklyData[];
-  anomalies: any;
+  anomalies: AnomalyDetectionResult | null;
 
   // UI states
   showAnomalySection: boolean;
@@ -49,7 +50,7 @@ export interface DashboardActions {
   setMetricsViewMode: (mode: ChartViewMode) => void;
   setRevenueViewMode: (mode: ChartViewMode) => void;
   setWeeklyDataState: (data: WeeklyData[]) => void;
-  setAnomalies: (anomalies: any) => void;
+  setAnomalies: (anomalies: AnomalyDetectionResult | null) => void;
   setShowAnomalySection: (show: boolean) => void;
 }
 
@@ -84,7 +85,7 @@ export const useDashboardState = (props: DashboardStateProps = {}) => {
 
   // Data states
   const [weeklyDataState, setWeeklyDataState] = useState<WeeklyData[]>([]);
-  const [anomalies, setAnomalies] = useState<any>({
+  const [anomalies, setAnomalies] = useState<unknown>({
     impressions: [],
     clicks: [],
     revenue: [],

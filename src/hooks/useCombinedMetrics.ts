@@ -1,10 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatNumber, parseDateString, formatDateSortable } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { CampaignDataRow } from "@/types/campaign";
+
+// Interface for combo chart data point
+interface ComboChartDataPoint {
+  date: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  TRANSACTIONS: number;
+  REVENUE: number;
+}
 
 export interface CombinedMetricsProps {
-  data: any[];
-  rawData?: any[];
+  data: CampaignDataRow[];
+  rawData?: CampaignDataRow[];
   initialTab?: string;
   customBarMetric?: string;
   customLineMetric?: string;
@@ -21,15 +31,21 @@ export interface CombinedMetricsActions {
   handleTabChange: (tab: string, onTabChange?: (tab: string) => void) => void;
 }
 
+export interface ChartDataPoint {
+  date?: string;
+  DAY_OF_WEEK?: string;
+  [key: string]: string | number | undefined;
+}
+
 export interface ProcessedMetricsData {
-  chartData: any[];
+  chartData: ChartDataPoint[];
   isDayOfWeekData: boolean;
   barSize: number;
   hasData: boolean;
 }
 
 // Helper function to get complete date range from data
-const getCompleteDateRange = (data: any[]): Date[] => {
+const getCompleteDateRange = (data: ChartDataPoint[]): Date[] => {
   const dates = data
     .map(row => row.DATE || row.DAY_OF_WEEK)
     .filter(date => date)
@@ -60,7 +76,7 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 };
 
 // Helper function to fill missing dates with zero values for combo chart
-const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[] => {
+const fillMissingDatesForCombo = (processedData: CampaignDataRow[], allDates: Date[]): ComboChartDataPoint[] => {
 
   // Check if we're dealing with day of week data
   const isDayOfWeekData = processedData.some(item => item.date && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(item.date));
@@ -103,7 +119,7 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
 
   // Generate complete time series only within the data range
   // Use consistent MM/DD/YY date format for proper sorting
-  const result = [];
+  const result: ComboChartDataPoint[] = [];
   for (const date of allDates) {
     if (date >= firstDataDate && date <= lastDataDate) {
       // Format date as MM/DD/YY for consistent sorting
@@ -135,8 +151,7 @@ const fillMissingDatesForCombo = (processedData: any[], allDates: Date[]): any[]
  * Custom hook for managing combined metrics chart data processing and state
  * Extracted from CombinedMetricsChart.tsx for better maintainability
  */
-export const useCombinedMetrics = ({
-  data,
+export const useCombinedMetrics = ({ data,
   rawData = [],
   initialTab = "display",
   customBarMetric = "IMPRESSIONS",
@@ -313,7 +328,7 @@ export const useCombinedMetrics = ({
   };
 
   // Custom tooltip formatter function
-  const formatTooltipValue = (value: any, name: string) => {
+  const formatTooltipValue = (value: unknown, name: string) => {
     const numValue = Number(value);
     if (isNaN(numValue)) return [value, name];
 

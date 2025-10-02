@@ -4,9 +4,19 @@ import { ChartModeSelector } from './ChartModeSelector';
 import { DailyTotalsTable } from './DailyTotalsTable';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { formatNumber } from '@/lib/utils';
+import type { DeliveryDataRow } from '@/types/dashboard';
+
+interface ChartDataPoint {
+  date: string;
+  impressions: number;
+  clicks: number;
+  transactions: number;
+  revenue: number;
+  formattedDate?: string;
+}
 
 interface CampaignPerformanceChartProps {
-  data: any[];
+  data: DeliveryDataRow[];
   campaignName: string;
 }
 
@@ -35,20 +45,20 @@ export const CampaignPerformanceChart: React.FC<CampaignPerformanceChartProps> =
       }
 
       // Add up the metrics for this date
-      acc[date].impressions += parseFloat(row.IMPRESSIONS) || 0;
-      acc[date].clicks += parseFloat(row.CLICKS) || 0;
-      acc[date].transactions += parseFloat(row.TRANSACTIONS) || 0;
-      acc[date].revenue += parseFloat(row.REVENUE) || 0;
+      acc[date].impressions += parseFloat(String(row.IMPRESSIONS)) || 0;
+      acc[date].clicks += parseFloat(String(row.CLICKS || 0)) || 0;
+      acc[date].transactions += parseFloat(String(row.TRANSACTIONS || 0)) || 0;
+      acc[date].revenue += parseFloat(String(row.REVENUE || 0)) || 0;
 
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, ChartDataPoint>);
 
     // Convert to array and sort by date (oldest first for chart)
-    return Object.values(groupedByDate).sort((a: any, b: any) => {
+    return Object.values(groupedByDate).sort((a, b) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
       return dateA.getTime() - dateB.getTime();
-    }).map((item: any) => ({
+    }).map((item) => ({
       ...item,
       formattedDate: new Date(item.date).toLocaleDateString('en-US', {
         month: 'numeric',
@@ -100,12 +110,25 @@ export const CampaignPerformanceChart: React.FC<CampaignPerformanceChartProps> =
 
   const config = getChartConfig();
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface TooltipPayload {
+    name: string;
+    value: number;
+    color: string;
+    dataKey: string;
+  }
+
+  interface TooltipProps {
+    active?: boolean;
+    payload?: TooltipPayload[];
+    label?: string;
+  }
+
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-background p-3 border rounded-lg shadow-lg">
           <p className="font-medium">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} style={{ color: entry.color }}>
               {entry.name}: {entry.name.includes('Revenue') ? '$' : ''}{formatNumber(entry.value)}
             </p>

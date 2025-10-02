@@ -1,6 +1,10 @@
 // Campaign parsing and filtering utilities for Pacing 2 - adapted from pacing-report
 
-import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { useCampaignFilter } from '@/contexts/use-campaign-filter';
+
+// Type for extraction functions
+type ExtractAgencyInfo = (name: string) => { agency: string };
+type ExtractAdvertiserName = (name: string) => string;
 
 // Option interface for dropdowns
 export interface FilterOption {
@@ -9,7 +13,7 @@ export interface FilterOption {
 }
 
 // Generate filter options from campaigns
-export function generateFilterOptions(campaigns: { name: string }[], extractAgencyInfo: any, extractAdvertiserName: any): {
+export function generateFilterOptions(campaigns: { name: string }[], extractAgencyInfo: ExtractAgencyInfo, extractAdvertiserName: ExtractAdvertiserName): {
   agencies: FilterOption[];
   advertisers: FilterOption[];
   campaignNames: FilterOption[];

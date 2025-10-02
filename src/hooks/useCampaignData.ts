@@ -9,7 +9,7 @@ import {
   getCompleteDateRange,
   fillMissingDatesForAggregated
 } from "@/utils/dateUtils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 
 interface UseCampaignDataProps {
   data: CampaignDataRow[];

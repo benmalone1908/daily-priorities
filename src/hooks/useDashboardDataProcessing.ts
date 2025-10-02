@@ -24,8 +24,17 @@ export interface DayOfWeekData {
   count: number;
 }
 
+export interface AggregatedDataByDate {
+  DATE: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  REVENUE: number;
+  TRANSACTIONS: number;
+  count: number;
+}
+
 export interface DashboardDataProcessingResult {
-  aggregatedData: any[];
+  aggregatedData: AggregatedDataByDate[];
   aggregatedDataByDayOfWeek: DayOfWeekData[];
   campaigns: string[];
   advertisers: string[];

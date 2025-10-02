@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -15,7 +16,7 @@ import { DateRange } from 'react-day-picker';
 import { formatNumber, parseDateString, formatDateSortable } from '@/lib/utils';
 
 interface CampaignPerformanceComponentProps {
-  data: any[];
+  data: CampaignDataRow[];
   mode: 'display' | 'attribution';
   format: 'by-date' | 'by-day-of-week';
   dateRange: DateRange;
@@ -23,7 +24,7 @@ interface CampaignPerformanceComponentProps {
 }
 
 // Helper function to get complete date range from data
-const getCompleteDateRange = (data: any[]): Date[] => {
+const getCompleteDateRange = (data: CampaignDataRow[]): Date[] => {
   const dates = data
     .map(row => row.DATE || row.DAY_OF_WEEK)
     .filter(date => date)
@@ -54,7 +55,7 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 };
 
 // Helper function to fill missing dates
-const fillMissingDates = (data: any[], completeDateRange: Date[]) => {
+const fillMissingDates = (data: CampaignDataRow[], completeDateRange: Date[]) => {
   if (data.length === 0 || completeDateRange.length === 0) return data;
   
   const dataByDate = new Map();
@@ -114,7 +115,7 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
 
     if (format === 'by-day-of-week') {
       // Group by day of week
-      const dayGroups: Record<string, any> = {};
+      const dayGroups: Record<string, unknown> = {};
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       
       filteredData.forEach(row => {
@@ -146,7 +147,7 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
       });
     } else {
       // Group by date
-      const dateGroups: Record<string, any> = {};
+      const dateGroups: Record<string, unknown> = {};
 
       filteredData.forEach(row => {
         // Normalize date to MM/DD/YY format
@@ -192,7 +193,7 @@ const CampaignPerformanceComponent: React.FC<CampaignPerformanceComponentProps> 
   }, [processedData, format]);
 
   // Custom tooltip formatter function
-  const formatTooltipValue = (value: any, name: string) => {
+  const formatTooltipValue = (value: unknown, name: string) => {
     const numValue = Number(value);
     if (isNaN(numValue)) return [value, name];
     

@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
@@ -9,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import RawDataTableImproved from "@/components/RawDataTableImproved";
 import SidebarLayout from "@/components/SidebarLayout";
-import { useSupabase } from "@/contexts/SupabaseContext";
-import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useSupabase } from "@/contexts/use-supabase";
+import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -18,9 +20,9 @@ const CampaignDetailPageContent = () => {
   const { campaignName } = useParams<{ campaignName: string }>();
   const decodedCampaignName = campaignName ? decodeURIComponent(campaignName) : "";
 
-  const [data, setData] = useState<any[]>([]);
-  const [pacingData, setPacingData] = useState<any[]>([]);
-  const [contractTermsData, setContractTermsData] = useState<any[]>([]);
+  const [data, setData] = useState<CampaignDataRow[]>([]);
+  const [pacingData, setPacingData] = useState<CampaignDataRow[]>([]);
+  const [contractTermsData, setContractTermsData] = useState<CampaignDataRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -97,7 +99,7 @@ const CampaignDetailPageContent = () => {
     };
 
     loadCampaignData();
-  }, [decodedCampaignName, supabase]);
+  }, [decodedCampaignName, getCampaignData, getContractTerms]);
 
   // Calculate available date range for the date picker
   const availableDateRange = useMemo(() => {

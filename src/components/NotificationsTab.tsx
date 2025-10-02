@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,17 +22,18 @@ import {
   EyeOff
 } from "lucide-react";
 import { AnomalyTable } from "./AnomalyTable";
-import { AnomalyFiltersComponent, ActiveFilters, AnomalyFilters, filterAnomalies } from "./AnomalyFilters";
+import { AnomalyFiltersComponent, ActiveFilters, AnomalyFilters } from "./AnomalyFilters";
+import { filterAnomalies } from "@/utils/anomalyFilters";
 import {
   CampaignAnomaly,
   detectAllAnomalies,
   CampaignDataRow
 } from "@/utils/anomalyDetection";
-import { useSupabase } from "@/contexts/SupabaseContext";
+import { useSupabase } from "@/contexts/use-supabase";
 import { toast } from "sonner";
 
 interface NotificationsTabProps {
-  campaignData: any[];
+  campaignData: CampaignDataRow[];
 }
 
 export function NotificationsTab({ campaignData }: NotificationsTabProps) {
@@ -47,7 +49,7 @@ export function NotificationsTab({ campaignData }: NotificationsTabProps) {
   });
 
   // Convert campaign data to the format expected by anomaly detection
-  const formatCampaignData = (data: any[]): CampaignDataRow[] => {
+  const formatCampaignData = (data: CampaignDataRow[]): CampaignDataRow[] => {
     return data.map(row => ({
       DATE: row.DATE || row.date,
       "CAMPAIGN ORDER NAME": row["CAMPAIGN ORDER NAME"] || row.campaign_order_name,

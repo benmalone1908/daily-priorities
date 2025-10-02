@@ -1,35 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
-
-// Define the agency mapping
-export const AGENCY_MAPPING: Record<string, string> = {
-  '2RS': 'Two Rivers',
-  '6D': '6 Degrees Media',
-  'BLO': 'Be Local One',
-  'CB': 'Crystal Bol',
-  'CN': 'Cannabis Now',
-  'DJ': 'DispJoy',
-  'FDD': 'Fat Dawgs Digital',
-  'FLD': 'Fieldtest',
-  'FLWR': 'The Flowery',
-  'HD': 'Highday',
-  'HG': 'Happy Greens',
-  'HR': 'HighRewards',
-  'HRB': 'Herb.co',
-  'KAI': 'Kartel.AI',
-  'LP': 'Lettuce Print',
-  'MJ': 'MediaJel Direct',
-  'NLMC': 'NLMC',
-  'NP': 'Noble People',
-  'OG': 'Orangellow',
-  'PRP': 'Propaganda Creative',
-  'SM': 'Orangellow',
-  'TCC': 'Tulip City Creative',
-  'TF': 'Tact Firm',
-  'TRN': 'Terrayn',
-  'TST': 'Test', // Test campaigns - will be filtered out
-  'W&T': 'Water & Trees',
-  'WWX': 'Wunderworx'
-};
+import { createContext, useState, ReactNode, useEffect, useMemo, useCallback } from 'react';
+import { AGENCY_MAPPING } from './agency-mapping';
 
 // Cache for parsed campaign data
 type CampaignParseCache = {
@@ -53,7 +23,7 @@ type CampaignFilterContextType = {
   clearCache: () => void;
 };
 
-const CampaignFilterContext = createContext<CampaignFilterContextType | undefined>(undefined);
+export const CampaignFilterContext = createContext<CampaignFilterContextType | undefined>(undefined);
 
 
 export function CampaignFilterProvider({ children }: { children: ReactNode }) {
@@ -463,12 +433,4 @@ export function CampaignFilterProvider({ children }: { children: ReactNode }) {
       {children}
     </CampaignFilterContext.Provider>
   );
-}
-
-export function useCampaignFilter() {
-  const context = useContext(CampaignFilterContext);
-  if (context === undefined) {
-    throw new Error('useCampaignFilter must be used within a CampaignFilterProvider');
-  }
-  return context;
 }

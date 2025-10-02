@@ -4,10 +4,11 @@ import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { formatNumber, formatCurrency, formatPercentage } from "@/lib/formatters";
 import AnomalyDetails from "./AnomalyDetails";
+import { AnomalyData } from "@/types/anomaly";
 
 interface MetricCardProps {
   title: string;
-  anomalies: any[];
+  anomalies: AnomalyData[];
   metric: string;
   anomalyPeriod: "daily" | "weekly";
 }

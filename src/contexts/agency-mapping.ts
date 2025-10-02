@@ -1,0 +1,30 @@
+// Define the agency mapping
+export const AGENCY_MAPPING: Record<string, string> = {
+  '2RS': 'Two Rivers',
+  '6D': '6 Degrees Media',
+  'BLO': 'Be Local One',
+  'CB': 'Crystal Bol',
+  'CN': 'Cannabis Now',
+  'DJ': 'DispJoy',
+  'FDD': 'Fat Dawgs Digital',
+  'FLD': 'Fieldtest',
+  'FLWR': 'The Flowery',
+  'HD': 'Highday',
+  'HG': 'Happy Greens',
+  'HR': 'HighRewards',
+  'HRB': 'Herb.co',
+  'KAI': 'Kartel.AI',
+  'LP': 'Lettuce Print',
+  'MJ': 'MediaJel Direct',
+  'NLMC': 'NLMC',
+  'NP': 'Noble People',
+  'OG': 'Orangellow',
+  'PRP': 'Propaganda Creative',
+  'SM': 'Orangellow',
+  'TCC': 'Tulip City Creative',
+  'TF': 'Tact Firm',
+  'TRN': 'Terrayn',
+  'TST': 'Test', // Test campaigns - will be filtered out
+  'W&T': 'Water & Trees',
+  'WWX': 'Wunderworx'
+};

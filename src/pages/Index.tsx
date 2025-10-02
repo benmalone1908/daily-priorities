@@ -1,3 +1,6 @@
+import { ContractTermsRow } from '@/types/dashboard';
+import { CampaignDataRow, TimeSeriesDataPoint, ModalData, MetricType } from '@/types/campaign';
+import { PacingDeliveryData } from '@/types/pacing';
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DateRange } from "react-day-picker";
@@ -9,8 +12,9 @@ import CampaignSparkCharts from "@/components/CampaignSparkCharts";
 import { LayoutDashboard, ChartLine, FileText, Target, Plus, Activity, FileDown, Clock, TrendingUp, Bell, Trash2 } from "lucide-react";
 import DashboardWrapper from "@/components/DashboardWrapper";
 import { setToStartOfDay, setToEndOfDay, logDateDetails, parseDateString, formatDateSortable } from "@/lib/utils";
-import { CampaignFilterProvider, useCampaignFilter } from "@/contexts/CampaignFilterContext";
-import { useSupabase } from "@/contexts/SupabaseContext";
+import { CampaignFilterProvider } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { useSupabase } from "@/contexts/use-supabase";
 import { getLastCampaignUpload, getLastContractUpload } from "@/lib/supabase";
 import { CampaignStatusToggle } from "@/components/CampaignStatusToggle";
 import { ChartToggle } from "@/components/ChartToggle";
@@ -47,11 +51,11 @@ interface ModalData {
   isOpen: boolean;
   title: string;
   metricType: MetricType;
-  data: any[];
+  data: CampaignDataRow[];
 }
 
 // Helper function to get complete date range from data
-const getCompleteDateRange = (data: any[]): Date[] => {
+const getCompleteDateRange = (data: CampaignDataRow[]): Date[] => {
   const dates = data
     .map(row => row.DATE)
     .filter(date => date && date !== 'Totals')
@@ -76,7 +80,7 @@ const getCompleteDateRange = (data: any[]): Date[] => {
 };
 
 // Helper function to fill missing dates with zero values for aggregated data
-const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]): any[] => {
+const fillMissingDatesForAggregated = (timeSeriesData: TimeSeriesDataPoint[], allDates: Date[]): TimeSeriesDataPoint[] => {
   
   // If no data, return empty array
   if (timeSeriesData.length === 0 || allDates.length === 0) return timeSeriesData;
@@ -103,7 +107,7 @@ const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]):
   
   // Generate complete time series only within the data range
   // Use consistent MM/DD/YY date format for proper sorting
-  const result = [];
+  const result: TimeSeriesDataPoint[] = [];
   for (const date of allDates) {
     if (date >= firstDataDate && date <= lastDataDate) {
       // Format date as MM/DD/YY for consistent sorting
@@ -135,7 +139,7 @@ const fillMissingDatesForAggregated = (timeSeriesData: any[], allDates: Date[]):
 };
 
 // Improved Aggregated Spark Charts component that matches the campaign row style
-const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
+const AggregatedSparkCharts = ({ data }: { data: CampaignDataRow[] }) => {
   const { showAggregatedSparkCharts, showDebugInfo } = useCampaignFilter();
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
@@ -156,7 +160,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
       console.log('AggregatedSparkCharts: Starting time series aggregation...');
     }
     
-    const dateGroups = new Map<string, any>();
+    const dateGroups = new Map<string, unknown>();
     
     // Single pass aggregation
     for (let index = 0; index < data.length; index++) {
@@ -370,7 +374,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   };
   
   // Render a metric card with chart
-  const renderMetricCard = (title: string, value: number, trend: number, formatter: (val: number) => string, data: any[], dataKey: string, color: string, metricType: MetricType) => {
+  const renderMetricCard = (title: string, value: number, trend: number, formatter: (val: number) => string, data: CampaignDataRow[], dataKey: string, color: string, metricType: MetricType) => {
     const colorClass = getColorClasses(trend).split(' ').find(c => c.startsWith('text-')) || '';
     const gradientId = `gradient-${title.toLowerCase().replace(/\s+/g, '-')}`;
     
@@ -518,8 +522,7 @@ const AggregatedSparkCharts = ({ data }: { data: any[] }) => {
   );
 };
 
-const DashboardContent = ({
-  data,
+const DashboardContent = ({ data,
   pacingData,
   contractTermsData,
   dateRange,
@@ -536,13 +539,13 @@ const DashboardContent = ({
   lastCampaignUpload,
   lastContractUpload
 }: {
-  data: any[];
-  pacingData: any[];
-  contractTermsData: any[];
+  data: CampaignDataRow[];
+  pacingData: PacingDeliveryData[];
+  contractTermsData: ContractTermsRow[];
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
-  onPacingDataLoaded: (data: any[]) => void;
-  onDataLoaded: (data: any[]) => void;
+  onPacingDataLoaded: (data: CampaignDataRow[]) => void;
+  onDataLoaded: (data: CampaignDataRow[]) => void;
   hasAllData: boolean;
   isLoadingAllData: boolean;
   loadAllDataInBackgroundWrapper: () => void;
@@ -622,7 +625,7 @@ const DashboardContent = ({
   const { showLiveOnly, extractAdvertiserName, isTestCampaign, extractAgencyInfo, showDebugInfo } = useCampaignFilter();
 
   // Updated getMostRecentDate function to accept filtered data as parameter
-  const getMostRecentDate = (filteredData: any[]) => {
+  const getMostRecentDate = (filteredData: CampaignDataRow[]) => {
     if (!filteredData || filteredData.length === 0) return null;
     const dates = filteredData
       .map(row => row.DATE)
@@ -814,8 +817,8 @@ const DashboardContent = ({
     });
   }, [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAgencyInfo, extractAdvertiserName]);
 
-  const globalFilteredData = useMemo(() => getFilteredDataByGlobalFilters(), 
-    [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAdvertiserName, extractAgencyInfo]);
+  const globalFilteredData = useMemo(() => getFilteredDataByGlobalFilters(),
+    [getFilteredDataByGlobalFilters]);
 
   // Filter contract terms data by global filters
   const filteredContractTermsData = useMemo(() => {
@@ -1205,9 +1208,9 @@ const DashboardContent = ({
 
 const Index = () => {
   const { upsertCampaignData, getCampaignData, loadAllDataInBackground, getContractTerms, upsertContractTerms } = useSupabase();
-  const [data, setData] = useState<any[]>([]);
-  const [pacingData, setPacingData] = useState<any[]>([]);
-  const [contractTermsData, setContractTermsData] = useState<any[]>([]);
+  const [data, setData] = useState<CampaignDataRow[]>([]);
+  const [pacingData, setPacingData] = useState<CampaignDataRow[]>([]);
+  const [contractTermsData, setContractTermsData] = useState<CampaignDataRow[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showDashboard, setShowDashboard] = useState(false);
   const [isLoadingFromSupabase, setIsLoadingFromSupabase] = useState(true);
@@ -1322,10 +1325,10 @@ const Index = () => {
     } finally {
       setIsLoadingAllData(false);
     }
-  }, [data.length, hasAllData, isLoadingAllData]);
+  }, [data.length, hasAllData, isLoadingAllData, loadAllDataInBackground]);
 
   // Helper function to transform data format
-  const transformDataFormat = (campaignData: any[]) => {
+  const transformDataFormat = (campaignData: CampaignDataRow[]) => {
     return campaignData.map(row => {
       let formattedDate = row.date;
       try {
@@ -1357,7 +1360,7 @@ const Index = () => {
     if (data.length > 0) {
       console.log(`🔍 First 3 dates in data:`, data.slice(0, 3).map(row => row.DATE));
     }
-  }, [data.length, dateRange]);
+  }, [data, dateRange]);
 
   useEffect(() => {
     if (data.length > 0) {
@@ -1401,9 +1404,9 @@ const Index = () => {
               if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
                 // Check if the dataset spans more than 90 days
                 const daysDifference = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
-                
-                let fromDate = minDate;
-                let toDate = maxDate;
+
+                const fromDate = minDate;
+                const toDate = maxDate;
                 
                 console.log(`🔍 Dataset analysis:`);
                 console.log(`🔍 - Min date: ${minDate.toLocaleDateString()} (${minDate.toISOString()})`);
@@ -1435,9 +1438,10 @@ const Index = () => {
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- dateRange is intentionally excluded to avoid infinite loop when setting initial range
   }, [data]);
 
-  const handleDataLoaded = (uploadedData: any[]) => {
+  const handleDataLoaded = (uploadedData: CampaignDataRow[]) => {
     try {
       if (!Array.isArray(uploadedData) || uploadedData.length === 0) {
         toast.error("Invalid data format received");
@@ -1486,10 +1490,12 @@ const Index = () => {
         for (const field of campaignFields) {
           if (newRow[field]) {
             // Remove null bytes, control characters, and trim whitespace
+            /* eslint-disable no-control-regex */
             newRow[field] = String(newRow[field])
               .replace(/\u0000/g, '') // Remove null bytes
               .replace(/[\u0000-\u001F\u007F]/g, '') // Remove control characters
               .trim();
+            /* eslint-enable no-control-regex */
             break;
           }
         }
@@ -1612,7 +1618,7 @@ const Index = () => {
     }
   };
 
-  const handlePacingDataLoaded = (uploadedPacingData: any[]) => {
+  const handlePacingDataLoaded = (uploadedPacingData: PacingDeliveryData[]) => {
     try {
       if (!Array.isArray(uploadedPacingData) || uploadedPacingData.length === 0) {
         toast.error("Invalid pacing data format received");
@@ -1628,7 +1634,7 @@ const Index = () => {
     }
   };
 
-  const handleContractTermsLoaded = async (uploadedContractTermsData: any[]) => {
+  const handleContractTermsLoaded = async (uploadedContractTermsData: ContractTermsRow[]) => {
     try {
       if (!Array.isArray(uploadedContractTermsData) || uploadedContractTermsData.length === 0) {
         toast.error("Invalid contract terms data format received");

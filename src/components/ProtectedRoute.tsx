@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/use-auth'
 import { LoginForm } from '@/components/LoginForm'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'

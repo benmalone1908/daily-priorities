@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,7 +15,7 @@ interface WeeklyData {
 }
 
 interface WeeklyComparisonComponentProps {
-  data: any[];
+  data: CampaignDataRow[];
   period: '7-day' | '14-day' | '30-day';
   dateRange: DateRange;
   title: string;
@@ -38,7 +39,7 @@ const WeeklyComparisonComponent: React.FC<WeeklyComparisonComponentProps> = ({
     });
 
     // Process data with dates
-    const rowsWithDates = filteredData.map((row: any) => ({
+    const rowsWithDates = filteredData.map((row: CampaignDataRow) => ({
       ...row,
       parsedDate: new Date(row.DATE)
     })).filter(row => !isNaN(row.parsedDate.getTime()));
@@ -59,9 +60,9 @@ const WeeklyComparisonComponent: React.FC<WeeklyComparisonComponentProps> = ({
     }
 
     const periods: WeeklyData[] = [];
-    
+
     // Calculate non-overlapping periods
-    let currentPeriodEnd = new Date(mostRecentDate);
+    const currentPeriodEnd = new Date(mostRecentDate);
     for (let i = 0; i < completePeriods; i++) {
       const periodEnd = new Date(currentPeriodEnd);
       const periodStart = new Date(periodEnd);

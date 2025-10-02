@@ -4,9 +4,10 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileText } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
+import { ContractTermsRow } from "@/types/dashboard";
 
 interface ContractTermsFileUploadProps {
-  onDataLoaded: (data: any[]) => void;
+  onDataLoaded: (data: ContractTermsRow[]) => void;
 }
 
 const ContractTermsFileUpload = ({ onDataLoaded }: ContractTermsFileUploadProps) => {
@@ -72,7 +73,7 @@ const ContractTermsFileUpload = ({ onDataLoaded }: ContractTermsFileUploadProps)
                   return null;
                 }
                 
-                const processed: Record<string, any> = {};
+                const processed: Record<string, string | number | undefined> = {};
                 
                 headers.forEach((header, index) => {
                   const value = row[index];
@@ -96,7 +97,7 @@ const ContractTermsFileUpload = ({ onDataLoaded }: ContractTermsFileUploadProps)
                 });
                 
                 return processed;
-              }).filter((row): row is Record<string, any> => row !== null);
+              }).filter((row): row is ContractTermsRow => row !== null);
               
               if (processedData.length === 0) {
                 toast.error("No valid contract terms data rows found in CSV");

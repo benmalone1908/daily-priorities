@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react'
+import React, { createContext, ReactNode } from 'react'
 import { supabase, type CampaignData, type CampaignAnomalyData, type ContractTermsData } from '@/lib/supabase'
 
 interface SupabaseContextType {
@@ -22,15 +22,7 @@ interface SupabaseContextType {
   clearContractTerms: () => Promise<void>
 }
 
-const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
-
-export const useSupabase = () => {
-  const context = useContext(SupabaseContext)
-  if (context === undefined) {
-    throw new Error('useSupabase must be used within a SupabaseProvider')
-  }
-  return context
-}
+export const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
 
 interface SupabaseProviderProps {
   children: ReactNode

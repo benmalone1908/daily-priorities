@@ -11,11 +11,12 @@ import {
   Maximize
 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { TimeSeriesDataPoint } from "@/types/campaign";
 
 interface CampaignSparkCardProps {
   item: {
     name: string;
-    timeSeriesData: any[];
+    timeSeriesData: TimeSeriesDataPoint[];
     totals: {
       impressions: number;
       clicks: number;
@@ -26,7 +27,7 @@ interface CampaignSparkCardProps {
     avgCtr: number;
     avgRoas: number;
   };
-  onChartClick: (itemName: string, metricType: string, timeSeriesData: any[]) => void;
+  onChartClick: (itemName: string, metricType: string, timeSeriesData: TimeSeriesDataPoint[]) => void;
 }
 
 export const CampaignSparkCard = ({ item, onChartClick }: CampaignSparkCardProps) => {

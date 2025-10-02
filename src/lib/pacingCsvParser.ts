@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import type { ContractTerms, PacingDeliveryData } from '../types/pacing';
+import { GenericCSVRow } from '../types/csv';
 
 // Helper function to find column with case-insensitive matching
 const findColumn = (headers: string[], targetColumn: string): string | null => {
@@ -7,7 +8,7 @@ const findColumn = (headers: string[], targetColumn: string): string | null => {
 };
 
 // Helper function to normalize data with case-insensitive column mapping
-const normalizeContractTermsData = (data: any[]): ContractTerms[] => {
+const normalizeContractTermsData = (data: GenericCSVRow[]): ContractTerms[] => {
   if (data.length === 0) return [];
   
   const headers = Object.keys(data[0]);
@@ -25,7 +26,7 @@ const normalizeContractTermsData = (data: any[]): ContractTerms[] => {
   
   // Transform data to use normalized column names
   return data.map(row => {
-    const normalizedRow: any = {};
+    const normalizedRow: Record<string, string | number | undefined> = {};
     for (const [standardName, actualName] of Object.entries(columnMap)) {
       normalizedRow[standardName] = row[actualName];
     }
@@ -44,7 +45,7 @@ export const parseContractTermsCSV = (file: File): Promise<ContractTerms[]> => {
           return;
         }
         
-        const rawData = results.data as any[];
+        const rawData = results.data as GenericCSVRow[];
         
         // Validate required columns (case-insensitive)
         if (rawData.length > 0) {
@@ -69,7 +70,7 @@ export const parseContractTermsCSV = (file: File): Promise<ContractTerms[]> => {
 };
 
 // Helper function to normalize delivery data with case-insensitive column mapping
-const normalizeDeliveryData = (data: any[]): PacingDeliveryData[] => {
+const normalizeDeliveryData = (data: GenericCSVRow[]): PacingDeliveryData[] => {
   if (data.length === 0) return [];
   
   const headers = Object.keys(data[0]);
@@ -87,7 +88,7 @@ const normalizeDeliveryData = (data: any[]): PacingDeliveryData[] => {
   
   // Transform data to use normalized column names
   return data.map(row => {
-    const normalizedRow: any = {};
+    const normalizedRow: Record<string, string | number | undefined> = {};
     for (const [standardName, actualName] of Object.entries(columnMap)) {
       normalizedRow[standardName] = row[actualName];
     }
@@ -106,7 +107,7 @@ export const parsePacingDeliveryDataCSV = (file: File): Promise<PacingDeliveryDa
           return;
         }
         
-        const rawData = results.data as any[];
+        const rawData = results.data as GenericCSVRow[];
         
         // Validate required columns (case-insensitive)
         if (rawData.length > 0) {

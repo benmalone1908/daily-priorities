@@ -1,25 +1,45 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { DateRange } from "react-day-picker";
-import { useSupabase } from "@/contexts/SupabaseContext";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useSupabase } from "@/contexts/use-supabase";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { setToStartOfDay, setToEndOfDay, parseDateString } from "@/lib/utils";
 import { toast } from "sonner";
 import { processCampaigns } from "@/lib/pacingCalculations";
 import { calculateCampaignHealth } from "@/utils/campaignHealthScoring";
+import { CampaignDataRow } from "@/types/campaign";
+import { ContractTermsRow } from "@/types/dashboard";
+import { GenericCSVRow } from "@/types/csv";
+import { ProcessedCampaign } from "@/types/pacing";
 
 interface UseCampaignManagerProps {
-  data: any[];
-  pacingData: any[];
-  contractTermsData: any[];
+  data: CampaignDataRow[];
+  pacingData: GenericCSVRow[];
+  contractTermsData: ContractTermsRow[];
   globalDateRange?: DateRange | undefined;
+}
+
+interface CampaignSummary {
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  revenue: number;
+  spend: number;
+  roas: number;
+  transactions: number;
+}
+
+interface CampaignHealthScore {
+  overall: number;
+  metrics: Record<string, number>;
+  issues: string[];
 }
 
 export interface CampaignManagerState {
   selectedCampaign: string | null;
-  campaignData: any[];
-  campaignPacingData: any[];
-  campaignContractData: any[];
-  allContractData: any[];
+  campaignData: CampaignDataRow[];
+  campaignPacingData: GenericCSVRow[];
+  campaignContractData: ContractTermsRow[];
+  allContractData: ContractTermsRow[];
   isLoading: boolean;
   activeTab: string;
   pacingModalOpen: boolean;
@@ -37,10 +57,10 @@ export interface CampaignManagerActions {
 
 export interface CampaignManagerData {
   campaignList: string[];
-  filteredCampaignData: any[];
-  campaignSummary: any;
-  campaignPacingInfo: any;
-  campaignHealthScore: any;
+  filteredCampaignData: CampaignDataRow[];
+  campaignSummary: CampaignSummary;
+  campaignPacingInfo: ProcessedCampaign | null;
+  campaignHealthScore: CampaignHealthScore;
 }
 
 /**

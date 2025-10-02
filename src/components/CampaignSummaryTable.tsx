@@ -26,11 +26,12 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { formatNumber, formatCurrency } from "@/lib/formatters";
+import { CampaignDataRow } from "@/types/campaign";
 
 interface CampaignSummaryTableProps {
-  data: any[];
+  data: CampaignDataRow[];
   useGlobalFilters?: boolean;
   onCampaignSelect?: (campaignName: string) => void;
 }
@@ -60,7 +61,7 @@ const CampaignSummaryTable = ({ data, useGlobalFilters = false, onCampaignSelect
   const campaignSummaries = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    const campaignGroups = new Map<string, any[]>();
+    const campaignGroups = new Map<string, CampaignDataRow[]>();
 
     // Group data by campaign name
     data.forEach(row => {

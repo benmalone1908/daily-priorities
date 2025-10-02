@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
@@ -11,7 +12,7 @@ import WeeklyComparisonComponent from '@/components/reports/WeeklyComparisonComp
 interface ReportPreviewProps {
   state: ReportBuilderState;
   groupedCharts: { [key: string]: ChartConfig[] };
-  data: any[];
+  data: CampaignDataRow[];
   onTogglePanel: () => void;
 }
 

@@ -1,5 +1,38 @@
 import { CampaignDataRow } from "./campaign";
 
+// CSV Data Types
+export interface CSVRow {
+  [key: string]: string | number;
+}
+
+// Processed data with calculated metrics
+export interface ProcessedCampaignRow extends CampaignDataRow {
+  CTR: number;
+  ROAS: number;
+  advertiser?: string;
+  agency?: string;
+}
+
+export interface DeliveryDataRow {
+  DATE: string;
+  'CAMPAIGN ORDER NAME': string;
+  IMPRESSIONS: string | number;
+  CLICKS?: string | number;
+  REVENUE?: string | number;
+  SPEND?: string | number;
+  TRANSACTIONS?: string | number;
+}
+
+export interface ContractTermsRow {
+  Name: string;
+  'Start Date': string;
+  'End Date': string;
+  Budget: string | number;
+  CPM?: string | number;
+  'Impressions Goal'?: string | number;
+  [key: string]: string | number | undefined;
+}
+
 // Simplified Dashboard Props - drastically reduced from 70+ props
 export interface DashboardProps {
   data: CampaignDataRow[];
@@ -19,7 +52,7 @@ export interface DashboardProps {
   onTabChange?: (tab: string) => void;
 
   // Additional data
-  contractTermsData?: Record<string, unknown>[];
+  contractTermsData?: ContractTermsRow[];
 }
 
 // Chart-specific interfaces

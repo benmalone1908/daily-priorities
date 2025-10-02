@@ -3,6 +3,8 @@
  * Extracted from Dashboard.tsx for better maintainability and reusability
  */
 
+import { CampaignDataRow } from '@/types/campaign';
+
 /**
  * Calculate ROAS (Return on Ad Spend) from revenue and impressions
  */
@@ -57,7 +59,7 @@ export const getTrendInfo = (percentChange: number, isPositiveGood: boolean = tr
 /**
  * Calculate metrics for a data period
  */
-export const calculatePeriodMetrics = (data: any[]) => {
+export const calculatePeriodMetrics = (data: CampaignDataRow[]) => {
   if (!data || data.length === 0) {
     return {
       impressions: 0,
@@ -88,7 +90,7 @@ export const calculatePeriodMetrics = (data: any[]) => {
 /**
  * Get data for a specific date range
  */
-export const getDataForPeriod = (data: any[], startDate: Date, endDate: Date) => {
+export const getDataForPeriod = (data: CampaignDataRow[], startDate: Date, endDate: Date) => {
   return data.filter(row => {
     if (!row.DATE) return false;
     const rowDate = new Date(row.DATE);
@@ -99,7 +101,7 @@ export const getDataForPeriod = (data: any[], startDate: Date, endDate: Date) =>
 /**
  * Get comparison period data
  */
-export const getComparisonData = (data: any[], currentPeriod: any[], comparisonDays: number) => {
+export const getComparisonData = (data: CampaignDataRow[], currentPeriod: CampaignDataRow[], comparisonDays: number) => {
   if (!data || data.length === 0 || !currentPeriod || currentPeriod.length === 0) {
     return [];
   }
@@ -138,9 +140,9 @@ export const formatDate = (dateString: string): string => {
  * Get metric comparison data for dashboard cards
  */
 export const getMetricComparison = (
-  current: any[],
-  previous: any[],
-  metricKey: string
+  current: CampaignDataRow[],
+  previous: CampaignDataRow[],
+  metricKey: keyof CampaignDataRow
 ) => {
   const currentValue = current.reduce((sum, row) => sum + (Number(row[metricKey]) || 0), 0);
   const previousValue = previous.reduce((sum, row) => sum + (Number(row[metricKey]) || 0), 0);

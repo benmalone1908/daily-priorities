@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,12 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Filter } from "lucide-react";
 import { CampaignAnomaly, getAnomalyTypeDisplayName } from "@/utils/anomalyDetection";
+import { AnomalyFilters } from "@/utils/anomalyFilters";
 
-export interface AnomalyFilters {
-  severity?: 'high' | 'medium' | 'low';
-  anomalyType?: 'impression_change' | 'transaction_drop' | 'transaction_zero' | 'suspected_bot_activity';
-  recency?: '3' | '7' | '10' | '14' | '30';
-}
+export type { AnomalyFilters };
 
 interface AnomalyFiltersProps {
   anomalies: CampaignAnomaly[];
@@ -32,15 +28,12 @@ export function AnomalyFiltersComponent({ anomalies, filters, onFiltersChange }:
     // Convert "__all__" back to undefined (no filter)
     const actualValue = value === "__all__" ? undefined : value;
 
-    let newFilters = {
+    const newFilters = {
       ...filters,
-      [key]: actualValue
+      [key]: actualValue,
+      // Auto-clear severity filter when selecting transaction drop type since all are high severity
+      ...(key === 'anomalyType' && actualValue === 'transaction_drop' ? { severity: undefined } : {})
     };
-
-    // Auto-clear severity filter when selecting transaction drop type since all are high severity
-    if (key === 'anomalyType' && actualValue === 'transaction_drop') {
-      newFilters.severity = undefined;
-    }
 
     onFiltersChange(newFilters);
   };
@@ -194,37 +187,4 @@ export const ActiveFilters = ({ filters, onFiltersChange }: AnomalyFiltersProps)
       </Button>
     </div>
   );
-}
-
-/**
- * Filter anomalies based on the provided filters
- */
-export function filterAnomalies(anomalies: CampaignAnomaly[], filters: AnomalyFilters): CampaignAnomaly[] {
-  return anomalies.filter(anomaly => {
-    // Filter by severity
-    if (filters.severity && anomaly.severity !== filters.severity) {
-      return false;
-    }
-
-    // Filter by anomaly type
-    if (filters.anomalyType && anomaly.anomaly_type !== filters.anomalyType) {
-      return false;
-    }
-
-
-    // Filter by recency
-    if (filters.recency) {
-      const daysBack = parseInt(filters.recency);
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-      const cutoffDateString = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-      if (anomaly.date_detected < cutoffDateString) {
-        return false;
-      }
-    }
-
-
-    return true;
-  });
 }

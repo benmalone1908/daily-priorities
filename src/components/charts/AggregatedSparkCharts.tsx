@@ -3,7 +3,7 @@ import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { TrendingDown, TrendingUp, Maximize } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { useCampaignData } from "@/hooks/useCampaignData";
 import { useModalState } from "@/hooks/useModalState";
 import SparkChartModal from "@/components/SparkChartModal";

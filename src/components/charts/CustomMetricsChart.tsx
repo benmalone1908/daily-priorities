@@ -1,7 +1,8 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 interface CustomMetricsChartProps {
-  data: any[];
+  data: CampaignDataRow[];
   barSize: number;
   customBarMetric: string;
   customLineMetric: string;
@@ -9,7 +10,7 @@ interface CustomMetricsChartProps {
   lineFormatter: (value: number) => string;
   barLabel: string;
   lineLabel: string;
-  formatTooltipValue: (value: any, name: string) => [string, string];
+  formatTooltipValue: (value: unknown, name: string) => [string, string];
 }
 
 export const CustomMetricsChart = ({

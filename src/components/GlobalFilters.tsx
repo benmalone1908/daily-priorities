@@ -1,14 +1,14 @@
 
 import { useState } from "react";
-import { MultiSelect } from "./MultiSelect";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { MultiSelect, Option } from "./MultiSelect";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 interface GlobalFiltersProps {
-  agencyOptions: any[];
-  advertiserOptions: any[];
-  campaignOptions: any[];
+  agencyOptions: Option[];
+  advertiserOptions: Option[];
+  campaignOptions: Option[];
   selectedAgencies: string[];
   selectedAdvertisers: string[];
   selectedCampaigns: string[];

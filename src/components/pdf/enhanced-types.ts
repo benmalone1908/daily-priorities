@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { DateRange } from "react-day-picker";
 
 export type ViewMode = "date" | "dayOfWeek";
@@ -70,7 +71,7 @@ export interface PdfMetadata {
 }
 
 export interface DataProcessingResult {
-  data: any[];
+  data: CampaignDataRow[];
   summary: {
     totalRows: number;
     dateRange: { from: Date; to: Date };

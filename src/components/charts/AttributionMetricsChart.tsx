@@ -1,10 +1,11 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { formatNumber } from "@/lib/utils";
 
 interface AttributionMetricsChartProps {
-  data: any[];
+  data: CampaignDataRow[];
   barSize: number;
-  formatTooltipValue: (value: any, name: string) => [string, string];
+  formatTooltipValue: (value: unknown, name: string) => [string, string];
 }
 
 export const AttributionMetricsChart = ({ data, barSize, formatTooltipValue }: AttributionMetricsChartProps) => {

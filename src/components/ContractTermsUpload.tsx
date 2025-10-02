@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { useSupabase } from "@/contexts/SupabaseContext";
+import { useSupabase } from "@/contexts/use-supabase";
 
 interface ContractTermsUploadProps {
   isOpen: boolean;
@@ -83,8 +83,8 @@ const ContractTermsUpload = ({ isOpen, onClose, onSuccess }: ContractTermsUpload
 
               const contractTerms = results.data
                 .slice(1) // Skip header row
-                .filter((row: any) => row && row.length > 0 && row[nameIndex]) // Filter out empty rows
-                .map((row: any) => {
+                .filter((row: string[]) => row && row.length > 0 && row[nameIndex]) // Filter out empty rows
+                .map((row: string[]) => {
                   const campaignName = row[nameIndex]?.toString().trim();
                   if (!campaignName) return null;
 

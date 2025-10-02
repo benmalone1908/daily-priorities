@@ -3,7 +3,7 @@ import { Trash2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-import { useSupabase } from '@/contexts/SupabaseContext';
+import { useSupabase } from '@/contexts/use-supabase';
 import { toast } from 'sonner';
 
 interface ClearDatabaseDialogProps {

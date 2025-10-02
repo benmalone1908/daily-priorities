@@ -24,7 +24,7 @@ export type CampaignAnomalyData = {
   anomaly_type: 'impression_change' | 'transaction_drop' | 'transaction_zero' | 'suspected_bot_activity'
   date_detected: string
   severity: 'high' | 'medium' | 'low'
-  details: Record<string, any>
+  details: Record<string, unknown>
   is_ignored: boolean
   custom_duration?: number
   created_at?: string

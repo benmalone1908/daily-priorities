@@ -1,4 +1,5 @@
 
+import { CampaignDataRow } from '@/types/campaign';
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText, X } from "lucide-react";
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 
 interface PacingFileUploadProps {
-  onDataLoaded: (data: any[]) => void;
+  onDataLoaded: (data: CampaignDataRow[]) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -69,7 +70,7 @@ const PacingFileUpload = ({ onDataLoaded, isOpen, onClose }: PacingFileUploadPro
                   return null;
                 }
                 
-                const processed: Record<string, any> = {};
+                const processed: Record<string, unknown> = {};
                 
                 headers.forEach((header, index) => {
                   const value = row[index];
@@ -87,7 +88,7 @@ const PacingFileUpload = ({ onDataLoaded, isOpen, onClose }: PacingFileUploadPro
                 });
                 
                 return processed;
-              }).filter((row): row is Record<string, any> => row !== null);
+              }).filter((row): row is Record<string, unknown> => row !== null);
               
               if (processedData.length === 0) {
                 toast.error("No valid pacing data rows found in CSV");

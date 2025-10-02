@@ -113,12 +113,12 @@ const PdfExportModal = ({
       const currentTabCharts = availableCharts
         .filter(chart => chart.available && chart.elementId.includes(activeTab))
         .map(chart => chart.id);
-      
+
       if (currentTabCharts.length > 0) {
         setSelectedCharts(currentTabCharts);
       }
     }
-  }, [open, activeTab]);
+  }, [open, activeTab, availableCharts]);
 
   const handleExport = async () => {
     if (selectedCharts.length === 0) {
@@ -160,7 +160,7 @@ const PdfExportModal = ({
     }
   };
 
-  const updateSettings = (key: keyof PdfExportSettings, value: any) => {
+  const updateSettings = (key: keyof PdfExportSettings, value: unknown) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 

@@ -6,16 +6,17 @@ import { Activity, TrendingUp, Target, DollarSign, MousePointer, AlertTriangle, 
 import { calculateCampaignHealth, CampaignHealthData } from "@/utils/campaignHealthScoring";
 import { processCampaigns } from '@/lib/pacingCalculations';
 import type { ContractTerms, PacingDeliveryData } from '@/types/pacing';
+import type { DeliveryDataRow, ContractTermsRow, CSVRow } from '@/types/dashboard';
 import { parseDateString } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface CampaignHealthCardProps {
   campaignName: string;
-  deliveryData: any[];
-  pacingData: any[];
-  contractTermsData: any[];
-  unfilteredData?: any[];
-  dbContractTerms?: any[];
+  deliveryData: DeliveryDataRow[];
+  pacingData: CSVRow[];
+  contractTermsData: ContractTermsRow[];
+  unfilteredData?: DeliveryDataRow[];
+  dbContractTerms?: ContractTermsRow[];
 }
 
 interface HealthStatus {
@@ -140,23 +141,23 @@ const CampaignHealthCard = ({
 
       if (dbContractTerms.length > 0) {
         // Convert database contract terms to the expected format
-        contractTerms = dbContractTerms.map((row: any) => ({
-          Name: row.campaign_name,
-          'Start Date': row.start_date,
-          'End Date': row.end_date,
-          Budget: row.budget.toString(),
-          CPM: row.cpm.toString(),
-          'Impressions Goal': row.impressions_goal.toString()
+        contractTerms = dbContractTerms.map((row) => ({
+          Name: (row as Record<string, unknown>).campaign_name as string,
+          'Start Date': (row as Record<string, unknown>).start_date as string,
+          'End Date': (row as Record<string, unknown>).end_date as string,
+          Budget: ((row as Record<string, unknown>).budget as number).toString(),
+          CPM: ((row as Record<string, unknown>).cpm as number).toString(),
+          'Impressions Goal': ((row as Record<string, unknown>).impressions_goal as number).toString()
         }));
       } else if (contractTermsData.length > 0) {
         // Fallback to uploaded contract terms data
-        contractTerms = contractTermsData.map((row: any) => ({
-          Name: row.Name || row['Campaign Name'] || row.CAMPAIGN_ORDER_NAME || row['CAMPAIGN ORDER NAME'] || '',
-          'Start Date': row['Start Date'] || row.START_DATE || '',
-          'End Date': row['End Date'] || row.END_DATE || '',
-          Budget: row.Budget || row.BUDGET || '',
-          CPM: row.CPM || row.cpm || '',
-          'Impressions Goal': row['Impressions Goal'] || row.IMPRESSIONS_GOAL || row['GOAL IMPRESSIONS'] || ''
+        contractTerms = contractTermsData.map((row) => ({
+          Name: (row.Name || row['Campaign Name' as keyof typeof row] || row['CAMPAIGN_ORDER_NAME' as keyof typeof row] || row['CAMPAIGN ORDER NAME' as keyof typeof row] || '') as string,
+          'Start Date': (row['Start Date'] || row['START_DATE' as keyof typeof row] || '') as string,
+          'End Date': (row['End Date'] || row['END_DATE' as keyof typeof row] || '') as string,
+          Budget: (row.Budget || row['BUDGET' as keyof typeof row] || '') as string,
+          CPM: (row.CPM || row['cpm' as keyof typeof row] || '') as string,
+          'Impressions Goal': (row['Impressions Goal'] || row['IMPRESSIONS_GOAL' as keyof typeof row] || row['GOAL IMPRESSIONS' as keyof typeof row] || '') as string
         }));
       }
 
@@ -165,19 +166,19 @@ const CampaignHealthCard = ({
       }
 
       // Transform delivery data to the expected format
-      const formattedDeliveryData: PacingDeliveryData[] = deliveryData.map((row: any) => ({
+      const formattedDeliveryData: PacingDeliveryData[] = deliveryData.map((row) => ({
         DATE: row.DATE || '',
         'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
         IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
-        SPEND: row.SPEND?.toString() || '0'
+        SPEND: (row.SPEND ?? row['SPEND' as keyof typeof row])?.toString() || '0'
       }));
 
       // Transform unfiltered data for global date calculation
-      const unfilteredDeliveryData: PacingDeliveryData[] = unfilteredData.map((row: any) => ({
+      const unfilteredDeliveryData: PacingDeliveryData[] = unfilteredData.map((row) => ({
         DATE: row.DATE || '',
         'CAMPAIGN ORDER NAME': row['CAMPAIGN ORDER NAME'] || '',
         IMPRESSIONS: row.IMPRESSIONS?.toString() || '0',
-        SPEND: row.SPEND?.toString() || '0'
+        SPEND: (row.SPEND ?? row['SPEND' as keyof typeof row])?.toString() || '0'
       }));
 
       // Use processCampaigns to get the processed campaign data

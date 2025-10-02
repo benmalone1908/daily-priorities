@@ -39,13 +39,13 @@ export interface HealthScatterPlotActions {
   handleQuadrantClick: (xStart: number, xEnd: number, yStart: number, yEnd: number) => void;
   handleReset: () => void;
   handleZoomOut: () => void;
-  handleScatterClick: (data: any, event: any) => void;
+  handleScatterClick: (data: unknown, event: React.MouseEvent) => void;
   closeTooltip: () => void;
   setModalState: React.Dispatch<React.SetStateAction<ModalState>>;
 }
 
 export interface ProcessedHealthData {
-  chartData: any[];
+  chartData: unknown[];
   xTicks: number[];
   yTicks: number[];
 }
@@ -169,7 +169,7 @@ export const useHealthScatterPlot = ({ healthData }: HealthScatterPlotProps) => 
     }
   };
 
-  const handleScatterClick = (data: any, event: any) => {
+  const handleScatterClick = (data: unknown, event: React.MouseEvent) => {
     console.log('Scatter clicked:', data, event);
     event?.stopPropagation?.();
 

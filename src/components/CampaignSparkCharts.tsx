@@ -12,26 +12,22 @@ import SparkChartModal from "./SparkChartModal";
 import { useSparkChartsData } from "@/hooks/useSparkChartsData";
 import { CampaignSparkCard } from "./sparkcharts/CampaignSparkCard";
 import { formatNumber } from "@/lib/utils";
+import { CampaignDataRow, TimeSeriesDataPoint } from "@/types/campaign";
+import { SparkChartDataPoint, SparkChartMetricType } from "@/types/sparkCharts";
 
 interface CampaignSparkChartsProps {
-  data: any[];
+  data: CampaignDataRow[];
   dateRange?: DateRange;
   useGlobalFilters?: boolean;
 }
 
-type MetricType =
-  | "impressions"
-  | "clicks"
-  | "ctr"
-  | "transactions"
-  | "revenue"
-  | "roas";
+type MetricType = SparkChartMetricType;
 
 interface ModalData {
   isOpen: boolean;
   itemName: string;
   metricType: MetricType;
-  data: any[];
+  data: SparkChartDataPoint[];
 }
 
 /**
@@ -39,8 +35,7 @@ interface ModalData {
  * Reduced from 1,112 lines by extracting logic to useSparkChartsData hook
  * and UI to CampaignSparkCard component
  */
-const CampaignSparkChartsRefactored = ({
-  data,
+const CampaignSparkChartsRefactored = ({ data,
   dateRange,
   useGlobalFilters = false
 }: CampaignSparkChartsProps) => {
@@ -67,7 +62,7 @@ const CampaignSparkChartsRefactored = ({
     campaignOptions,
   } = useSparkChartsData({ data, dateRange, useGlobalFilters });
 
-  const handleChartClick = (itemName: string, metricType: string, timeSeriesData: any[]) => {
+  const handleChartClick = (itemName: string, metricType: string, timeSeriesData: TimeSeriesDataPoint[]) => {
     setModalData({
       isOpen: true,
       itemName,

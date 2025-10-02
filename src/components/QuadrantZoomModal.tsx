@@ -125,7 +125,7 @@ const QuadrantZoomModal = ({
     return ticks;
   }, [yMin, yMax]);
 
-  const handleScatterClick = (data: any, event: any) => {
+  const handleScatterClick = (data: unknown, event: React.MouseEvent) => {
     console.log('Modal scatter clicked:', data, event);
     event?.stopPropagation?.();
     

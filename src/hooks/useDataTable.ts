@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { parseDateString } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { CampaignDataRow } from "@/types/campaign";
 
 export type GroupingLevel = "campaign" | "advertiser" | "agency" | "date";
 export type TimeAggregation = "daily" | "weekly" | "monthly" | "total";
 
 interface UseDataTableProps {
-  data: any[];
+  data: CampaignDataRow[];
   useGlobalFilters?: boolean;
 }
 
@@ -95,7 +96,7 @@ export const useDataTable = ({ data, useGlobalFilters = false }: UseDataTablePro
 
   // Process data with grouping and aggregation
   const processedData = useMemo(() => {
-    const groups: Record<string, any> = {};
+    const groups: Record<string, unknown> = {};
 
     // Calculate most recent date for rolling periods
     let mostRecentDate: Date | null = null;
@@ -125,7 +126,7 @@ export const useDataTable = ({ data, useGlobalFilters = false }: UseDataTablePro
         case "campaign":
           groupKey = campaignName;
           break;
-        case "advertiser":
+        case "advertiser": {
           const advertiser = extractAdvertiserName(campaignName);
           const { agency } = extractAgencyInfo(campaignName);
           const normalizedAdvertiser = advertiser
@@ -134,10 +135,12 @@ export const useDataTable = ({ data, useGlobalFilters = false }: UseDataTablePro
             .toLowerCase();
           groupKey = `${normalizedAdvertiser} (${agency})`;
           break;
-        case "agency":
+        }
+        case "agency": {
           const agencyInfo = extractAgencyInfo(campaignName);
           groupKey = agencyInfo.agency;
           break;
+        }
         case "date":
           groupKey = dateStr;
           break;
@@ -185,7 +188,19 @@ export const useDataTable = ({ data, useGlobalFilters = false }: UseDataTablePro
     });
 
     // Convert to array and calculate derived metrics
-    return Object.values(groups).map((group: any) => ({
+    interface GroupedData {
+      groupKey: string;
+      timeKey: string;
+      compositeKey: string;
+      impressions: number;
+      clicks: number;
+      revenue: number;
+      spend: number;
+      transactions: number;
+      rowCount: number;
+    }
+
+    return Object.values(groups).map((group: GroupedData) => ({
       ...group,
       ctr: group.impressions > 0 ? (group.clicks / group.impressions) * 100 : 0,
       roas: group.spend > 0 ? group.revenue / group.spend : 0,
@@ -230,7 +245,7 @@ export const useDataTable = ({ data, useGlobalFilters = false }: UseDataTablePro
     // Implementation for comparison calculations would go here
     // This is a simplified version - full implementation would calculate period-over-period changes
     return {};
-  }, [processedData, state.showComparisons, state.timeAggregation]);
+  }, [state.showComparisons, state.timeAggregation]);
 
   // Actions
   const setGroupingLevel = (level: GroupingLevel) => {

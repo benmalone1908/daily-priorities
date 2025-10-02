@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+import { PacingDeliveryData } from '@/types/pacing';
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,10 +19,10 @@ import CampaignPerformanceComponent from '@/components/reports/CampaignPerforman
 import WeeklyComparisonComponent from '@/components/reports/WeeklyComparisonComponent';
 
 interface CustomReportBuilderProps {
-  data: any[];
+  data: CampaignDataRow[];
   dateRange: DateRange;
-  pacingData?: any[];
-  contractTermsData?: any[];
+  pacingData?: PacingDeliveryData[];
+  contractTermsData?: ContractTermsRow[];
 }
 
 interface ChartConfig {
@@ -70,8 +73,7 @@ const chartTypes = {
   }
 };
 
-const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({
-  data,
+const CustomReportBuilder: React.FC<CustomReportBuilderProps> = ({ data,
   dateRange,
   pacingData,
   contractTermsData

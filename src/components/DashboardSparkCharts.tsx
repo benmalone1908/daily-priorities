@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { useMemo } from "react";
 import {
   ResponsiveContainer,
@@ -12,10 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Eye, MousePointer, ShoppingCart, DollarSign, Percent, TrendingUp } from "lucide-react";
 import { formatNumber, parseDateString } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 
 interface DashboardSparkChartsProps {
-  data: any[];
+  data: CampaignDataRow[];
 }
 
 interface ChartData {
@@ -39,7 +40,7 @@ const DashboardSparkCharts = ({ data }: DashboardSparkChartsProps) => {
     }
 
     // Filter out test campaigns and aggregate by date
-    const dateGroups = new Map<string, any>();
+    const dateGroups = new Map<string, unknown>();
 
     data.forEach(row => {
       if (!row || !row.DATE || row.DATE === 'Totals') return;

@@ -3,9 +3,9 @@ import { ChartContainer } from "@/components/ui/chart";
 import { ZoomState } from "@/hooks/useHealthScatterPlot";
 
 interface HealthScatterChartProps {
-  chartData: any[];
+  chartData: unknown[];
   zoomState: ZoomState;
-  onScatterClick: (data: any, event: any) => void;
+  onScatterClick: (data: unknown, event: React.MouseEvent) => void;
   onQuadrantClick: (xStart: number, xEnd: number, yStart: number, yEnd: number) => void;
 }
 

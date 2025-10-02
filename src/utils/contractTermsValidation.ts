@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+
 export interface MissingContractTermsInfo {
   campaignName: string;
   totalImpressions: number;
@@ -15,8 +18,8 @@ export interface ContractTermsValidationResult {
  * Identifies campaigns that have delivery data with impressions but are missing from contract terms
  */
 export function validateContractTerms(
-  deliveryData: any[],
-  contractTermsData: any[]
+  deliveryData: CampaignDataRow[],
+  contractTermsData: ContractTermsRow[]
 ): ContractTermsValidationResult {
   // Get all campaigns with impressions > 0 from delivery data
   const campaignsWithImpressions = new Map<string, MissingContractTermsInfo>();

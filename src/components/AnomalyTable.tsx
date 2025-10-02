@@ -58,11 +58,12 @@ function AnomalyRow({ anomaly, onIgnore, onUpdateDuration }: AnomalyRowProps) {
 
   const getIcon = () => {
     switch (anomaly.anomaly_type) {
-      case 'impression_change':
+      case 'impression_change': {
         const isIncrease = (anomaly.details.percentage_change || 0) > 0;
         return isIncrease ?
           <TrendingUp className="h-3 w-3" /> :
           <TrendingDown className="h-3 w-3" />;
+      }
       case 'transaction_drop':
         return <TrendingDown className="h-3 w-3" />;
       case 'transaction_zero':
@@ -306,10 +307,11 @@ export function AnomalyTable({ anomalies, onIgnore, onUpdateDuration }: AnomalyT
       let comparison = 0;
 
       switch (sortField) {
-        case 'severity':
+        case 'severity': {
           const severityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
           comparison = severityOrder[a.severity] - severityOrder[b.severity];
           break;
+        }
         case 'campaign':
           comparison = a.campaign_name.localeCompare(b.campaign_name);
           break;

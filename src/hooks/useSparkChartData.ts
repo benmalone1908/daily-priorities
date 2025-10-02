@@ -16,7 +16,7 @@ import {
   getUniqueAdvertisers
 } from "@/utils/sparkChartUtils";
 import { setToStartOfDay, setToEndOfDay, parseDateString } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 
 interface UseSparkChartDataProps {
   data: CampaignDataRow[];

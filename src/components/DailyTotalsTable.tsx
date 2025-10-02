@@ -1,9 +1,10 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatNumber } from '@/lib/utils';
 
 interface DailyTotalsTableProps {
-  data: any[];
+  data: CampaignDataRow[];
   chartMode: 'display' | 'attribution' | 'custom';
 }
 
@@ -33,10 +34,18 @@ export const DailyTotalsTable: React.FC<DailyTotalsTableProps> = ({ data, chartM
       acc[date].revenue += parseFloat(row.REVENUE) || 0;
 
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, unknown>);
 
     // Convert to array and sort by date (most recent first)
-    return Object.values(groupedByDate).sort((a: any, b: any) => {
+    interface DailyTotal {
+      date: string;
+      impressions: number;
+      clicks: number;
+      transactions: number;
+      revenue: number;
+    }
+
+    return Object.values(groupedByDate).sort((a: DailyTotal, b: DailyTotal) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
       return dateB.getTime() - dateA.getTime();

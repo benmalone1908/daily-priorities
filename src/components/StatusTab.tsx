@@ -1,3 +1,4 @@
+import { CampaignDataRow } from '@/types/campaign';
 import React, { useState, useMemo } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { Clock, Activity, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -39,7 +40,7 @@ interface CampaignStatus {
 
 interface StatusTabProps {
   contractTermsData: ContractTerms[];
-  deliveryData: any[];
+  deliveryData: CampaignDataRow[];
   globalMostRecentDate?: Date;
   className?: string;
 }
@@ -183,8 +184,8 @@ const StatusTab: React.FC<StatusTabProps> = ({
   // Sort the campaign statuses based on current sort field and direction
   const sortedCampaignStatuses = useMemo(() => {
     const sorted = [...campaignStatuses].sort((a, b) => {
-      let valueA: any;
-      let valueB: any;
+      let valueA: unknown;
+      let valueB: unknown;
 
       switch (sortField) {
         case 'name':

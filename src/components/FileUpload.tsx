@@ -5,11 +5,14 @@ import { toast } from "sonner";
 import Papa from "papaparse";
 import { normalizeDate, logDateDetails, parseDateString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { CampaignDataRow } from "@/types/campaign";
+import { ContractTermsRow } from "@/types/dashboard";
+import { GenericCSVRow } from "@/types/csv";
 
 interface FileUploadProps {
-  onDataLoaded: (data: any[]) => void;
-  onPacingDataLoaded?: (data: any[]) => void;
-  onContractTermsLoaded?: (data: any[]) => void;
+  onDataLoaded: (data: CampaignDataRow[]) => void;
+  onPacingDataLoaded?: (data: GenericCSVRow[]) => void;
+  onContractTermsLoaded?: (data: ContractTermsRow[]) => void;
   onProcessFiles: () => void;
 }
 
@@ -41,7 +44,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
     return 'unknown';
   };
 
-  const processCampaignData = (file: File) => {
+  const processCampaignData = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
       Papa.parse(file, {
         complete: (results) => {
@@ -105,7 +108,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
                 return null;
               }
               
-              const processed: Record<string, any> = {};
+              const processed: GenericCSVRow = {};
               
               headers.forEach((header, index) => {
                 const value = row[index];
@@ -138,7 +141,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
               });
               
               return processed;
-            }).filter((row): row is Record<string, any> => row !== null);
+            }).filter((row): row is GenericCSVRow => row !== null);
             
             if (processedData.length === 0) {
               toast.error("No valid data rows found in CSV");
@@ -211,9 +214,9 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
         transformHeader: (header) => header.trim()
       });
     });
-  };
+  }, [onDataLoaded]);
 
-  const processPacingData = (file: File) => {
+  const processPacingData = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
       Papa.parse(file, {
         complete: (results) => {
@@ -225,8 +228,8 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
             }
 
             const headers = results.data[0] as string[];
-            const processedData = results.data.slice(1).map((row: any) => {
-              const processed: Record<string, any> = {};
+            const processedData = results.data.slice(1).map((row: CampaignDataRow) => {
+              const processed: GenericCSVRow = {};
               headers.forEach((header, index) => {
                 processed[header] = row[index];
               });
@@ -253,9 +256,9 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
         skipEmptyLines: true
       });
     });
-  };
+  }, [onPacingDataLoaded]);
 
-  const processContractTermsData = (file: File) => {
+  const processContractTermsData = useCallback((file: File) => {
     return new Promise<void>((resolve, reject) => {
       Papa.parse(file, {
         complete: (results) => {
@@ -278,8 +281,8 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
               "IMPRESSIONS GOAL": "Impressions Goal"
             };
             
-            const processedData = results.data.slice(1).map((row: any) => {
-              const processed: Record<string, any> = {};
+            const processedData = results.data.slice(1).map((row: CampaignDataRow) => {
+              const processed: GenericCSVRow = {};
               headers.forEach((header, index) => {
                 const upperHeader = header.toUpperCase();
                 const normalizedHeader = headerMapping[upperHeader] || header;
@@ -308,7 +311,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
         skipEmptyLines: true
       });
     });
-  };
+  }, [onContractTermsLoaded]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -358,7 +361,7 @@ const FileUpload = ({ onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, o
     } catch (error) {
       console.error("Error processing files:", error);
     }
-  }, [onDataLoaded, onPacingDataLoaded, onContractTermsLoaded, uploadedFiles]);
+  }, [processCampaignData, processPacingData, processContractTermsData, onPacingDataLoaded, onContractTermsLoaded, uploadedFiles]);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,

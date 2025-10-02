@@ -1,12 +1,14 @@
 import { useMemo, useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
 import { setToEndOfDay, setToStartOfDay, parseDateString } from "@/lib/utils";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { CampaignDataRow } from "@/types/campaign";
+import { SparkChartDataPoint } from "@/types/sparkCharts";
 
 type ViewMode = "campaign" | "advertiser";
 
 interface SparkChartsDataProps {
-  data: any[];
+  data: CampaignDataRow[];
   dateRange?: DateRange;
   useGlobalFilters?: boolean;
 }
@@ -25,7 +27,7 @@ const generateDateRange = (startDate: Date, endDate: Date): Date[] => {
 };
 
 // Helper function to fill missing dates with zero values
-const fillMissingDates = (timeSeriesData: any[], allDates: Date[]): any[] => {
+const fillMissingDates = (timeSeriesData: SparkChartDataPoint[], allDates: Date[]): SparkChartDataPoint[] => {
   const dateFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   const dataByDate = new Map();
 
@@ -365,7 +367,7 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
       }).filter(Boolean);
     } else {
       // Advertiser view logic (similar structure)
-      const advertisersMap = new Map<string, any[]>();
+      const advertisersMap = new Map<string, CampaignDataRow[]>();
 
       filteredData.forEach(row => {
         if (row.DATE === 'Totals') return;
@@ -385,7 +387,7 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
       return advertisers.map(advertiser => {
         const advertiserRows = advertisersMap.get(advertiser) || [];
 
-        const dateGroups = new Map<string, any[]>();
+        const dateGroups = new Map<string, CampaignDataRow[]>();
         advertiserRows.forEach(row => {
           const parsedDate = parseDateString(row.DATE);
           if (!parsedDate) return;

@@ -1,20 +1,41 @@
+import { ContractTermsRow } from '@/types/dashboard';
+import { CampaignDataRow } from '@/types/campaign';
+import { PacingDeliveryData } from '@/types/pacing';
 import { ChartInstance, ChartFilters, DataProcessingResult, ViewMode } from './enhanced-types';
 import { DateRange } from 'react-day-picker';
 
+// Interface for aggregated data structures
+interface AggregatedDataPoint {
+  date: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  TRANSACTIONS: number;
+  REVENUE: number;
+  SPEND: number;
+  count: number;
+}
+
+interface CampaignSparklineData {
+  campaign: string;
+  data: AggregatedDataPoint[];
+  totalImpressions: number;
+  totalRevenue: number;
+}
+
 export class DataProcessingEngine {
-  private baseData: any[];
-  private pacingData: any[];
-  private contractTermsData: any[];
+  private baseData: CampaignDataRow[];
+  private pacingData: PacingDeliveryData[];
+  private contractTermsData: ContractTermsRow[];
   private cache: Map<string, DataProcessingResult> = new Map();
 
-  constructor(baseData: any[], pacingData: any[] = [], contractTermsData: any[] = []) {
+  constructor(baseData: CampaignDataRow[], pacingData: PacingDeliveryData[] = [], contractTermsData: ContractTermsRow[] = []) {
     this.baseData = baseData;
     this.pacingData = pacingData;
     this.contractTermsData = contractTermsData;
   }
 
   // Update base data and clear cache
-  updateData(baseData: any[], pacingData: any[] = [], contractTermsData: any[] = []) {
+  updateData(baseData: CampaignDataRow[], pacingData: PacingDeliveryData[] = [], contractTermsData: ContractTermsRow[] = []) {
     this.baseData = baseData;
     this.pacingData = pacingData;
     this.contractTermsData = contractTermsData;
@@ -77,7 +98,7 @@ export class DataProcessingEngine {
   private processTrendData(instance: ChartInstance): DataProcessingResult {
     const filteredData = this.applyFilters(this.baseData, instance.filters);
     
-    let processedData: any[] = [];
+    let processedData: CampaignDataRow[] = [];
 
     if (instance.templateId === 'trend_combined_metrics') {
       processedData = this.aggregateData(filteredData, instance.settings.viewMode || 'date');
@@ -101,8 +122,8 @@ export class DataProcessingEngine {
 
   // Process analysis data (health, pacing, etc.)
   private processAnalysisData(instance: ChartInstance): DataProcessingResult {
-    let processedData: any[] = [];
-    let sourceData: any[] = [];
+    let processedData: CampaignDataRow[] = [];
+    let sourceData: CampaignDataRow[] = [];
 
     if (instance.templateId === 'analysis_health_scatter') {
       sourceData = this.applyFilters(this.baseData, instance.filters);
@@ -155,7 +176,7 @@ export class DataProcessingEngine {
   }
 
   // Apply filters to data
-  private applyFilters(data: any[], filters: ChartFilters, campaignColumn: string = 'CAMPAIGN ORDER NAME'): any[] {
+  private applyFilters(data: CampaignDataRow[], filters: ChartFilters, campaignColumn: string = 'CAMPAIGN ORDER NAME'): CampaignDataRow[] {
     let filtered = [...data];
 
     // Date range filter
@@ -210,8 +231,8 @@ export class DataProcessingEngine {
   }
 
   // Aggregate data by time period
-  private aggregateData(data: any[], viewMode: ViewMode): any[] {
-    const grouped: Record<string, any> = {};
+  private aggregateData(data: CampaignDataRow[], viewMode: ViewMode): AggregatedDataPoint[] {
+    const grouped: Record<string, unknown> = {};
 
     data.forEach(row => {
       let key: string;
@@ -254,15 +275,15 @@ export class DataProcessingEngine {
   }
 
   // Generate weekly comparison data
-  private generateWeeklyComparison(data: any[]): any[] {
+  private generateWeeklyComparison(data: CampaignDataRow[]): AggregatedDataPoint[] {
     // This would implement the weekly comparison logic
     // For now, return aggregated data
     return this.aggregateData(data, 'date');
   }
 
   // Generate campaign sparklines data
-  private generateCampaignSparklines(data: any[], viewMode: ViewMode): any[] {
-    const campaignGroups: Record<string, any[]> = {};
+  private generateCampaignSparklines(data: CampaignDataRow[], viewMode: ViewMode): CampaignSparklineData[] {
+    const campaignGroups: Record<string, CampaignDataRow[]> = {};
 
     data.forEach(row => {
       const campaignName = row['CAMPAIGN ORDER NAME'] || 'Unknown';
@@ -281,14 +302,14 @@ export class DataProcessingEngine {
   }
 
   // Generate health analysis data
-  private generateHealthAnalysis(data: any[], pacingData: any[], contractTermsData: any[]): any[] {
+  private generateHealthAnalysis(data: CampaignDataRow[], pacingData: PacingDeliveryData[], contractTermsData: ContractTermsRow[]): CampaignDataRow[] {
     // This would implement health scoring logic
     // For now, return basic campaign data
     return data;
   }
 
   // Calculate summary metrics for a specific metric type
-  private calculateSummaryMetrics(data: any[], metricType: string): Record<string, number> {
+  private calculateSummaryMetrics(data: CampaignDataRow[], metricType: string): Record<string, number> {
     const total = data.reduce((sum, row) => sum + (Number(row[metricType]) || 0), 0);
     const average = data.length > 0 ? total / data.length : 0;
     const max = Math.max(...data.map(row => Number(row[metricType]) || 0));
@@ -304,7 +325,7 @@ export class DataProcessingEngine {
   }
 
   // Calculate comprehensive summary
-  private calculateComprehensiveSummary(data: any[]): Record<string, number> {
+  private calculateComprehensiveSummary(data: CampaignDataRow[]): Record<string, number> {
     const metrics = ['IMPRESSIONS', 'CLICKS', 'TRANSACTIONS', 'REVENUE', 'SPEND'];
     const summary: Record<string, number> = {};
 
@@ -322,7 +343,7 @@ export class DataProcessingEngine {
   }
 
   // Get date range from data
-  private getDateRange(data: any[]): { from: Date; to: Date } {
+  private getDateRange(data: CampaignDataRow[]): { from: Date; to: Date } {
     const dates = data
       .map(row => this.parseDate(row.DATE))
       .filter(Boolean) as Date[];
@@ -364,7 +385,7 @@ export class DataProcessingEngine {
 
   private extractAgency(campaignName: string): string {
     // Extract agency from campaign name using regex
-    const match = campaignName.match(/^\d+[\/\d]*:\s*([A-Z]+):/);
+    const match = campaignName.match(/^\d+[/\d]*:\s*([A-Z]+):/);
     return match ? match[1] : 'Unknown';
   }
 

@@ -5,7 +5,7 @@ import type { ContractTerms, PacingDeliveryData, ProcessedCampaign } from '@/typ
 import type { CampaignDataRow } from '@/types/campaign';
 import { parseDateString } from '@/lib/utils';
 
-import { useSupabase } from '@/contexts/SupabaseContext';
+import { useSupabase } from '@/contexts/use-supabase';
 
 interface ContractTermsDbRow {
   campaign_name: string;

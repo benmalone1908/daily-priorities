@@ -44,11 +44,12 @@ export function NotificationCard({ anomaly, onIgnore, onUpdateDuration }: Notifi
 
   const getIcon = () => {
     switch (anomaly.anomaly_type) {
-      case 'impression_change':
+      case 'impression_change': {
         const isIncrease = (anomaly.details.percentage_change || 0) > 0;
         return isIncrease ?
           <TrendingUp className="h-4 w-4 text-blue-600" /> :
           <TrendingDown className="h-4 w-4 text-orange-600" />;
+      }
       case 'transaction_drop':
         return <TrendingDown className="h-4 w-4 text-red-600" />;
       case 'transaction_zero':

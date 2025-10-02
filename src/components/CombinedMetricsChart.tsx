@@ -11,9 +11,10 @@ import { AttributionMetricsChart } from "@/components/charts/AttributionMetricsC
 import { CustomMetricsChart } from "@/components/charts/CustomMetricsChart";
 import { SpendMetricsChart } from "@/components/charts/SpendMetricsChart";
 import { MetricsChartLegend } from "@/components/charts/MetricsChartLegend";
+import { CampaignDataRow } from "@/types/campaign";
 
 interface CombinedMetricsChartProps {
-  data: any[];
+  data: CampaignDataRow[];
   title?: string;
   chartToggleComponent?: React.ReactNode;
   onTabChange?: (tab: string) => void;
@@ -24,7 +25,7 @@ interface CombinedMetricsChartProps {
   // Chart mode selector to be rendered inside the chart
   chartModeSelector?: React.ReactNode;
   // Raw data for spend calculations (with campaign names)
-  rawData?: any[];
+  rawData?: CampaignDataRow[];
 }
 
 /**

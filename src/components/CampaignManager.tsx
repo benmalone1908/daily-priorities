@@ -16,11 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // Import our custom hook
 import { useCampaignManager } from "@/hooks/useCampaignManager";
+import type { DeliveryDataRow, ContractTermsRow, CSVRow } from '@/types/dashboard';
 
 interface CampaignManagerProps {
-  data: any[];
-  pacingData: any[];
-  contractTermsData: any[];
+  data: DeliveryDataRow[];
+  pacingData: CSVRow[];
+  contractTermsData: ContractTermsRow[];
   useGlobalFilters?: boolean;
   globalDateRange?: DateRange | undefined;
   onCampaignDetailViewChange?: (isInDetailView: boolean) => void;

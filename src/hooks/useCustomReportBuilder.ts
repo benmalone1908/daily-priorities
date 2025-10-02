@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+import { PacingDeliveryData } from '@/types/pacing';
 import { useState, useMemo } from 'react';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
@@ -14,10 +17,10 @@ export interface ChartConfig {
 }
 
 export interface CustomReportBuilderProps {
-  data: any[];
+  data: CampaignDataRow[];
   dateRange: DateRange;
-  pacingData?: any[];
-  contractTermsData?: any[];
+  pacingData?: PacingDeliveryData[];
+  contractTermsData?: ContractTermsRow[];
 }
 
 export interface ReportBuilderState {
@@ -80,8 +83,7 @@ export const chartTypes = {
  * Custom hook for managing custom report builder state and business logic
  * Extracted from CustomReportBuilder.tsx for better maintainability
  */
-export const useCustomReportBuilder = ({
-  data,
+export const useCustomReportBuilder = ({ data,
   dateRange,
   pacingData,
   contractTermsData

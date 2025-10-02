@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import {
   LineChart,
@@ -18,19 +18,45 @@ import { getColorClasses } from "@/utils/anomalyColors";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MultiSelect, Option } from "./MultiSelect";
+import { CampaignDataRow } from "@/types/campaign";
+import { ContractTermsRow } from "@/types/dashboard";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
-import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { AGENCY_MAPPING } from "@/contexts/agency-mapping";
 import { formatNumber, formatCurrency, formatCTRPercentage, formatTransactions, formatAOVValue } from "@/lib/formatters";
 import CombinedMetricsChart from "./CombinedMetricsChart";
 import { DailyTotalsTable } from "./DailyTotalsTable";
+
+// Interface for aggregated data by date
+interface AggregatedDateData {
+  DATE: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  REVENUE: number;
+  TRANSACTIONS: number;
+  count: number;
+}
+
+// Interface for aggregated data by day of week
+interface AggregatedDayOfWeekData {
+  day: string;
+  dayIndex: number;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  REVENUE: number;
+  TRANSACTIONS: number;
+  CTR: number;
+  AOV: number;
+  count: number;
+}
 import DashboardSparkCharts from "./DashboardSparkCharts";
 
 interface DashboardProps {
-  data: any[];
-  metricsData?: any[];
-  revenueData?: any[];
+  data: CampaignDataRow[];
+  metricsData?: CampaignDataRow[];
+  revenueData?: CampaignDataRow[];
   selectedMetricsCampaigns?: string[];
   selectedRevenueCampaigns?: string[];
   selectedRevenueAdvertisers?: string[];
@@ -49,7 +75,7 @@ interface DashboardProps {
   formattedCampaignOptions?: Option[];
   formattedAdvertiserOptions?: Option[];
   formattedAgencyOptions?: Option[];
-  aggregatedMetricsData?: any[];
+  aggregatedMetricsData?: CampaignDataRow[];
   agencyToAdvertisersMap?: Record<string, Set<string>>;
   agencyToCampaignsMap?: Record<string, Set<string>>;
   advertiserToCampaignsMap?: Record<string, Set<string>>;
@@ -63,7 +89,7 @@ interface DashboardProps {
   onChartTabChange?: (tab: string) => void;
   viewByDate?: boolean;
   hideChartTitle?: boolean;
-  contractTermsData?: any[];
+  contractTermsData?: ContractTermsRow[];
   customBarMetric?: string;
   customLineMetric?: string;
   showDailyTotalsTable?: boolean;
@@ -83,8 +109,8 @@ interface WeeklyData {
 
 interface WeeklyAggregation {
   weekStart: string;
-  [metric: string]: any;
-  rows: any[];
+  [metric: string]: string | number | CampaignDataRow[] | undefined;
+  rows: CampaignDataRow[];
 }
 
 type ChartViewMode = "date" | "dayOfWeek";
@@ -110,7 +136,7 @@ const calculateAOV = (revenue: number, transactions: number): number => {
 // Format utility functions - now using centralized formatters
 
 // Data aggregation functions
-const getAggregatedData = (data: any[]): any[] => {
+const getAggregatedData = (data: CampaignDataRow[]): AggregatedDateData[] => {
   if (!data || !data.length) return [];
   
   try {
@@ -150,7 +176,7 @@ const getAggregatedData = (data: any[]): any[] => {
   }
 };
 
-const getAggregatedDataByDayOfWeek = (data: any[]): any[] => {
+const getAggregatedDataByDayOfWeek = (data: CampaignDataRow[]): AggregatedDayOfWeekData[] => {
   if (!data || !data.length) return [];
   
   try {
@@ -194,8 +220,7 @@ const getAggregatedDataByDayOfWeek = (data: any[]): any[] => {
   }
 };
 
-const Dashboard = ({ 
-  data,
+const Dashboard = ({ data,
   metricsData,
   revenueData,
   selectedMetricsCampaigns = [],
@@ -252,7 +277,7 @@ const Dashboard = ({
   const [revenueViewMode, setRevenueViewMode] = useState<ChartViewMode>(viewByDate ? "date" : "dayOfWeek");
   
   // Add anomalies mock data or empty state
-  const [anomalies, setAnomalies] = useState<any>({
+  const [anomalies, setAnomalies] = useState<unknown>({
     IMPRESSIONS: { anomalies: [] },
     CLICKS: { anomalies: [] },
     REVENUE: { anomalies: [] }
@@ -618,7 +643,7 @@ const Dashboard = ({
     }
   };
 
-  const getWeeklyData = (selectedCampaigns: string[], selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
+  const getWeeklyData = useCallback((selectedCampaigns: string[], selectedAdvertisers: string[], selectedAgencies: string[], periodLength: ComparisonPeriod): WeeklyData[] => {
     // Determine which data source to use
     let sourceData;
     if (useGlobalFilters) {
@@ -627,69 +652,69 @@ const Dashboard = ({
     } else {
       sourceData = data;
     }
-    
+
     if (!sourceData || sourceData.length === 0) {
       return [];
     }
-    
+
 
     try {
       let filteredData = JSON.parse(JSON.stringify(sourceData));
-      
+
       // For debugging purposes, look at a few sample campaign names
-      
+
       // Skip additional filtering when using global filters (data is already filtered)
       if (!useGlobalFilters && selectedAgencies.length > 0) {
-        
-        filteredData = filteredData.filter((row: any) => {
+
+        filteredData = filteredData.filter((row: CampaignDataRow) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
-          
+
           const campaignName = row["CAMPAIGN ORDER NAME"];
           const { agency } = extractAgencyInfo(campaignName);
-          
+
           const isIncluded = selectedAgencies.includes(agency) && agency !== "";
-          
-          
+
+
           return isIncluded;
         });
-        
-        
+
+
       }
-      
+
       if (!useGlobalFilters && selectedAdvertisers.length > 0) {
-        
-        filteredData = filteredData.filter((row: any) => {
+
+        filteredData = filteredData.filter((row: CampaignDataRow) => {
           if (!row["CAMPAIGN ORDER NAME"]) return false;
-          
+
           const campaignName = row["CAMPAIGN ORDER NAME"];
           const advertiser = extractAdvertiserName(campaignName);
-          
+
           const isIncluded = selectedAdvertisers.includes(advertiser) && advertiser !== "";
-          
-          
+
+
           return isIncluded;
         });
-        
+
       }
-      
+
       // Updated to filter by an array of campaign names
       if (!useGlobalFilters && selectedCampaigns.length > 0) {
-        filteredData = filteredData.filter((row: any) => 
+        filteredData = filteredData.filter((row: CampaignDataRow) =>
           selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"])
         );
       }
-      
+
       if (filteredData.length === 0) {
         return [];
       }
 
-      const rowsWithDates = filteredData.map((row: any) => {
+      const rowsWithDates = filteredData.map((row: CampaignDataRow) => {
         try {
           if (!row.DATE) return null;
-          
+
           const normalizedDate = normalizeDate(row.DATE);
           if (!normalizedDate) return null;
-          
+
           return {
             ...row,
             parsedDate: new Date(normalizedDate)
@@ -699,47 +724,47 @@ const Dashboard = ({
           return null;
         }
       }).filter(Boolean);
-      
-      
+
+
       if (rowsWithDates.length === 0) {
         return [];
       }
 
-      const dates = rowsWithDates.map((row: any) => row.parsedDate);
+      const dates = rowsWithDates.map((row: CampaignDataRow) => row.parsedDate);
       const mostRecentDate = new Date(Math.max(...dates.map(d => d.getTime())));
       const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
-      
-      
+
+
       const daysPeriod = parseInt(periodLength, 10);
       const totalDays = Math.floor((mostRecentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const completePeriods = Math.floor(totalDays / daysPeriod);
-      
-      
+
+
       if (completePeriods < 1) {
         return [];
       }
 
       const periods: WeeklyData[] = [];
-      
+
       // Calculate truly non-overlapping periods
       let currentPeriodEnd = new Date(mostRecentDate);
       for (let i = 0; i < completePeriods; i++) {
         // Use the tracked end date for this period - no timezone modifications
         const periodEnd = new Date(currentPeriodEnd);
-        
+
         // Calculate start date: for N days ending on date X, start = X - (N-1) days
         // Example: 7 days ending Aug 30 = Aug 24-30 = start is Aug 30 - 6 = Aug 24
         const periodStart = new Date(periodEnd);
         periodStart.setDate(periodStart.getDate() - (daysPeriod - 1));
-        
+
         if (periodStart < earliestDate) {
           continue;
         }
-        
+
         const periodStartStr = periodStart.toISOString().split('T')[0];
         const periodEndStr = periodEnd.toISOString().split('T')[0];
-        
-        
+
+
         periods.push({
           periodStart: periodStartStr,
           periodEnd: periodEndStr,
@@ -750,24 +775,24 @@ const Dashboard = ({
           count: 0,
           TRANSACTIONS: 0
         });
-        
+
         // Set the next period's end date to be the day before this period's start
         // This ensures completely non-overlapping periods
         currentPeriodEnd = new Date(periodStart);
         currentPeriodEnd.setDate(currentPeriodEnd.getDate() - 1);
       }
-      
-      
-      rowsWithDates.forEach((row: any) => {
+
+
+      rowsWithDates.forEach((row: CampaignDataRow) => {
         try {
           const rowDate = row.parsedDate;
           const rowTime = rowDate.getTime();
-          
+
           for (let i = 0; i < periods.length; i++) {
             const periodStartDate = periods[i].periodStart;
             const periodEndDate = periods[i].periodEnd;
             const rowDateStr = row.parsedDate.toISOString().split('T')[0];
-            
+
             // Pure string comparison - no timezone issues
             if (rowDateStr >= periodStartDate && rowDateStr <= periodEndDate) {
               periods[i].IMPRESSIONS += Number(row.IMPRESSIONS) || 0;
@@ -784,21 +809,19 @@ const Dashboard = ({
       });
 
       const nonEmptyPeriods = periods.filter(period => period.count > 0);
-      
+
       nonEmptyPeriods.forEach(period => {
         period.ROAS = calculateROAS(period.REVENUE, period.IMPRESSIONS);
       });
-      
-      
-      if (nonEmptyPeriods.length > 0) {
-      }
 
+
+      // Return the non-empty periods
       return nonEmptyPeriods;
     } catch (error) {
       console.error("Error in getWeeklyData:", error);
       return [];
     }
-  };
+  }, [data, metricsData, revenueData, useGlobalFilters, extractAgencyInfo, extractAdvertiserName]);
 
   const availablePeriods = useMemo(() => {
     try {
@@ -846,7 +869,7 @@ const Dashboard = ({
   }, [data]);
 
   useEffect(() => {
-    
+
     // Use global filters if enabled, otherwise use weekly-specific filters
     if (useGlobalFilters) {
       // When using global filters, pass empty arrays to use all data from metricsData/revenueData
@@ -857,7 +880,7 @@ const Dashboard = ({
       const calculatedData = getWeeklyData(selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod);
       setWeeklyDataState(calculatedData);
     }
-  }, [data, metricsData, revenueData, selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod, useGlobalFilters]);
+  }, [data, metricsData, revenueData, selectedWeeklyCampaigns, selectedWeeklyAdvertisers, selectedWeeklyAgencies, comparisonPeriod, useGlobalFilters, getWeeklyData]);
 
   const processedMetricsData = useMemo(() => {
     if (metricsViewMode === "date") {
@@ -978,19 +1001,12 @@ const Dashboard = ({
   };
 
   const dateRange = dataDateRange();
-  const dateRangeText = dateRange 
+  const dateRangeText = dateRange
     ? `${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}`
     : "All time";
 
-  if (!anomalies) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">No anomaly data available</p>
-      </div>
-    );
-  }
-
   // Add effect to sync internal state with activeTab prop
+  // MUST be before any conditional returns to follow Rules of Hooks
   useEffect(() => {
     if (activeTab === "attribution") {
       setMetricsViewMode(viewByDate ? "date" : "dayOfWeek");
@@ -1000,6 +1016,18 @@ const Dashboard = ({
       setRevenueViewMode(viewByDate ? "date" : "dayOfWeek");
     }
   }, [activeTab, viewByDate]);
+
+  // Prepare combined data for CombinedMetricsChart component
+  // MUST be before any conditional returns to follow Rules of Hooks
+  const combinedChartData = useMemo(() => {
+    // For custom mode, use the same filtered data approach as other modes
+    if (activeTab === "custom") {
+      // Use metricsData for custom mode to respect filters, fallback to data if not available
+      const dataToUse = metricsData || data;
+      return viewByDate ? getAggregatedData(dataToUse) : getAggregatedDataByDayOfWeek(dataToUse);
+    }
+    return activeTab === "display" ? processedMetricsData : processedRevenueData;
+  }, [activeTab, processedMetricsData, processedRevenueData, metricsData, data, viewByDate]);
 
   // Update the metrics view mode handler to respect the parent viewByDate
   const handleMetricsViewModeChange = (value: ChartViewMode) => {
@@ -1019,16 +1047,13 @@ const Dashboard = ({
     }
   };
 
-  // Prepare combined data for CombinedMetricsChart component
-  const combinedChartData = useMemo(() => {
-    // For custom mode, use the same filtered data approach as other modes
-    if (activeTab === "custom") {
-      // Use metricsData for custom mode to respect filters, fallback to data if not available
-      const dataToUse = metricsData || data;
-      return viewByDate ? getAggregatedData(dataToUse) : getAggregatedDataByDayOfWeek(dataToUse);
-    }
-    return activeTab === "display" ? processedMetricsData : processedRevenueData;
-  }, [activeTab, processedMetricsData, processedRevenueData, metricsData, data, viewByDate]);
+  if (!anomalies) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">No anomaly data available</p>
+      </div>
+    );
+  }
 
   // Handler for CombinedMetricsChart tab changes
   const handleCombinedChartTabChange = (tab: string) => {

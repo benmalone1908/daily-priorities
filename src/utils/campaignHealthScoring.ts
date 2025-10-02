@@ -1,5 +1,7 @@
 import { parseCampaignDate } from '@/lib/pacingCalculations';
 import { differenceInDays } from 'date-fns';
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
 
 export interface CampaignHealthData {
   campaignName: string;
@@ -65,7 +67,7 @@ export function calculateDeliveryPacingScore(actualImpressions: number, expected
   return 0;
 }
 
-export function calculateBurnRate(data: any[], campaignName: string, requiredDailyImpressions: number = 0): BurnRateData {
+export function calculateBurnRate(data: CampaignDataRow[], campaignName: string, requiredDailyImpressions: number = 0): BurnRateData {
   // Filter data for this campaign and sort by date
   const campaignData = data
     .filter(row => row["CAMPAIGN ORDER NAME"] === campaignName && row.DATE !== 'Totals')
@@ -268,7 +270,7 @@ export function calculateCTRScore(ctr: number, benchmark: number = CTR_BENCHMARK
   return 0;
 }
 
-function calculateSpendBurnRate(data: any[], campaignName: string, totalSpend: number = 0, daysIntoFlight: number = 0): { dailySpendRate: number; confidence: string } {
+function calculateSpendBurnRate(data: CampaignDataRow[], campaignName: string, totalSpend: number = 0, daysIntoFlight: number = 0): { dailySpendRate: number; confidence: string } {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
@@ -469,7 +471,7 @@ export function calculateOverspendScore(
   return finalScore;
 }
 
-function calculateCompletionPercentage(contractTermsData: any[], campaignName: string): number {
+function calculateCompletionPercentage(contractTermsData: ContractTermsRow[], campaignName: string): number {
   console.log(`Calculating completion for campaign: "${campaignName}"`);
   console.log(`Contract terms data available: ${contractTermsData.length} rows`);
   
@@ -525,7 +527,7 @@ function calculateCompletionPercentage(contractTermsData: any[], campaignName: s
   }
 }
 
-function findBudgetInFields(contractTermsRow: any, campaignName: string): number {
+function findBudgetInFields(contractTermsRow: ContractTermsRow, campaignName: string): number {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
@@ -608,7 +610,13 @@ function findBudgetInFields(contractTermsRow: any, campaignName: string): number
   return 0;
 }
 
-function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractTermsData: any[] = []): { budget: number; daysLeft: number } {
+interface PacingDataRow {
+  Campaign: string;
+  "Days Left": number;
+  [key: string]: string | number | undefined;
+}
+
+function getBudgetAndDaysLeft(pacingData: PacingDataRow[], campaignName: string, contractTermsData: ContractTermsRow[] = []): { budget: number; daysLeft: number } {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {
@@ -770,7 +778,15 @@ function getBudgetAndDaysLeft(pacingData: any[], campaignName: string, contractT
   return { budget, daysLeft };
 }
 
-export function calculateCampaignHealth(data: any[], campaignName: string, pacingData: any[] = [], contractTermsData: any[] = [], realPacingMetrics: any = null): CampaignHealthData {
+interface RealPacingMetrics {
+  expectedImpressions: number;
+  actualImpressions: number;
+  currentPacing: number;
+  daysUntilEnd: number;
+  budget?: number;
+}
+
+export function calculateCampaignHealth(data: CampaignDataRow[], campaignName: string, pacingData: PacingDataRow[] = [], contractTermsData: ContractTermsRow[] = [], realPacingMetrics: RealPacingMetrics | null = null): CampaignHealthData {
   const isTargetCampaign = campaignName === "2001987: MJ: Union Chill-NJ-Garden Greens Brand-DIS-250514";
   
   if (isTargetCampaign) {

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getColorClasses } from "@/utils/anomalyColors";
 import { useState, useEffect } from "react";
+import { AnomalyData, WeeklyAnomaly } from "@/types/anomaly";
 
 interface AnomalyDetailsProps {
-  anomalies: any[];
+  anomalies: AnomalyData[];
   metric: string;
   anomalyPeriod: "daily" | "weekly";
   initialIndex?: number;
@@ -14,7 +15,7 @@ interface AnomalyDetailsProps {
 }
 
 const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClose }: AnomalyDetailsProps) => {
-  const [selectedAnomaly, setSelectedAnomaly] = useState<any | null>(null);
+  const [selectedAnomaly, setSelectedAnomaly] = useState<AnomalyData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showAllAnomalies, setShowAllAnomalies] = useState(false);
 
@@ -35,7 +36,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
     return null;
   }
 
-  const openDetails = (anomaly: any) => {
+  const openDetails = (anomaly: AnomalyData) => {
     setSelectedAnomaly(anomaly);
     setShowAllAnomalies(false);
     setDialogOpen(true);
@@ -57,18 +58,19 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
     }
   };
 
-  const renderAnomalyDetail = (anomaly: any) => {
+  const renderAnomalyDetail = (anomaly: AnomalyData) => {
     const colorClasses = getColorClasses(anomaly.deviation);
     const colorClass = colorClasses.split(' ').find(c => c.startsWith('text-'));
-    
-    const hasDetails = anomalyPeriod === "weekly" && 
-                      Array.isArray(anomaly.rows) && 
-                      anomaly.rows.length > 0;
-    
+
+    const weeklyAnomaly = anomaly as WeeklyAnomaly;
+    const hasDetails = anomalyPeriod === "weekly" &&
+                      Array.isArray(weeklyAnomaly.rows) &&
+                      weeklyAnomaly.rows.length > 0;
+
     let dateRangeInfo = "";
-    if (hasDetails) {
+    if (hasDetails && weeklyAnomaly.rows) {
       try {
-        const dates = anomaly.rows.map((row: any) => new Date(row.DATE));
+        const dates = weeklyAnomaly.rows.map(row => new Date(row.DATE));
         
         const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
@@ -111,7 +113,7 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
           </div>
         </div>
         
-        {hasDetails && (
+        {hasDetails && weeklyAnomaly.rows && (
           <div className="mt-3">
             <p className="text-xs font-medium mb-1">Daily breakdown:</p>
             <div className="bg-muted/50 p-1.5 rounded text-xs">
@@ -125,16 +127,16 @@ const AnomalyDetails = ({ anomalies, metric, anomalyPeriod, initialIndex, onClos
                   </tr>
                 </thead>
                 <tbody>
-                  {anomaly.rows.map((row: any, idx: number) => {
+                  {weeklyAnomaly.rows.map((row, idx: number) => {
                     const actualValue = Number(row[metric]);
-                    
+
                     let expectedValue;
-                    
-                    if (anomaly.dailyExpectedValues && anomaly.dailyExpectedValues[idx]) {
-                      expectedValue = anomaly.dailyExpectedValues[idx];
-                    } 
+
+                    if (weeklyAnomaly.dailyExpectedValues && weeklyAnomaly.dailyExpectedValues[idx]) {
+                      expectedValue = weeklyAnomaly.dailyExpectedValues[idx];
+                    }
                     else {
-                      expectedValue = anomaly.mean / anomaly.rows.length;
+                      expectedValue = weeklyAnomaly.mean / weeklyAnomaly.rows.length;
                     }
                     
                     const dailyDeviation = expectedValue !== 0 

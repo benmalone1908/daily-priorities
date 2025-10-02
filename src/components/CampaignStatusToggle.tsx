@@ -1,6 +1,6 @@
 
 import { Switch } from "@/components/ui/switch";
-import { useCampaignFilter } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 
 export function CampaignStatusToggle() {
   const { showLiveOnly, setShowLiveOnly } = useCampaignFilter();

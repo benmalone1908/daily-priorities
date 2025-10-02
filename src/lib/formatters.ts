@@ -201,7 +201,7 @@ export const formatDisplayNumber = (value: number | undefined | null): string =>
 /**
  * Safe number conversion with fallback
  */
-export const safeNumber = (value: any, fallback: number = 0): number => {
+export const safeNumber = (value: string | number | undefined | null, fallback: number = 0): number => {
   if (typeof value === 'number' && !isNaN(value)) {
     return value;
   }

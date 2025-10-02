@@ -1,12 +1,13 @@
 import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card } from "@/components/ui/card";
+import { CampaignDataRow } from "@/types/campaign";
 import { formatNumber, formatCurrency, formatCTRPercentage, formatTransactions, formatAOVValue } from "@/lib/formatters";
 import { calculatePeriodMetrics, getTrendInfo } from "@/lib/dashboardCalculations";
 
 interface MetricCardsProps {
-  currentPeriodData: any[];
-  previousPeriodData: any[];
+  currentPeriodData: CampaignDataRow[];
+  previousPeriodData: CampaignDataRow[];
   comparisonPeriod: string;
 }
 

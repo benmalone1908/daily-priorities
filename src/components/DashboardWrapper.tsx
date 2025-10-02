@@ -1,13 +1,24 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
 import { useMemo } from 'react';
 import DashboardProxy from './DashboardProxy';
-import { useCampaignFilter } from '@/contexts/CampaignFilterContext';
+import { useCampaignFilter } from '@/contexts/use-campaign-filter';
 import { Option } from './MultiSelect';
 import { debugLogOptions } from '@/utils/optionsFormatter';
 
+// Interface for daily aggregated data
+interface DailyAggregatedData {
+  date: string;
+  IMPRESSIONS: number;
+  CLICKS: number;
+  REVENUE: number;
+  TRANSACTIONS: number;
+}
+
 interface DashboardWrapperProps {
-  data: any[];
-  metricsData: any[];
-  revenueData: any[];
+  data: CampaignDataRow[];
+  metricsData: CampaignDataRow[];
+  revenueData: CampaignDataRow[];
   selectedMetricsCampaigns: string[];
   selectedRevenueCampaigns: string[];
   selectedRevenueAdvertisers: string[];
@@ -31,7 +42,7 @@ interface DashboardWrapperProps {
   // Add prop for the chart toggle component
   chartToggleComponent?: React.ReactNode;
   // Add contractTermsData prop
-  contractTermsData?: any[];
+  contractTermsData?: ContractTermsRow[];
   // Add prop to control whether to show the daily totals table
   showDailyTotalsTable?: boolean;
   // Add prop to control whether to hide dashboard spark charts
@@ -212,7 +223,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
   const aggregatedMetricsData = useMemo(() => {
     if (!props.data || props.data.length === 0) return [];
     
-    const dateGroups: Record<string, any> = {};
+    const dateGroups: Record<string, unknown> = {};
     
     props.data.forEach(row => {
       if (!row || !row.DATE || row.DATE === 'Totals') return;
@@ -237,7 +248,7 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       dateGroups[dateStr].TRANSACTIONS += Number(row.TRANSACTIONS) || 0;
     });
     
-    return Object.values(dateGroups).sort((a: any, b: any) => {
+    return Object.values(dateGroups).sort((a: DailyAggregatedData, b: DailyAggregatedData) => {
       try {
         return new Date(a.date).getTime() - new Date(b.date).getTime();
       } catch (err) {

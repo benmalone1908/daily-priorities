@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+import { PacingDeliveryData } from '@/types/pacing';
 import React, { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,9 +18,9 @@ import html2canvas from 'html2canvas';
 interface StreamlinedPdfExportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data: any[];
-  pacingData?: any[];
-  contractTermsData?: any[];
+  data: CampaignDataRow[];
+  pacingData?: PacingDeliveryData[];
+  contractTermsData?: ContractTermsRow[];
   dateRange?: DateRange;
   appliedFilters?: {
     agencies: string[];
@@ -750,8 +753,8 @@ const StreamlinedPdfExportModal = ({
       
       // First, find elements that contain "Weekly Comparison" as a starting point
       const allElements = document.querySelectorAll('*');
-      let weeklyHeaders: HTMLElement[] = [];
-      
+      const weeklyHeaders: HTMLElement[] = [];
+
       for (const element of allElements) {
         if (element instanceof HTMLElement) {
           const text = element.textContent || '';
@@ -999,7 +1002,7 @@ const StreamlinedPdfExportModal = ({
 
             for (let row = 0; row < rows; row++) {
               let rowHeight = 0;
-              const rowElements: { canvas: any; x: number; y: number; width: number; height: number }[] = [];
+              const rowElements: { canvas: unknown; x: number; y: number; width: number; height: number }[] = [];
 
               // Capture charts for this row
               for (let col = 0; col < chartsPerRow && chartIndex < sparkChartElements.length; col++) {

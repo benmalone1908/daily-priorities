@@ -1,4 +1,5 @@
 
+import { CampaignDataRow } from '@/types/campaign';
 import { useState, useMemo } from "react";
 import { 
   Table, 
@@ -29,10 +30,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { normalizeDate, parseDateString } from "@/lib/utils";
-import { useCampaignFilter, AGENCY_MAPPING } from "@/contexts/CampaignFilterContext";
+import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { AGENCY_MAPPING } from "@/contexts/agency-mapping";
 
 interface RawDataTableProps {
-  data: any[];
+  data: CampaignDataRow[];
   useGlobalFilters?: boolean;
 }
 
@@ -113,7 +115,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
 
   // Process data with new 2-axis methodology
   const processedData = useMemo(() => {
-    const groups: Record<string, any> = {};
+    const groups: Record<string, unknown> = {};
     
     // Calculate most recent date for rolling periods
     let mostRecentDate: Date | null = null;
@@ -143,15 +145,17 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
         case "campaign":
           groupKey = campaignName;
           break;
-        case "advertiser":
+        case "advertiser": {
           const advertiser = extractAdvertiserName(campaignName);
           const { agency } = extractAgencyInfo(campaignName);
           groupKey = `${advertiser} (${agency})`;
           break;
-        case "agency":
+        }
+        case "agency": {
           const agencyInfo = extractAgencyInfo(campaignName);
           groupKey = agencyInfo.agency;
           break;
+        }
       }
       
       // Determine time key based on aggregation
@@ -276,7 +280,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
       
       return 0;
     });
-  }, [processedData, sortColumn, sortDirection, groupingLevel, timeAggregation]);
+  }, [processedData, sortColumn, sortDirection, timeAggregation]);
 
   // Paginate the data
   const paginatedData = useMemo(() => {
@@ -319,10 +323,10 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
     try {
       // Get all data (not just current page)
       const csvData = sortedData;
-      
+
       // Define columns based on grouping level and time aggregation
-      let columns: string[] = ['groupKey'];
-      
+      const columns: string[] = ['groupKey'];
+
       // Add time column if not total aggregation
       if (timeAggregation !== 'total') {
         columns.push('timeKey');
@@ -375,7 +379,7 @@ const RawDataTable = ({ data, useGlobalFilters = false }: RawDataTableProps) => 
   };
   
   // Format value with optional period comparison
-  const formatColumnValue = (row: any, column: string, showComparison: boolean = false) => {
+  const formatColumnValue = (row: unknown, column: string, showComparison: boolean = false) => {
     if (!row) return '';
     
     const value = row[column];

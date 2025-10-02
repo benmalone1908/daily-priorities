@@ -1,8 +1,9 @@
+import { CampaignDataRow } from '@/types/campaign';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { formatNumber } from "@/lib/utils";
 
 interface SpendMetricsChartProps {
-  data: any[];
+  data: CampaignDataRow[];
   barSize: number;
 }
 
@@ -14,7 +15,7 @@ export const SpendMetricsChart = ({ data, barSize }: SpendMetricsChartProps) => 
         <YAxis tickFormatter={(value) => `$${formatNumber(value)}`} tick={{ fontSize: 10 }} />
         <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
         <Tooltip
-          formatter={(value: any, name: string) => [
+          formatter={(value: unknown, name: string) => [
             `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             name === 'MediaJelDirect' ? 'MediaJel Direct' : 'Channel Partners'
           ]}

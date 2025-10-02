@@ -1,4 +1,5 @@
 
+import { CampaignDataRow } from '@/types/campaign';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
@@ -6,11 +7,11 @@ interface SparkChartModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  data: any[];
+  data: CampaignDataRow[];
   dataKey: string;
   color: string;
   gradientId: string;
-  valueFormatter: (value: any) => string;
+  valueFormatter: (value: unknown) => string;
 }
 
 const SparkChartModal = ({
@@ -32,7 +33,7 @@ const SparkChartModal = ({
     zeroValues: data.filter(d => d[dataKey] === 0).length
   });
 
-  const formatTooltipValue = (value: any) => {
+  const formatTooltipValue = (value: unknown) => {
     if (value === null || value === undefined) return "No data";
     if (value === 0) return "0 (Campaign paused)";
     return valueFormatter(value);

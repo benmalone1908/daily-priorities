@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+import { PacingDeliveryData } from '@/types/pacing';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -5,9 +8,9 @@ import EnhancedPdfExportModal from "@/components/pdf/EnhancedPdfExportModal";
 import { DateRange } from "react-day-picker";
 
 interface EnhancedPdfExportButtonProps {
-  data: any[];
-  pacingData?: any[];
-  contractTermsData?: any[];
+  data: CampaignDataRow[];
+  pacingData?: PacingDeliveryData[];
+  contractTermsData?: ContractTermsRow[];
   dateRange?: DateRange;
   appliedFilters?: {
     agencies: string[];
@@ -23,8 +26,7 @@ interface EnhancedPdfExportButtonProps {
   size?: "sm" | "default" | "lg";
 }
 
-const EnhancedPdfExportButton = ({ 
-  data,
+const EnhancedPdfExportButton = ({ data,
   pacingData = [],
   contractTermsData = [],
   dateRange, 

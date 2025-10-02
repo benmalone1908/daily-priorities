@@ -1,3 +1,6 @@
+import { CampaignDataRow } from '@/types/campaign';
+import { ContractTermsRow } from '@/types/dashboard';
+import { PacingDeliveryData } from '@/types/pacing';
 import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -49,9 +52,9 @@ const ICON_MAP = {
 interface EnhancedPdfExportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data: any[];
-  pacingData?: any[];
-  contractTermsData?: any[];
+  data: CampaignDataRow[];
+  pacingData?: PacingDeliveryData[];
+  contractTermsData?: ContractTermsRow[];
   dateRange?: DateRange;
   appliedFilters?: {
     agencies: string[];
@@ -114,7 +117,7 @@ const EnhancedPdfExportModal = ({
   // Get selected instance
   const selectedInstance = useMemo(() => {
     return selectedInstanceId ? instanceManager.getInstance(selectedInstanceId) : null;
-  }, [selectedInstanceId, instanceManager, instances]);
+  }, [selectedInstanceId, instanceManager]);
 
   // Add chart instance
   const handleAddChart = (template: ChartTemplate) => {
