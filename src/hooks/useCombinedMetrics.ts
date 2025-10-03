@@ -209,11 +209,26 @@ export const useCombinedMetrics = ({ data,
 
   // Process spend data for MediaJel Direct vs Channel Partners
   const processSpendData = useMemo(() => {
+    // Always use rawData for spend (needs campaign names and SPEND field)
+    // But check if data has DAY_OF_WEEK to know if we should aggregate by day of week
+    const isDayOfWeekMode = data.length > 0 && data.some(row => row.DAY_OF_WEEK);
     const dataToUse = rawData.length > 0 ? rawData : data;
     const spendByDate = new Map();
 
     dataToUse.forEach(row => {
-      const date = row.DATE || row.date;
+      // If in day of week mode, convert DATE to day of week
+      let date: string;
+      if (isDayOfWeekMode && (row.DATE || row.date)) {
+        const parsedDate = parseDateString(row.DATE || row.date);
+        if (parsedDate) {
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          date = dayNames[parsedDate.getDay()];
+        } else {
+          return;
+        }
+      } else {
+        date = row.DATE || row.date;
+      }
       if (!date || date === 'Totals') return;
 
       const campaignName = row["CAMPAIGN ORDER NAME"] || row.campaignName || "";
@@ -248,11 +263,21 @@ export const useCombinedMetrics = ({ data,
       }
     });
 
-    return Array.from(spendByDate.values()).sort((a, b) => {
-      const dateA = parseDateString(a.date);
-      const dateB = parseDateString(b.date);
-      return dateA && dateB ? dateA.getTime() - dateB.getTime() : 0;
-    });
+    const result = Array.from(spendByDate.values());
+
+    // Check if we're dealing with day of week data
+    const isDayOfWeek = result.length > 0 && /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)/i.test(result[0].date);
+
+    // Only sort by date if not day of week data
+    if (!isDayOfWeek) {
+      return result.sort((a, b) => {
+        const dateA = parseDateString(a.date);
+        const dateB = parseDateString(b.date);
+        return dateA && dateB ? dateA.getTime() - dateB.getTime() : 0;
+      });
+    }
+
+    return result;
   }, [data, rawData, extractAgencyInfo]);
 
   // Process main chart data

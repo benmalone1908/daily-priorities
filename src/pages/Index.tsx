@@ -616,6 +616,10 @@ const DashboardContent = ({ data,
     } else {
       newSearchParams.set('tab', tab);
     }
+    // Clear campaign parameter when switching away from campaigns tab
+    if (tab !== 'campaigns') {
+      newSearchParams.delete('campaign');
+    }
     setSearchParams(newSearchParams, { replace: true });
   };
   const [isAttributionChart, setIsAttributionChart] = useState(false);
