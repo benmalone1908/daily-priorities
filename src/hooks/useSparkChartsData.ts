@@ -51,10 +51,11 @@ const fillMissingDates = (timeSeriesData: SparkChartDataPoint[], allDates: Date[
   }
 
   const firstDataDate = actualDataDates[0];
-  const lastDataDate = actualDataDates[actualDataDates.length - 1];
+  // Instead of stopping at last data date, extend to the end of the full filter range
+  const lastFilterDate = allDates.length > 0 ? allDates[allDates.length - 1] : actualDataDates[actualDataDates.length - 1];
 
   const result = allDates
-    .filter(date => date >= firstDataDate && date <= lastDataDate)
+    .filter(date => date >= firstDataDate && date <= lastFilterDate)
     .map(date => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -66,6 +67,7 @@ const fillMissingDates = (timeSeriesData: SparkChartDataPoint[], allDates: Date[
       if (existingData) {
         return existingData;
       } else {
+        // Fill missing dates with zeros to show data gaps visually
         return {
           date: dateFormat.format(date),
           rawDate: date,

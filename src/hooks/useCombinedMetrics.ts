@@ -115,13 +115,14 @@ const fillMissingDatesForCombo = (processedData: CampaignDataRow[], allDates: Da
   if (datesWithData.length === 0) return processedData;
 
   const firstDataDate = datesWithData[0]!;
-  const lastDataDate = datesWithData[datesWithData.length - 1]!;
+  // Instead of stopping at last data date, extend to the end of the full filter range
+  const lastFilterDate = allDates.length > 0 ? allDates[allDates.length - 1] : datesWithData[datesWithData.length - 1]!;
 
-  // Generate complete time series only within the data range
+  // Generate complete time series from first data date to end of filter range
   // Use consistent MM/DD/YY date format for proper sorting
   const result: ComboChartDataPoint[] = [];
   for (const date of allDates) {
-    if (date >= firstDataDate && date <= lastDataDate) {
+    if (date >= firstDataDate && date <= lastFilterDate) {
       // Format date as MM/DD/YY for consistent sorting
       const dateStr = formatDateSortable(date);
 
@@ -131,7 +132,7 @@ const fillMissingDatesForCombo = (processedData: CampaignDataRow[], allDates: Da
         // Use existing data as-is
         result.push(existingData);
       } else {
-        // Fill gap with zero values
+        // Fill gap with zero values to show data delivery issues visually
         result.push({
           date: dateStr,
           IMPRESSIONS: 0,
