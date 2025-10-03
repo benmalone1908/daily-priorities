@@ -21,18 +21,36 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({ data,
 }) => {
   // Process data for the specific metric
   const processedData = useMemo(() => {
-    const dateGroups = new Map<string, unknown>();
-    
-    // Filter data by date range
-    const filteredData = data.filter(row => {
-      if (!row.DATE || row.DATE === 'Totals') return false;
-      const rowDate = new Date(row.DATE);
-      return (!dateRange.from || rowDate >= dateRange.from) && 
-             (!dateRange.to || rowDate <= dateRange.to);
-    });
+    // Generate complete date range from filter
+    if (!dateRange.from) return [];
 
-    // Group by date
-    filteredData.forEach(row => {
+    const startDate = new Date(dateRange.from);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = dateRange.to ? new Date(dateRange.to) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    // Generate all dates in range
+    const allDates: Date[] = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Group data by date
+    const dateGroups = new Map<string, {
+      date: string;
+      IMPRESSIONS: number;
+      CLICKS: number;
+      REVENUE: number;
+      TRANSACTIONS: number;
+      SPEND: number;
+    }>();
+
+    data.forEach(row => {
+      if (!row.DATE || row.DATE === 'Totals') return;
+
       const dateStr = String(row.DATE).trim();
       if (!dateGroups.has(dateStr)) {
         dateGroups.set(dateStr, {
@@ -44,7 +62,7 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({ data,
           SPEND: 0
         });
       }
-      
+
       const group = dateGroups.get(dateStr)!;
       group.IMPRESSIONS += +(row.IMPRESSIONS) || 0;
       group.CLICKS += +(row.CLICKS) || 0;
@@ -53,14 +71,35 @@ const SparkChartComponent: React.FC<SparkChartComponentProps> = ({ data,
       group.SPEND += +(row.SPEND) || 0;
     });
 
-    // Convert to array and calculate derived metrics
-    return Array.from(dateGroups.values())
-      .map(d => ({
-        ...d,
-        CTR: d.IMPRESSIONS > 0 ? (d.CLICKS / d.IMPRESSIONS) * 100 : 0,
-        ROAS: d.SPEND > 0 ? d.REVENUE / d.SPEND : 0
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Fill all dates with data or zeros
+    return allDates.map(date => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
+      const existingData = dateGroups.get(dateStr);
+
+      if (existingData) {
+        return {
+          ...existingData,
+          CTR: existingData.IMPRESSIONS > 0 ? (existingData.CLICKS / existingData.IMPRESSIONS) * 100 : 0,
+          ROAS: existingData.SPEND > 0 ? existingData.REVENUE / existingData.SPEND : 0
+        };
+      } else {
+        // Fill missing dates with zeros to show data gaps visually
+        return {
+          date: dateStr,
+          IMPRESSIONS: 0,
+          CLICKS: 0,
+          REVENUE: 0,
+          TRANSACTIONS: 0,
+          SPEND: 0,
+          CTR: 0,
+          ROAS: 0
+        };
+      }
+    });
   }, [data, dateRange]);
 
   // Calculate totals and trends

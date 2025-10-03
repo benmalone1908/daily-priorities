@@ -26,8 +26,7 @@ import { AnomalyFiltersComponent, ActiveFilters, AnomalyFilters } from "./Anomal
 import { filterAnomalies } from "@/utils/anomalyFilters";
 import {
   CampaignAnomaly,
-  detectAllAnomalies,
-  CampaignDataRow
+  detectAllAnomalies
 } from "@/utils/anomalyDetection";
 import { useSupabase } from "@/contexts/use-supabase";
 import { toast } from "sonner";

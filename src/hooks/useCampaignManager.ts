@@ -193,7 +193,18 @@ export const useCampaignManager = ({
 
   // Filter campaign data based on global date range
   const filteredCampaignData = useMemo(() => {
-    let filtered = state.campaignData.filter(
+    // If a campaign is selected, filter the original data for that campaign
+    // Otherwise use state.campaignData (which would be empty if no campaign selected)
+    const sourceData = state.selectedCampaign
+      ? data.filter(row => {
+          // Normalize both campaign names by removing extra spaces after colons for comparison
+          const normalizedRowName = row["CAMPAIGN ORDER NAME"]?.replace(/:\s+/g, ':').trim();
+          const normalizedSelectedName = state.selectedCampaign?.replace(/:\s+/g, ':').trim();
+          return normalizedRowName === normalizedSelectedName;
+        })
+      : state.campaignData;
+
+    let filtered = sourceData.filter(
       row =>
         row &&
         row.DATE !== 'Totals' &&
@@ -216,7 +227,7 @@ export const useCampaignManager = ({
     }
 
     return filtered;
-  }, [state.campaignData, isTestCampaign, globalDateRange]);
+  }, [data, state.selectedCampaign, state.campaignData, isTestCampaign, globalDateRange]);
 
   // Calculate campaign summary metrics
   const campaignSummary = useMemo(() => {

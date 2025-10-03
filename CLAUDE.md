@@ -128,3 +128,140 @@ Expected columns: Contract-related fields for health scoring
 - **TypeScript**: `tsconfig.json` with relaxed settings for rapid development
 - **ESLint**: `eslint.config.js` with React-specific rules
 - **Tailwind**: `tailwind.config.ts` with custom animations and shadcn integration
+
+## Debugging Guide
+
+### Debugging React Prop Flow Issues
+
+When props aren't flowing correctly between components, follow this systematic approach:
+
+#### 1. **Identify the Component Chain First**
+Map out the complete prop flow before adding any debug logs:
+```
+Parent → Child1 → Child2 → Child3 → TargetComponent
+```
+
+#### 2. **Add Parallel Logging at ALL Levels Immediately**
+Instead of debugging incrementally, add console logs at every component in the chain at once:
+
+```javascript
+// In Parent component
+console.log('[Parent] propName:', propValue);
+
+// In Child1 component
+console.log('[Child1] propName:', propValue);
+
+// In Child2 component
+console.log('[Child2] propName:', propValue);
+
+// In TargetComponent
+console.log('[TargetComponent] propName:', propValue);
+```
+
+This immediately reveals **exactly where** the value changes.
+
+#### 3. **Check for the Classic React Bug Pattern**
+
+When a prop has the correct value at parent but wrong value at child, the issue is almost always:
+
+**Pattern A: Prop Not Destructured**
+```typescript
+// Props interface includes it
+interface ComponentProps {
+  dateRange?: DateRange;
+  data: Data[];
+}
+
+// But function params don't destructure it ❌
+function Component({ data }: ComponentProps) {
+  // Prop is never extracted, so it's undefined
+}
+
+// Fix: Add to destructuring ✓
+function Component({ data, dateRange }: ComponentProps) {
+  // Now accessible
+}
+```
+
+**Pattern B: Local Variable Shadows Prop**
+```typescript
+function Component({ data, dateRange }: ComponentProps) {
+  // This overwrites the prop! ❌
+  const dateRange = calculateFromData(data);
+
+  // Fix: Use different variable name ✓
+  const calculatedDateRange = dateRange || calculateFromData(data);
+}
+```
+
+#### 4. **Search for Variable Reassignments**
+When you find the component where the prop value changes:
+
+```bash
+# Search for variable assignments in the problem component
+grep "const dateRange =" ComponentName.tsx
+grep "let dateRange =" ComponentName.tsx
+```
+
+This quickly finds shadowing bugs like `const dateRange = dataDateRange()`.
+
+#### 5. **Verify Three Things in Order**
+
+For any prop that's not working:
+
+1. ✓ Is the prop in the TypeScript interface?
+2. ✓ Is it destructured in the function parameters?
+3. ✓ Is there a local variable with the same name overwriting it?
+
+### Common Debugging Pitfalls to Avoid
+
+❌ **Don't debug bottom-up** - Starting at the deepest component and working backwards wastes time
+
+✓ **Do debug top-down** - Start at the parent component and trace the prop flow downward
+
+❌ **Don't add logs incrementally** - Adding one log, checking, adding another is slow
+
+✓ **Do add logs in parallel** - Add logs at all levels simultaneously to see the complete flow
+
+❌ **Don't follow red herrings** - If the console shows wrong data, focus on WHERE it becomes wrong
+
+✓ **Do trust your console output** - If a value is wrong at a certain level, that's where the bug is
+
+### Real Example: DateRange Not Extending Charts
+
+**Problem**: Charts ending at last data date (9/8) instead of filter end date (10/2)
+
+**Fast Solution Path**:
+1. See `console.log('[useCombinedMetrics] dateRange:', dateRange)` shows Sep 9, not Oct 2
+2. Add logs at every level: Index → CampaignManager → DashboardWrapper → Dashboard → Chart
+3. Find Dashboard receives Oct 2 but chart gets Sep 9
+4. Search Dashboard.tsx for `dateRange =`
+5. Find `const dateRange = dataDateRange()` on line 1005 (overwrites prop!)
+6. Check function params: `dateRange` prop not destructured
+7. Fix: Add `dateRange: dateRangeProp` to params, use `dateRangeProp || dataDateRange()`
+
+**Time saved**: ~45 minutes of debugging reduced to 5 minutes
+
+### Quick Reference: Debug Log Template
+
+```typescript
+// Add this at the TOP of any component receiving props
+console.log('[ComponentName] Received props:', {
+  propName1,
+  propName2,
+  // Add any props you're debugging
+});
+
+// Add this AFTER any transformations
+console.log('[ComponentName] After transform:', transformedValue);
+
+// Add this BEFORE passing to child
+console.log('[ComponentName] Passing to child:', valueBeingPassed);
+```
+
+### Using Browser DevTools Effectively
+
+1. **React DevTools**: Inspect component props in real-time
+2. **Console Filtering**: Filter by component name (e.g., `[Dashboard]`)
+3. **Break on Exception**: Catches errors at source
+4. **Network Tab**: Verify data loading correctly

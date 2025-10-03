@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +40,8 @@ const CampaignManager = ({
   globalDateRange,
   onCampaignDetailViewChange
 }: CampaignManagerProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Use our custom hook for all state management and data processing
   const { state, actions, data: campaignData } = useCampaignManager({
     data,
@@ -46,6 +49,28 @@ const CampaignManager = ({
     contractTermsData,
     globalDateRange
   });
+
+  // Sync URL with selected campaign
+  useEffect(() => {
+    if (state.selectedCampaign) {
+      setSearchParams({ tab: 'campaigns', campaign: state.selectedCampaign });
+    } else {
+      const current = Object.fromEntries(searchParams);
+      if (current.campaign) {
+        delete current.campaign;
+        setSearchParams(current);
+      }
+    }
+  }, [state.selectedCampaign, setSearchParams, searchParams]);
+
+  // Load campaign from URL on mount
+  useEffect(() => {
+    const campaignFromUrl = searchParams.get('campaign');
+    if (campaignFromUrl && !state.selectedCampaign) {
+      actions.setSelectedCampaign(campaignFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Notify parent component when detail view changes
   useEffect(() => {
@@ -216,6 +241,7 @@ const CampaignManager = ({
                 onMetricsAdvertisersChange={() => {}}
                 onMetricsAgenciesChange={() => {}}
                 useGlobalFilters={true}
+                dateRange={globalDateRange}
               />
             </div>
           </TabsContent>

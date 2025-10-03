@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SparkChartModal from "./SparkChartModal";
+import { DateRange } from "react-day-picker";
 
 // Import our custom hook
 import { useCombinedMetrics } from "@/hooks/useCombinedMetrics";
@@ -26,6 +27,8 @@ interface CombinedMetricsChartProps {
   chartModeSelector?: React.ReactNode;
   // Raw data for spend calculations (with campaign names)
   rawData?: CampaignDataRow[];
+  // Date range filter to extend charts with zeros
+  dateRange?: DateRange;
 }
 
 /**
@@ -41,7 +44,8 @@ const CombinedMetricsChart = ({
   customBarMetric = "IMPRESSIONS",
   customLineMetric = "CLICKS",
   chartModeSelector,
-  rawData = []
+  rawData = [],
+  dateRange
 }: CombinedMetricsChartProps) => {
   // Use our custom hook for all data processing and state management
   const { state, actions, data: chartData, utils } = useCombinedMetrics({
@@ -49,7 +53,8 @@ const CombinedMetricsChart = ({
     rawData,
     initialTab,
     customBarMetric,
-    customLineMetric
+    customLineMetric,
+    dateRange
   });
 
   console.log(`CombinedMetricsChart: Rendering with data length: ${data?.length}, activeTab: ${state.activeTab}, initialTab: ${initialTab}`);

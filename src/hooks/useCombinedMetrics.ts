@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { formatNumber, parseDateString, formatDateSortable } from "@/lib/utils";
+import { formatNumber, parseDateString, formatDateSortable, setToStartOfDay, setToEndOfDay } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { CampaignDataRow } from "@/types/campaign";
+import { DateRange } from "react-day-picker";
 
 // Interface for combo chart data point
 interface ComboChartDataPoint {
@@ -18,6 +19,7 @@ export interface CombinedMetricsProps {
   initialTab?: string;
   customBarMetric?: string;
   customLineMetric?: string;
+  dateRange?: DateRange;
 }
 
 export interface CombinedMetricsState {
@@ -44,8 +46,8 @@ export interface ProcessedMetricsData {
   hasData: boolean;
 }
 
-// Helper function to get complete date range from data
-const getCompleteDateRange = (data: ChartDataPoint[]): Date[] => {
+// Helper function to get complete date range from data and filter
+const getCompleteDateRange = (data: ChartDataPoint[], dateRange?: DateRange): Date[] => {
   const dates = data
     .map(row => row.DATE || row.DAY_OF_WEEK)
     .filter(date => date)
@@ -62,7 +64,18 @@ const getCompleteDateRange = (data: ChartDataPoint[]): Date[] => {
 
   dates.sort((a, b) => a.getTime() - b.getTime());
   const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
+
+  // Use filter end date if available, otherwise use last data date
+  let maxDate = dates[dates.length - 1];
+  if (dateRange?.to) {
+    const filterEndDate = setToEndOfDay(dateRange.to);
+    // Extend to filter end date even if data stops earlier
+    maxDate = filterEndDate > maxDate ? filterEndDate : maxDate;
+  } else if (dateRange?.from && !dateRange.to) {
+    // If only from date is set, use today as end
+    const today = setToEndOfDay(new Date());
+    maxDate = today > maxDate ? today : maxDate;
+  }
 
   const result = [];
   const current = new Date(minDate);
@@ -156,7 +169,8 @@ export const useCombinedMetrics = ({ data,
   rawData = [],
   initialTab = "display",
   customBarMetric = "IMPRESSIONS",
-  customLineMetric = "CLICKS"
+  customLineMetric = "CLICKS",
+  dateRange
 }: CombinedMetricsProps) => {
   const { extractAgencyInfo } = useCampaignFilter();
 
@@ -245,8 +259,8 @@ export const useCombinedMetrics = ({ data,
   const processedData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    // Get complete date range for filling gaps
-    const completeDateRange = getCompleteDateRange(data);
+    // Get complete date range for filling gaps, extending to filter end date
+    const completeDateRange = getCompleteDateRange(data, dateRange);
 
     // Process data to ensure we have all required fields and normalize dates
     const processed = data
@@ -297,7 +311,7 @@ export const useCombinedMetrics = ({ data,
       barSize: isDayOfWeekData ? 120 : 80,
       hasData: sortedData.length > 0
     };
-  }, [data, state.activeTab, processSpendData]);
+  }, [data, state.activeTab, processSpendData, dateRange]);
 
   // Format functions for different metrics
   const getMetricFormatter = (metric: string) => {

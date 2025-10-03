@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { CalendarDays, Calendar } from "lucide-react";
 
 import { ContractTermsRow } from '@/types/dashboard';
+import { DateRange } from 'react-day-picker';
 
 // Define props interface to match Dashboard component
 interface DashboardProxyProps {
@@ -45,6 +46,7 @@ interface DashboardProxyProps {
   contractTermsData?: ContractTermsRow[];
   showDailyTotalsTable?: boolean;
   hideDashboardSparkCharts?: boolean;
+  dateRange?: DateRange;
 }
 
 // Wrapper component for passing props to Dashboard
@@ -154,6 +156,7 @@ const DashboardProxy = (props: DashboardProxyProps) => {
         customLineMetric={customLineMetric}
         showDailyTotalsTable={props.showDailyTotalsTable}
         hideDashboardSparkCharts={props.hideDashboardSparkCharts}
+        dateRange={props.dateRange}
       />
     </div>
   );

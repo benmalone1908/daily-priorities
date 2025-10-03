@@ -339,14 +339,9 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
 
         if (rawTimeSeriesData.length === 0) return null;
 
-        const fullTimeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
-
-        const timeSeriesData = dateRange?.from ?
-          fullTimeSeriesData.filter(item => {
-            const fromDate = setToStartOfDay(dateRange.from!);
-            const toDate = dateRange.to ? setToEndOfDay(dateRange.to) : setToEndOfDay(new Date());
-            return item.rawDate >= fromDate && item.rawDate <= toDate;
-          }) : fullTimeSeriesData;
+        // fillMissingDates already respects the complete date range, so no need to filter again
+        // Filtering again would remove the zeros we just added for missing dates
+        const timeSeriesData = fillMissingDates(rawTimeSeriesData, completeDateRange);
 
         const totals = {
           impressions: timeSeriesData.reduce((sum, row) => sum + row.impressions, 0),

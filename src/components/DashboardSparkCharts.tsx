@@ -14,9 +14,11 @@ import {
 import { Eye, MousePointer, ShoppingCart, DollarSign, Percent, TrendingUp } from "lucide-react";
 import { formatNumber, parseDateString } from "@/lib/utils";
 import { useCampaignFilter } from "@/contexts/use-campaign-filter";
+import { DateRange } from "react-day-picker";
 
 interface DashboardSparkChartsProps {
   data: CampaignDataRow[];
+  dateRange?: DateRange;
 }
 
 interface ChartData {
@@ -30,7 +32,7 @@ interface ChartData {
   roas: number;
 }
 
-const DashboardSparkCharts = ({ data }: DashboardSparkChartsProps) => {
+const DashboardSparkCharts = ({ data, dateRange }: DashboardSparkChartsProps) => {
   const { isTestCampaign } = useCampaignFilter();
 
   // Process data for charts
@@ -40,7 +42,15 @@ const DashboardSparkCharts = ({ data }: DashboardSparkChartsProps) => {
     }
 
     // Filter out test campaigns and aggregate by date
-    const dateGroups = new Map<string, unknown>();
+    const dateGroups = new Map<string, {
+      date: string;
+      rawDate: Date;
+      impressions: number;
+      clicks: number;
+      transactions: number;
+      revenue: number;
+      spend: number;
+    }>();
 
     data.forEach(row => {
       if (!row || !row.DATE || row.DATE === 'Totals') return;
@@ -66,7 +76,7 @@ const DashboardSparkCharts = ({ data }: DashboardSparkChartsProps) => {
         });
       }
 
-      const group = dateGroups.get(dateKey);
+      const group = dateGroups.get(dateKey)!;
       group.impressions += Number(row.IMPRESSIONS) || 0;
       group.clicks += Number(row.CLICKS) || 0;
       group.transactions += Number(row.TRANSACTIONS) || 0;
@@ -74,17 +84,60 @@ const DashboardSparkCharts = ({ data }: DashboardSparkChartsProps) => {
       group.spend += Number(row.SPEND) || 0;
     });
 
-    // Convert to array and sort by date
-    const sortedData = Array.from(dateGroups.values())
-      .sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime())
-      .map(item => ({
+    // Get all dates from data
+    const dataArray = Array.from(dateGroups.values()).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime());
+
+    // If no dateRange filter, just return the data
+    if (!dateRange?.from) {
+      return dataArray.map(item => ({
         ...item,
         ctr: item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0,
         roas: item.spend > 0 ? item.revenue / item.spend : 0,
       }));
+    }
 
-    return sortedData;
-  }, [data, isTestCampaign]);
+    // Generate complete date range from filter
+    const startDate = new Date(dateRange.from);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = dateRange.to ? new Date(dateRange.to) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    // Generate all dates in range
+    const allDates: Date[] = [];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      allDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Fill all dates with data or zeros
+    return allDates.map(date => {
+      const dateKey = date.toISOString().split('T')[0];
+      const existingData = dateGroups.get(dateKey);
+
+      if (existingData) {
+        return {
+          ...existingData,
+          ctr: existingData.impressions > 0 ? (existingData.clicks / existingData.impressions) * 100 : 0,
+          roas: existingData.spend > 0 ? existingData.revenue / existingData.spend : 0,
+        };
+      } else {
+        // Fill missing dates with zeros to show data gaps visually
+        return {
+          date: dateKey,
+          rawDate: date,
+          impressions: 0,
+          clicks: 0,
+          transactions: 0,
+          revenue: 0,
+          spend: 0,
+          ctr: 0,
+          roas: 0,
+        };
+      }
+    });
+  }, [data, dateRange, isTestCampaign]);
 
   // Calculate totals
   const totals = useMemo(() => {

@@ -55,22 +55,24 @@ interface ModalData {
 }
 
 // Helper function to get complete date range from data
-const getCompleteDateRange = (data: CampaignDataRow[]): Date[] => {
+const getCompleteDateRange = (data: CampaignDataRow[], dateRange?: DateRange): Date[] => {
   const dates = data
     .map(row => row.DATE)
     .filter(date => date && date !== 'Totals')
     .map(dateStr => parseDateString(dateStr))
     .filter(Boolean) as Date[];
-    
+
   if (dates.length === 0) return [];
-  
+
   dates.sort((a, b) => a.getTime() - b.getTime());
-  const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
-  
+
+  // Use filter dates if available, otherwise use data dates
+  const minDate = dateRange?.from ? setToStartOfDay(dateRange.from) : dates[0];
+  const maxDate = dateRange?.to ? setToEndOfDay(dateRange.to) : (dateRange?.from ? setToEndOfDay(new Date()) : dates[dates.length - 1]);
+
   const result = [];
   const current = new Date(minDate);
-  
+
   while (current <= maxDate) {
     result.push(new Date(current));
     current.setDate(current.getDate() + 1);
@@ -99,27 +101,26 @@ const fillMissingDatesForAggregated = (timeSeriesData: TimeSeriesDataPoint[], al
     .map(item => parseDateString(item.date))
     .filter(Boolean)
     .sort((a, b) => a!.getTime() - b!.getTime());
-    
+
   if (datesWithData.length === 0) return timeSeriesData;
-  
+
   const firstDataDate = datesWithData[0]!;
-  const lastDataDate = datesWithData[datesWithData.length - 1]!;
-  
-  // Generate complete time series only within the data range
+
+  // Generate complete time series extending through the full date range (including filter end date)
   // Use consistent MM/DD/YY date format for proper sorting
   const result: TimeSeriesDataPoint[] = [];
   for (const date of allDates) {
-    if (date >= firstDataDate && date <= lastDataDate) {
+    if (date >= firstDataDate) {
       // Format date as MM/DD/YY for consistent sorting
       const dateStr = formatDateSortable(date);
 
       const existingData = dataByDate.get(dateStr);
-      
+
       if (existingData) {
         // Use existing data as-is
         result.push(existingData);
       } else {
-        // Fill gap with zero values
+        // Fill gap with zero values to show data gaps visually
         result.push({
           date: dateStr,
           IMPRESSIONS: 0,
@@ -139,7 +140,7 @@ const fillMissingDatesForAggregated = (timeSeriesData: TimeSeriesDataPoint[], al
 };
 
 // Improved Aggregated Spark Charts component that matches the campaign row style
-const AggregatedSparkCharts = ({ data }: { data: CampaignDataRow[] }) => {
+const AggregatedSparkCharts = ({ data, dateRange }: { data: CampaignDataRow[]; dateRange?: DateRange }) => {
   const { showAggregatedSparkCharts, showDebugInfo } = useCampaignFilter();
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
@@ -148,11 +149,8 @@ const AggregatedSparkCharts = ({ data }: { data: CampaignDataRow[] }) => {
     data: []
   });
 
-  console.log('AggregatedSparkCharts: Raw data received:', data.length, 'rows');
-  console.log('AggregatedSparkCharts: Sample raw data:', data.slice(0, 3));
-
-  // Get complete date range for filling gaps
-  const completeDateRange = useMemo(() => getCompleteDateRange(data), [data]);
+  // Get complete date range for filling gaps - extend to filter end date
+  const completeDateRange = useMemo(() => getCompleteDateRange(data, dateRange), [data, dateRange]);
 
   // Group data by date for time series with optimization
   const timeSeriesData = useMemo(() => {
@@ -1044,8 +1042,9 @@ const DashboardContent = ({ data,
         <TabsContent value="dashboard" className="mt-0">
           {/* Dashboard tab content */}
           <div id="dashboard-metrics-section">
-            <AggregatedSparkCharts 
+            <AggregatedSparkCharts
               data={globalFilteredData.filter(row => row.DATE !== 'Totals')}
+              dateRange={dateRange}
             />
             
             {/* Chart section with toggle instead of tabs */}
@@ -1099,7 +1098,7 @@ const DashboardContent = ({ data,
             {/* Campaign Manager tab content */}
             <div className="mb-4 animate-fade-in" id="campaigns-section">
               <CampaignManager
-                data={globalFilteredData}
+                data={data}
                 pacingData={pacingData}
                 contractTermsData={contractTermsData}
                 useGlobalFilters={true}
@@ -1226,10 +1225,10 @@ const Index = () => {
   useEffect(() => {
     const loadAllDataFromSupabase = async () => {
       try {
-        setLoadingProgress('Loading recent campaign data...');
+        setLoadingProgress('Loading all campaign data...');
 
-        // Load recent data only at startup (last 90 days) for fast initial load
-        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, true);
+        // Load all data at startup (not just recent 90 days)
+        const campaignData = await getCampaignData(undefined, undefined, setLoadingProgress, false);
 
         if (campaignData.length > 0) {
           setLoadingProgress('Processing data...');
@@ -1238,8 +1237,8 @@ const Index = () => {
           setData(transformedData);
           setDateRange(undefined);
           setShowDashboard(true);
-          setHasAllData(false); // Mark that we don't have all data yet (just recent)
-          console.log(`✅ Recent data loaded: ${transformedData.length} rows (last 90 days)`);
+          setHasAllData(true); // Mark that we have all data
+          console.log(`✅ All data loaded: ${transformedData.length} rows`);
         }
 
         // Load contract terms from Supabase

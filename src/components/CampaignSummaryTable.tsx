@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -51,6 +52,7 @@ interface CampaignSummary {
 
 const CampaignSummaryTable = ({ data, useGlobalFilters = false, onCampaignSelect }: CampaignSummaryTableProps) => {
   const { isTestCampaign, extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>("campaignName");

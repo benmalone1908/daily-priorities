@@ -122,6 +122,29 @@ const CampaignDetailPageContent = () => {
     };
   }, [data]);
 
+  // Set initial date range when data loads - from first data date to today
+  // This ensures charts show zeros from last data date to today if there's a delivery gap
+  useEffect(() => {
+    if (availableDateRange.min) {
+      const today = new Date();
+      const newRange = {
+        from: availableDateRange.min,
+        to: today // Extend to today to show delivery gaps
+      };
+      console.log('[CampaignDetailPage] Setting dateRange to:', {
+        from: newRange.from.toISOString(),
+        to: newRange.to.toISOString(),
+        dataMax: availableDateRange.max?.toISOString()
+      });
+      setDateRange(newRange);
+    }
+  }, [availableDateRange.min]); // Only depend on availableDateRange.min to reset when campaign changes
+
+  // Log whenever dateRange changes
+  useEffect(() => {
+    console.log('[CampaignDetailPage] Current dateRange:', dateRange);
+  }, [dateRange]);
+
   // Filter out test campaigns and process data
   const filteredData = useMemo(() => {
     let filtered = data.filter(row =>
@@ -229,61 +252,21 @@ const CampaignDetailPageContent = () => {
 
   const headerContent = (
     <div className="py-4">
-      {/* Header with campaign info */}
-      <div className="mb-4">
-        <div className="grid grid-cols-12 gap-4">
-          {/* Left side - Campaign name and badges (takes up 8 columns) */}
-          <div className="col-span-8">
-            <h1 className="text-2xl font-bold text-gray-900 truncate">
-              {decodedCampaignName}
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <Badge variant="secondary">
-                {campaignSummary.agency}
-              </Badge>
-              <Badge variant="outline">
-                {campaignSummary.advertiser}
-              </Badge>
-              <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded">MODIFIED LAYOUT</span>
-            </div>
-          </div>
-
-          {/* Right side - Flight dates and contract details (takes up 4 columns) */}
-          <div className="col-span-4">
-            <div className="bg-red-100 border-2 border-red-500 p-4 rounded-lg">
-              <div className="text-right mb-3">
-                <div className="text-sm font-semibold text-gray-900">Flight Dates</div>
-                <div className="text-sm text-gray-600">
-                  {campaignSummary.dateRange}
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-sm font-semibold text-gray-900">Contract Terms</div>
-                <div className="text-sm text-gray-600">
-                  {contractTermsData && contractTermsData.length > 0
-                    ? `${contractTermsData[0]['Start Date']} - ${contractTermsData[0]['End Date']}`
-                    : 'No contract data'
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Date Range Picker */}
-      <div className="mb-4">
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          availableDateRange={availableDateRange}
-          className="w-auto"
-        />
+      {/* Back button and campaign name */}
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          onClick={() => navigate('/?tab=campaigns')}
+          className="text-blue-600 hover:text-blue-800"
+        >
+          ← Back to Campaigns
+        </button>
+        <h2 className="text-xl font-semibold text-gray-900 truncate">
+          {decodedCampaignName}
+        </h2>
       </div>
 
       {/* Campaign summary metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Impressions</CardTitle>
@@ -380,6 +363,7 @@ const CampaignDetailPageContent = () => {
                 onMetricsAdvertisersChange={() => {}}
                 onMetricsAgenciesChange={() => {}}
                 useGlobalFilters={false}
+                dateRange={dateRange}
               />
             </div>
           </TabsContent>

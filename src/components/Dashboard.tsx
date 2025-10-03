@@ -23,6 +23,7 @@ import { ContractTermsRow } from "@/types/dashboard";
 import MetricCard from "./MetricCard";
 import { Toggle } from "./ui/toggle";
 import { normalizeDate, setToEndOfDay, setToStartOfDay } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 import { useCampaignFilter } from "@/contexts/use-campaign-filter";
 import { AGENCY_MAPPING } from "@/contexts/agency-mapping";
 import { formatNumber, formatCurrency, formatCTRPercentage, formatTransactions, formatAOVValue } from "@/lib/formatters";
@@ -94,6 +95,7 @@ interface DashboardProps {
   customLineMetric?: string;
   showDailyTotalsTable?: boolean;
   hideDashboardSparkCharts?: boolean;
+  dateRange?: DateRange;
 }
 
 interface WeeklyData {
@@ -259,7 +261,8 @@ const Dashboard = ({ data,
   customBarMetric = "IMPRESSIONS",
   customLineMetric = "CLICKS",
   showDailyTotalsTable = true,
-  hideDashboardSparkCharts = false
+  hideDashboardSparkCharts = false,
+  dateRange: dateRangeProp
 }: DashboardProps) => {
   // Removed selectedWeeklyCampaign state as it's now provided via props
   const [selectedWeeklyAdvertisers, setSelectedWeeklyAdvertisers] = useState<string[]>([]);
@@ -1000,7 +1003,8 @@ const Dashboard = ({ data,
     }
   };
 
-  const dateRange = dataDateRange();
+  // Use prop dateRange if provided, otherwise calculate from data
+  const dateRange = dateRangeProp || dataDateRange();
   const dateRangeText = dateRange
     ? `${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}`
     : "All time";
@@ -1135,6 +1139,7 @@ const Dashboard = ({ data,
                 customLineMetric={customLineMetric}
                 chartModeSelector={!showDailyTotalsTable ? chartModeSelector : undefined}
                 rawData={data}
+                dateRange={dateRange}
               />
             </div>
             {/* Daily Totals Table */}
@@ -1263,7 +1268,10 @@ const Dashboard = ({ data,
 
       {/* Campaign Overview Spark Charts */}
       {!hideDashboardSparkCharts && (
-        <DashboardSparkCharts data={useGlobalFilters ? (metricsData || data) : data} />
+        <DashboardSparkCharts
+          data={useGlobalFilters ? (metricsData || data) : data}
+          dateRange={dateRange}
+        />
       )}
 
       {/* Weekly comparison section */}

@@ -5,6 +5,7 @@ import DashboardProxy from './DashboardProxy';
 import { useCampaignFilter } from '@/contexts/use-campaign-filter';
 import { Option } from './MultiSelect';
 import { debugLogOptions } from '@/utils/optionsFormatter';
+import { DateRange } from 'react-day-picker';
 
 // Interface for daily aggregated data
 interface DailyAggregatedData {
@@ -33,7 +34,7 @@ interface DashboardWrapperProps {
   // Add handlers for metrics filters
   onMetricsAdvertisersChange: (selected: string[]) => void;
   onMetricsAgenciesChange: (selected: string[]) => void;
-  selectedWeeklyCampaigns: string[]; 
+  selectedWeeklyCampaigns: string[];
   onWeeklyCampaignsChange: (selected: string[]) => void;
   // Flag to indicate if we're using global filters
   useGlobalFilters?: boolean;
@@ -47,6 +48,8 @@ interface DashboardWrapperProps {
   showDailyTotalsTable?: boolean;
   // Add prop to control whether to hide dashboard spark charts
   hideDashboardSparkCharts?: boolean;
+  // Add dateRange prop
+  dateRange?: DateRange;
 }
 
 const DashboardWrapper = (props: DashboardWrapperProps) => {
@@ -326,6 +329,8 @@ const DashboardWrapper = (props: DashboardWrapperProps) => {
       showDailyTotalsTable={props.showDailyTotalsTable}
       // Pass hideDashboardSparkCharts prop through
       hideDashboardSparkCharts={props.hideDashboardSparkCharts}
+      // Pass dateRange through
+      dateRange={props.dateRange}
     />
   );
 };
