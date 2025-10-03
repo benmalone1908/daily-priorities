@@ -1405,7 +1405,7 @@ const Index = () => {
                 // Check if the dataset spans more than 90 days
                 const daysDifference = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24);
 
-                const fromDate = minDate;
+                let fromDate = minDate;
                 const toDate = maxDate;
                 
                 console.log(`🔍 Dataset analysis:`);
