@@ -29,6 +29,35 @@ interface SupabaseProviderProps {
 }
 
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
+  // Helper to convert US date format (MM/DD/YY) to ISO format (YYYY-MM-DD)
+  const convertToISODate = (dateStr: string): string => {
+    const trimmed = dateStr.trim();
+
+    // Check if already in ISO format (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Parse MM/DD/YY or M/D/YY format
+    const parts = trimmed.split('/');
+    if (parts.length === 3) {
+      let [month, day, year] = parts;
+
+      // Pad month and day with leading zeros
+      month = month.padStart(2, '0');
+      day = day.padStart(2, '0');
+
+      // Convert 2-digit year to 4-digit (assume 20xx for years 00-99)
+      if (year.length === 2) {
+        year = '20' + year;
+      }
+
+      return `${year}-${month}-${day}`;
+    }
+
+    throw new Error(`Unable to parse date format: ${dateStr}`);
+  };
+
   const upsertCampaignData = async (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[], onProgress?: (progress: string) => void) => {
     try {
       // Generate upload timestamp and session ID for this batch
@@ -46,7 +75,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         }
 
         return {
-          date: row.date.trim(),
+          date: convertToISODate(row.date),
           campaign_order_name: row.campaign_order_name.trim(),
           impressions: Number(row.impressions) || 0,
           clicks: Number(row.clicks) || 0,
