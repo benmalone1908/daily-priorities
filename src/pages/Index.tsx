@@ -142,6 +142,9 @@ const fillMissingDatesForAggregated = (timeSeriesData: TimeSeriesDataPoint[], al
 // Improved Aggregated Spark Charts component that matches the campaign row style
 const AggregatedSparkCharts = ({ data, dateRange }: { data: CampaignDataRow[]; dateRange?: DateRange }) => {
   const { showAggregatedSparkCharts, showDebugInfo } = useCampaignFilter();
+
+  console.log('⚡ AggregatedSparkCharts - showAggregatedSparkCharts:', showAggregatedSparkCharts, 'data.length:', data.length);
+
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
     title: "",
