@@ -28,3 +28,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Development/migration tools (don't commit to production)
+migrate-historical-data.html
+deduplicate-records.html
+analyze-data-sources.html
+check-record-count.html
+run-migration.js
+setup-shared-database.sh
+apply-migration.sh

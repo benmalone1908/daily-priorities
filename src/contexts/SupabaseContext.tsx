@@ -31,6 +31,10 @@ interface SupabaseProviderProps {
 export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) => {
   const upsertCampaignData = async (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[], onProgress?: (progress: string) => void) => {
     try {
+      // Generate upload timestamp and session ID for this batch
+      const uploadTimestamp = new Date().toISOString()
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+
       // Validate and sanitize data before sending to Supabase
       const sanitizedData = data.map(row => {
         // Ensure all required fields are present and valid
@@ -48,7 +52,16 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           clicks: Number(row.clicks) || 0,
           revenue: Number(row.revenue) || 0,
           spend: Number(row.spend) || 0,
-          transactions: row.transactions ? Number(row.transactions) || 0 : 0
+          transactions: row.transactions ? Number(row.transactions) || null : null,
+          ctr: row.ctr ? Number(row.ctr) || null : null,
+          cpm: row.cpm ? Number(row.cpm) || null : null,
+          cpc: row.cpc ? Number(row.cpc) || null : null,
+          roas: row.roas ? Number(row.roas) || null : null,
+          data_source: row.data_source || 'csv_upload',
+          user_session_id: row.user_session_id || sessionId,
+          uploaded_at: row.uploaded_at || uploadTimestamp,
+          orangellow_corrected: row.orangellow_corrected || false,
+          original_spend: row.original_spend ? Number(row.original_spend) || null : null
         }
       }).filter(row => row.date && row.campaign_order_name)
 
@@ -79,7 +92,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           const { error } = await supabase
             .from('campaign_data')
             .upsert(chunk, {
-              onConflict: 'date,campaign_order_name',
+              onConflict: 'date,campaign_order_name,data_source,uploaded_at',
               ignoreDuplicates: false
             });
 
@@ -99,7 +112,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         const { error } = await supabase
           .from('campaign_data')
           .upsert(sanitizedData, {
-            onConflict: 'date,campaign_order_name',
+            onConflict: 'date,campaign_order_name,data_source,uploaded_at',
             ignoreDuplicates: false
           });
 

@@ -1,9 +1,64 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://kxggewdlaujmjyamfcik.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4Z2dld2RsYXVqbWp5YW1mY2lrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3Mjg5MTIsImV4cCI6MjA3MzMwNDkxMn0.Z5EoAE0EdCN75dAxyA_qbvSJ5GGgIHYxZwkVruSQ2mM'
+// Sanitize environment variables to prevent header issues
+const sanitizeEnvVar = (value: string | undefined): string | undefined => {
+  if (!value) return value
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+  // For API keys/URLs, only remove the most problematic characters
+  // Remove null bytes and control characters
+  // eslint-disable-next-line no-control-regex
+  return String(value).replace(/[\u0000-\u001F]/g, '').trim()
+}
+
+const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const rawSupabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+const supabaseUrl = sanitizeEnvVar(rawSupabaseUrl)
+const supabaseKey = sanitizeEnvVar(rawSupabaseKey)
+
+// Debug environment variables (without exposing full keys)
+console.log('🔍 Supabase environment check:', {
+  urlExists: !!rawSupabaseUrl,
+  urlLength: rawSupabaseUrl?.length || 0,
+  keyExists: !!rawSupabaseKey,
+  keyLength: rawSupabaseKey?.length || 0,
+  urlPreview: supabaseUrl?.substring(0, 20) + '...',
+  keyPreview: supabaseKey?.substring(0, 10) + '...'
+})
+
+// Create Supabase client with graceful fallback
+let supabase: ReturnType<typeof createClient> | null = null
+
+if (supabaseUrl && supabaseKey && supabaseUrl !== 'your_supabase_url_here' && supabaseKey !== 'your_supabase_anon_key_here') {
+  try {
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false, // Disable session persistence to avoid potential header issues
+      }
+    })
+    console.log('✅ Supabase client initialized successfully')
+  } catch (error) {
+    console.warn('⚠️ Failed to initialize Supabase client:', error)
+    supabase = null
+  }
+} else {
+  console.log('ℹ️ Supabase credentials not configured - running in CSV-only mode')
+}
+
+export { supabase }
+export const isSupabaseEnabled = () => supabase !== null
+
+// Helper function to check if we can use database features
+export const canUseDatabase = async (): Promise<boolean> => {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase.from('campaign_data').select('count', { count: 'exact', head: true })
+    return error === null || error.code === 'PGRST116'
+  } catch {
+    return false
+  }
+}
 
 export type CampaignData = {
   id?: string
@@ -13,7 +68,16 @@ export type CampaignData = {
   clicks: number
   revenue: number
   spend: number
-  transactions?: number
+  transactions?: number | null
+  ctr?: number | null
+  cpm?: number | null
+  cpc?: number | null
+  roas?: number | null
+  data_source: string
+  user_session_id?: string | null
+  uploaded_at: string
+  orangellow_corrected?: boolean
+  original_spend?: number | null
   created_at?: string
   updated_at?: string
 }
