@@ -832,8 +832,11 @@ const DashboardContent = ({ data,
     });
   }, [filteredDataByLiveStatus, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAgencyInfo, extractAdvertiserName]);
 
-  const globalFilteredData = useMemo(() => getFilteredDataByGlobalFilters(),
-    [getFilteredDataByGlobalFilters]);
+  const globalFilteredData = useMemo(() => {
+    const result = getFilteredDataByGlobalFilters();
+    console.log('📊 globalFilteredData for spark charts:', result.length, 'rows');
+    return result;
+  }, [getFilteredDataByGlobalFilters]);
 
   // Filter contract terms data by global filters
   const filteredContractTermsData = useMemo(() => {
