@@ -292,8 +292,13 @@ const AggregatedSparkCharts = ({ data, dateRange }: { data: CampaignDataRow[]; d
 
   // Early return after all hooks are called
   if (!showAggregatedSparkCharts || !data || data.length === 0) {
+    console.log('⚡ AggregatedSparkCharts - Early return:', { showAggregatedSparkCharts, dataLength: data?.length });
     return null;
   }
+
+  console.log('⚡ AggregatedSparkCharts - timeSeriesData length:', timeSeriesData.length);
+  console.log('⚡ AggregatedSparkCharts - totals:', totals);
+  console.log('⚡ AggregatedSparkCharts - trends:', trends);
 
   // Format functions
   const formatNumber = (value: number): string => value.toLocaleString();
@@ -1351,12 +1356,18 @@ const Index = () => {
 
   // Helper function to transform data format
   const transformDataFormat = (campaignData: CampaignDataRow[]) => {
+    // Log first few raw dates from Supabase
+    if (campaignData.length > 0) {
+      console.log('🗓️ Sample raw dates from Supabase:', campaignData.slice(0, 5).map(r => r.date));
+    }
+
     return campaignData.map(row => {
       let formattedDate = row.date;
       try {
         if (row.date && typeof row.date === 'string') {
-          const date = new Date(row.date + 'T00:00:00');
-          if (!isNaN(date.getTime())) {
+          // Use parseDateString which handles both ISO and US date formats
+          const date = parseDateString(row.date);
+          if (date && !isNaN(date.getTime())) {
             formattedDate = formatDateSortable(date);
           }
         }
