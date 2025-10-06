@@ -93,6 +93,8 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
 
   const { extractAdvertiserName, extractAgencyInfo, isTestCampaign } = useCampaignFilter();
 
+  console.log('📈 useSparkChartsData - Incoming data length:', data.length);
+
   // Agency options
   const agencyOptions = useMemo(() => {
     const agencies = new Set<string>();
@@ -229,11 +231,15 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
 
   // Apply all filters
   const filteredData = useMemo(() => {
+    console.log('📈 useSparkChartsData filteredData - filteredDataByDate:', filteredDataByDate.length, 'useGlobalFilters:', useGlobalFilters);
+
     if (useGlobalFilters) {
-      return filteredDataByDate.filter(row => {
+      const result = filteredDataByDate.filter(row => {
         const campaignName = row["CAMPAIGN ORDER NAME"] || "";
         return !isTestCampaign(campaignName);
       });
+      console.log('📈 useSparkChartsData - Using global filters, result:', result.length);
+      return result;
     }
 
     let result = filteredDataByDate.filter(row => {
@@ -261,6 +267,7 @@ export const useSparkChartsData = ({ data, dateRange, useGlobalFilters = false }
       result = result.filter(row => selectedCampaigns.includes(row["CAMPAIGN ORDER NAME"]));
     }
 
+    console.log('📈 useSparkChartsData - Final filtered result:', result.length);
     return result;
   }, [filteredDataByDate, selectedAgencies, selectedAdvertisers, selectedCampaigns, isTestCampaign, extractAdvertiserName, extractAgencyInfo, useGlobalFilters]);
 

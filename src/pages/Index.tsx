@@ -726,7 +726,7 @@ const DashboardContent = ({ data,
   const filteredDataByLiveStatus = useMemo(() => {
     console.time('⏱️ filteredDataByLiveStatus');
     console.log('🔍 filteredDataByLiveStatus - showLiveOnly:', showLiveOnly, 'filteredData length:', filteredData.length);
-    
+
     if (!showLiveOnly) {
       console.log('🔍 Returning ALL filtered data (not just live campaigns)');
       console.timeEnd('⏱️ filteredDataByLiveStatus');
@@ -735,49 +735,62 @@ const DashboardContent = ({ data,
 
     // Use the filtered data to get the most recent date, not the full dataset
     const mostRecentDate = getMostRecentDate(filteredData);
-    if (!mostRecentDate) return filteredData;
+    console.log('🎯 MOST RECENT DATE:', mostRecentDate);
 
-    if (showDebugInfo) {
-      console.log('Filtering for campaigns active on most recent date:', mostRecentDate);
+    if (!mostRecentDate) {
+      console.log('⚠️ No most recent date found, returning all filteredData');
+      return filteredData;
     }
-    
+
+    console.log('🔍 Filtering for campaigns active on most recent date:', mostRecentDate);
+
     // First get all the campaigns that have impressions on the most recent date
     const activeCampaignsOnMostRecentDate = new Set<string>();
-    
+
     // Single pass to collect active campaigns
     console.time('⏱️ collecting active campaigns');
+    let campaignsChecked = 0;
+    let campaignsWithImpressions = 0;
+    let testCampaignsFiltered = 0;
+
     for (const row of filteredData) {
-      if (row.DATE === mostRecentDate && Number(row.IMPRESSIONS) > 0) {
-        const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-        if (!isTestCampaign(campaignName)) {
-          activeCampaignsOnMostRecentDate.add(campaignName);
+      if (row.DATE === mostRecentDate) {
+        campaignsChecked++;
+        const impressions = Number(row.IMPRESSIONS);
+        if (impressions > 0) {
+          campaignsWithImpressions++;
+          const campaignName = row["CAMPAIGN ORDER NAME"] || "";
+          if (isTestCampaign(campaignName)) {
+            testCampaignsFiltered++;
+          } else {
+            activeCampaignsOnMostRecentDate.add(campaignName);
+          }
         }
       }
     }
     console.timeEnd('⏱️ collecting active campaigns');
-    
-    if (showDebugInfo) {
-      console.log(`Found ${activeCampaignsOnMostRecentDate.size} active campaigns on most recent date`);
-    }
-    
+
+    console.log(`📊 Live Campaign Stats:
+      - Rows on most recent date: ${campaignsChecked}
+      - With impressions > 0: ${campaignsWithImpressions}
+      - Test campaigns filtered: ${testCampaignsFiltered}
+      - Active live campaigns: ${activeCampaignsOnMostRecentDate.size}
+      - Sample campaigns: ${Array.from(activeCampaignsOnMostRecentDate).slice(0, 3).join(', ')}`);
+
     // Single pass filter for live data
     const liveData = filteredData.filter(row => {
       if (row.DATE === 'Totals') return true;
-      
+
       const campaignName = row["CAMPAIGN ORDER NAME"] || "";
       if (isTestCampaign(campaignName)) return false;
-      
+
       return activeCampaignsOnMostRecentDate.has(campaignName);
     });
-    
-    if (showDebugInfo) {
-      console.log(`Filtered from ${filteredData.length} rows to ${liveData.length} live campaign rows`);
-    }
-    
-    console.log('🔍 Live campaigns filtering completed:', liveData.length, 'rows');
+
+    console.log(`🔍 Live campaigns filtering completed: ${liveData.length} rows from ${activeCampaignsOnMostRecentDate.size} campaigns`);
     console.timeEnd('⏱️ filteredDataByLiveStatus');
     return liveData;
-  }, [filteredData, showLiveOnly, isTestCampaign, showDebugInfo]);
+  }, [filteredData, showLiveOnly, isTestCampaign]);
 
   const getFilteredDataByGlobalFilters = useCallback(() => {
     // Early return if no filters are applied
