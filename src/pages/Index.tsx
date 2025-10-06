@@ -143,8 +143,6 @@ const fillMissingDatesForAggregated = (timeSeriesData: TimeSeriesDataPoint[], al
 const AggregatedSparkCharts = ({ data, dateRange }: { data: CampaignDataRow[]; dateRange?: DateRange }) => {
   const { showAggregatedSparkCharts, showDebugInfo } = useCampaignFilter();
 
-  console.log('⚡ AggregatedSparkCharts - showAggregatedSparkCharts:', showAggregatedSparkCharts, 'data.length:', data.length);
-
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
     title: "",
@@ -292,13 +290,8 @@ const AggregatedSparkCharts = ({ data, dateRange }: { data: CampaignDataRow[]; d
 
   // Early return after all hooks are called
   if (!showAggregatedSparkCharts || !data || data.length === 0) {
-    console.log('⚡ AggregatedSparkCharts - Early return:', { showAggregatedSparkCharts, dataLength: data?.length });
     return null;
   }
-
-  console.log('⚡ AggregatedSparkCharts - timeSeriesData length:', timeSeriesData.length);
-  console.log('⚡ AggregatedSparkCharts - totals:', totals);
-  console.log('⚡ AggregatedSparkCharts - trends:', trends);
 
   // Format functions
   const formatNumber = (value: number): string => value.toLocaleString();
@@ -732,58 +725,32 @@ const DashboardContent = ({ data,
   const filteredData = getFilteredData();
   
   const filteredDataByLiveStatus = useMemo(() => {
-    console.time('⏱️ filteredDataByLiveStatus');
-    console.log('🔍 filteredDataByLiveStatus - showLiveOnly:', showLiveOnly, 'filteredData length:', filteredData.length);
-
     if (!showLiveOnly) {
-      console.log('🔍 Returning ALL filtered data (not just live campaigns)');
-      console.timeEnd('⏱️ filteredDataByLiveStatus');
       return filteredData;
     }
 
     // Use the filtered data to get the most recent date, not the full dataset
     const mostRecentDate = getMostRecentDate(filteredData);
-    console.log('🎯 MOST RECENT DATE:', mostRecentDate);
 
     if (!mostRecentDate) {
-      console.log('⚠️ No most recent date found, returning all filteredData');
       return filteredData;
     }
-
-    console.log('🔍 Filtering for campaigns active on most recent date:', mostRecentDate);
 
     // First get all the campaigns that have impressions on the most recent date
     const activeCampaignsOnMostRecentDate = new Set<string>();
 
     // Single pass to collect active campaigns
-    console.time('⏱️ collecting active campaigns');
-    let campaignsChecked = 0;
-    let campaignsWithImpressions = 0;
-    let testCampaignsFiltered = 0;
-
     for (const row of filteredData) {
       if (row.DATE === mostRecentDate) {
-        campaignsChecked++;
         const impressions = Number(row.IMPRESSIONS);
         if (impressions > 0) {
-          campaignsWithImpressions++;
           const campaignName = row["CAMPAIGN ORDER NAME"] || "";
-          if (isTestCampaign(campaignName)) {
-            testCampaignsFiltered++;
-          } else {
+          if (!isTestCampaign(campaignName)) {
             activeCampaignsOnMostRecentDate.add(campaignName);
           }
         }
       }
     }
-    console.timeEnd('⏱️ collecting active campaigns');
-
-    console.log(`📊 Live Campaign Stats:
-      - Rows on most recent date: ${campaignsChecked}
-      - With impressions > 0: ${campaignsWithImpressions}
-      - Test campaigns filtered: ${testCampaignsFiltered}
-      - Active live campaigns: ${activeCampaignsOnMostRecentDate.size}
-      - Sample campaigns: ${Array.from(activeCampaignsOnMostRecentDate).slice(0, 3).join(', ')}`);
 
     // Single pass filter for live data
     const liveData = filteredData.filter(row => {
@@ -795,8 +762,6 @@ const DashboardContent = ({ data,
       return activeCampaignsOnMostRecentDate.has(campaignName);
     });
 
-    console.log(`🔍 Live campaigns filtering completed: ${liveData.length} rows from ${activeCampaignsOnMostRecentDate.size} campaigns`);
-    console.timeEnd('⏱️ filteredDataByLiveStatus');
     return liveData;
   }, [filteredData, showLiveOnly, isTestCampaign]);
 
@@ -848,11 +813,7 @@ const DashboardContent = ({ data,
 
   // Filter contract terms data by global filters
   const filteredContractTermsData = useMemo(() => {
-    console.log('🔍 Contract terms filtering - Original count:', contractTermsData.length);
-    console.log('🔍 Current filters - Agencies:', selectedAgencies.length, 'Advertisers:', selectedAdvertisers.length, 'Campaigns:', selectedCampaigns.length);
-    
     if (selectedAgencies.length === 0 && selectedAdvertisers.length === 0 && selectedCampaigns.length === 0) {
-      console.log('🔍 No filters applied, returning all contract terms');
       return contractTermsData;
     }
 
@@ -862,39 +823,31 @@ const DashboardContent = ({ data,
 
     const filtered = contractTermsData.filter(contract => {
       const campaignName = contract.Name;
-      console.log('🔍 Checking contract:', campaignName);
-      
+
       // Filter by specific campaigns first
       if (selectedCampaigns.length > 0 && !selectedCampaignSet.has(campaignName)) {
-        console.log('🔍 Filtered out by campaign filter:', campaignName);
         return false;
       }
-      
+
       // Filter by agencies
       if (selectedAgencies.length > 0) {
         const agencyInfo = extractAgencyInfo(campaignName);
-        console.log('🔍 Agency info for', campaignName, ':', agencyInfo);
         if (!agencyInfo || !selectedAgencySet.has(agencyInfo.agency)) {
-          console.log('🔍 Filtered out by agency filter:', campaignName, 'Agency:', agencyInfo?.agency);
           return false;
         }
       }
-      
+
       // Filter by advertisers
       if (selectedAdvertisers.length > 0) {
         const advertiserName = extractAdvertiserName(campaignName);
-        console.log('🔍 Advertiser for', campaignName, ':', advertiserName);
         if (!advertiserName || !selectedAdvertiserSet.has(advertiserName)) {
-          console.log('🔍 Filtered out by advertiser filter:', campaignName, 'Advertiser:', advertiserName);
           return false;
         }
       }
-      
-      console.log('🔍 Contract passed all filters:', campaignName);
+
       return true;
     });
-    
-    console.log('🔍 Filtered contract terms count:', filtered.length);
+
     return filtered;
   }, [contractTermsData, selectedAgencies, selectedAdvertisers, selectedCampaigns, extractAgencyInfo, extractAdvertiserName]);
 
@@ -1356,11 +1309,6 @@ const Index = () => {
 
   // Helper function to transform data format
   const transformDataFormat = (campaignData: CampaignDataRow[]) => {
-    // Log first few raw dates from Supabase
-    if (campaignData.length > 0) {
-      console.log('🗓️ Sample raw dates from Supabase:', campaignData.slice(0, 5).map(r => r.date));
-    }
-
     return campaignData.map(row => {
       let formattedDate = row.date;
       try {

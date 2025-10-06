@@ -70,6 +70,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       }
 
       console.log(`💾 Attempting to upsert ${sanitizedData.length} sanitized records to Supabase...`)
+      console.log(`📅 Sample date formats being sent:`, sanitizedData.slice(0, 3).map(r => ({ date: r.date, campaign: r.campaign_order_name.substring(0, 30) })))
 
       // For large datasets, use chunked uploads to avoid payload size limits
       const chunkSize = 1000; // Upload in chunks of 1000 records

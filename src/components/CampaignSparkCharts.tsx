@@ -39,8 +39,6 @@ const CampaignSparkChartsRefactored = ({ data,
   dateRange,
   useGlobalFilters = false
 }: CampaignSparkChartsProps) => {
-  console.log('🎨 CampaignSparkCharts RENDERING - data length:', data.length, 'useGlobalFilters:', useGlobalFilters);
-
   const [modalData, setModalData] = useState<ModalData>({
     isOpen: false,
     itemName: "",
@@ -63,8 +61,6 @@ const CampaignSparkChartsRefactored = ({ data,
     advertiserOptions,
     campaignOptions,
   } = useSparkChartsData({ data, dateRange, useGlobalFilters });
-
-  console.log('🎨 CampaignSparkCharts - chartData length:', chartData.length);
 
   const handleChartClick = (itemName: string, metricType: string, timeSeriesData: TimeSeriesDataPoint[]) => {
     setModalData({
