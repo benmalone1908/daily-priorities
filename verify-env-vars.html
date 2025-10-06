@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Variable Check</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .good { color: #10b981; font-weight: bold; }
+        .bad { color: #ef4444; font-weight: bold; }
+        pre {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        .check {
+            margin: 15px 0;
+            padding: 15px;
+            border-left: 4px solid #3b82f6;
+            background: #eff6ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Environment Variable Diagnostic</h1>
+        <p>This page checks if environment variables are being loaded in production.</p>
+
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        const results = document.getElementById('results');
+
+        // Check what Vite has access to
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const authUsername = import.meta.env.VITE_AUTH_USERNAME;
+
+        let html = '<h2>Environment Variable Status:</h2>';
+
+        // Check URL
+        html += '<div class="check">';
+        html += '<strong>VITE_SUPABASE_URL:</strong><br>';
+        if (supabaseUrl && supabaseUrl !== 'your_supabase_url_here') {
+            html += '<span class="good">✅ SET</span><br>';
+            html += `<code>${supabaseUrl}</code>`;
+        } else {
+            html += '<span class="bad">❌ NOT SET or DEFAULT VALUE</span><br>';
+            html += `<code>Value: ${supabaseUrl || 'undefined'}</code>`;
+        }
+        html += '</div>';
+
+        // Check Key
+        html += '<div class="check">';
+        html += '<strong>VITE_SUPABASE_ANON_KEY:</strong><br>';
+        if (supabaseKey && supabaseKey !== 'your_supabase_anon_key_here') {
+            html += '<span class="good">✅ SET</span><br>';
+            html += `<code>Length: ${supabaseKey.length} characters</code><br>`;
+            html += `<code>Preview: ${supabaseKey.substring(0, 30)}...</code>`;
+        } else {
+            html += '<span class="bad">❌ NOT SET or DEFAULT VALUE</span><br>';
+            html += `<code>Value: ${supabaseKey || 'undefined'}</code>`;
+        }
+        html += '</div>';
+
+        // Check Auth
+        html += '<div class="check">';
+        html += '<strong>VITE_AUTH_USERNAME:</strong><br>';
+        if (authUsername) {
+            html += '<span class="good">✅ SET</span><br>';
+            html += `<code>${authUsername}</code>`;
+        } else {
+            html += '<span class="bad">❌ NOT SET</span>';
+        }
+        html += '</div>';
+
+        // Overall status
+        html += '<h2>Diagnosis:</h2>';
+        if (supabaseUrl && supabaseKey &&
+            supabaseUrl !== 'your_supabase_url_here' &&
+            supabaseKey !== 'your_supabase_anon_key_here') {
+            html += '<div class="check" style="border-left-color: #10b981; background: #d1fae5;">';
+            html += '<span class="good">✅ ENVIRONMENT VARIABLES ARE LOADED</span><br>';
+            html += 'The issue is likely elsewhere. Supabase should be connecting.';
+            html += '</div>';
+        } else {
+            html += '<div class="check" style="border-left-color: #ef4444; background: #fee2e2;">';
+            html += '<span class="bad">❌ ENVIRONMENT VARIABLES NOT LOADED</span><br>';
+            html += '<strong>Problem:</strong> Vite did not inline the environment variables during build.<br><br>';
+            html += '<strong>Fix:</strong><br>';
+            html += '1. Go to Vercel Dashboard → Settings → Environment Variables<br>';
+            html += '2. Add these variables for <strong>Production</strong>:<br>';
+            html += '<pre>VITE_SUPABASE_URL=https://znommdezzgrqbmpluukt.supabase.co\n';
+            html += 'VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</pre>';
+            html += '3. Trigger a <strong>new deployment</strong> (env vars are baked in at build time)<br>';
+            html += '4. Make sure to <strong>uncheck "Use existing Build Cache"</strong> when redeploying';
+            html += '</div>';
+        }
+
+        // Check import.meta.env itself
+        html += '<h2>All Available Environment Variables:</h2>';
+        html += '<pre>' + JSON.stringify(import.meta.env, null, 2) + '</pre>';
+
+        results.innerHTML = html;
+    </script>
+</body>
+</html>
