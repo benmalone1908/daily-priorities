@@ -92,7 +92,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
           const { error } = await supabase
             .from('campaign_data')
             .upsert(chunk, {
-              onConflict: 'date,campaign_order_name,data_source,uploaded_at',
+              onConflict: 'date,campaign_order_name',
               ignoreDuplicates: false
             });
 
@@ -112,7 +112,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
         const { error } = await supabase
           .from('campaign_data')
           .upsert(sanitizedData, {
-            onConflict: 'date,campaign_order_name,data_source,uploaded_at',
+            onConflict: 'date,campaign_order_name',
             ignoreDuplicates: false
           });
 
