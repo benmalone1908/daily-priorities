@@ -170,9 +170,10 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
       }
 
       // Get total count first for progress tracking
+      // Use a simple select to avoid PostgREST count caching issues
       let countQuery = supabase
         .from('campaign_data')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
 
       if (startDate) {
         countQuery = countQuery.gte('date', startDate);

@@ -37,3 +37,4 @@ check-record-count.html
 run-migration.js
 setup-shared-database.sh
 apply-migration.sh
+*.sql
