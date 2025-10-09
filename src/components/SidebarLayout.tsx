@@ -16,6 +16,7 @@ interface SidebarLayoutProps {
   className?: string;
   lastCampaignUpload?: Date | null;
   lastContractUpload?: Date | null;
+  screenshotMode?: boolean;
 }
 
 const SidebarLayout: React.FC<SidebarLayoutProps> = ({
@@ -31,10 +32,15 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({
   header,
   className,
   lastCampaignUpload,
-  lastContractUpload
+  lastContractUpload,
+  screenshotMode = false
 }) => {
   return (
-    <div className={cn("flex h-screen bg-gray-50", className)}>
+    <div className={cn(
+      "flex bg-gray-50",
+      screenshotMode ? "min-h-screen" : "h-screen",
+      className
+    )}>
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -59,8 +65,14 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="h-full pt-12 lg:pt-0">
+        <main className={cn(
+          "flex-1",
+          screenshotMode ? "" : "overflow-auto"
+        )}>
+          <div className={cn(
+            "pt-12 lg:pt-0",
+            screenshotMode ? "" : "h-full"
+          )}>
             {children}
           </div>
         </main>

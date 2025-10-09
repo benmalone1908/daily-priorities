@@ -1,7 +1,9 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react'
+import { USERS, type User } from '@/config/users'
 
 interface AuthContextType {
   isAuthenticated: boolean
+  currentUser: User | null
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
   isLoading: boolean
@@ -15,25 +17,38 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Check for existing auth on mount
   useEffect(() => {
     const authStatus = localStorage.getItem('campaign-trends-auth')
     const authTimestamp = localStorage.getItem('campaign-trends-auth-timestamp')
+    const authUserId = localStorage.getItem('campaign-trends-user-id')
 
-    if (authStatus === 'authenticated' && authTimestamp) {
+    if (authStatus === 'authenticated' && authTimestamp && authUserId) {
       const timestamp = parseInt(authTimestamp)
       const now = Date.now()
       const twentyFourHours = 24 * 60 * 60 * 1000
 
       // Check if auth is less than 24 hours old
       if (now - timestamp < twentyFourHours) {
-        setIsAuthenticated(true)
+        // Find user by ID
+        const user = Object.values(USERS).find(u => u.id === authUserId)
+        if (user) {
+          setIsAuthenticated(true)
+          setCurrentUser(user)
+        } else {
+          // User not found, clear auth
+          localStorage.removeItem('campaign-trends-auth')
+          localStorage.removeItem('campaign-trends-auth-timestamp')
+          localStorage.removeItem('campaign-trends-user-id')
+        }
       } else {
         // Auth expired
         localStorage.removeItem('campaign-trends-auth')
         localStorage.removeItem('campaign-trends-auth-timestamp')
+        localStorage.removeItem('campaign-trends-user-id')
       }
     }
 
@@ -42,15 +57,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // In production, these will come from Vercel environment variables
-      // For development, we'll use fallback values
-      const validUsername = import.meta.env.VITE_AUTH_USERNAME || 'admin'
-      const validPassword = import.meta.env.VITE_AUTH_PASSWORD || 'password123'
+      // Check if user exists and password matches
+      const user = USERS[username.toLowerCase()]
 
-      if (username === validUsername && password === validPassword) {
+      if (user && user.password === password) {
         setIsAuthenticated(true)
+        setCurrentUser(user)
         localStorage.setItem('campaign-trends-auth', 'authenticated')
         localStorage.setItem('campaign-trends-auth-timestamp', Date.now().toString())
+        localStorage.setItem('campaign-trends-user-id', user.id)
         return true
       } else {
         return false
@@ -63,12 +78,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     setIsAuthenticated(false)
+    setCurrentUser(null)
     localStorage.removeItem('campaign-trends-auth')
     localStorage.removeItem('campaign-trends-auth-timestamp')
+    localStorage.removeItem('campaign-trends-user-id')
   }
 
   const value: AuthContextType = {
     isAuthenticated,
+    currentUser,
     login,
     logout,
     isLoading

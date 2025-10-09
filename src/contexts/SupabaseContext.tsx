@@ -2,6 +2,7 @@ import React, { createContext, ReactNode } from 'react'
 import { supabase, type CampaignData, type CampaignAnomalyData, type ContractTermsData } from '@/lib/supabase'
 
 interface SupabaseContextType {
+  supabase: typeof supabase
   upsertCampaignData: (data: Omit<CampaignData, 'id' | 'created_at' | 'updated_at'>[], onProgress?: (progress: string) => void) => Promise<void>
   getCampaignData: (startDate?: string, endDate?: string, onProgress?: (progress: string) => void, recentOnly?: boolean) => Promise<CampaignData[]>
   deleteCampaignData: (campaignName?: string, date?: string) => Promise<void>
@@ -614,6 +615,7 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
   }
 
   const value: SupabaseContextType = {
+    supabase,
     upsertCampaignData,
     getCampaignData,
     deleteCampaignData,

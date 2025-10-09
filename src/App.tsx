@@ -7,9 +7,6 @@ import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import PdfTestPage from "./pages/PdfTestPage";
-import CampaignDetailPage from "./pages/CampaignDetailPage";
-import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -30,24 +27,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/pdf-test"
-                element={
-                  <ProtectedRoute>
-                    <PdfTestPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/campaign/:campaignName"
-                element={
-                  <ProtectedRoute>
-                    <CampaignDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<Index />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>

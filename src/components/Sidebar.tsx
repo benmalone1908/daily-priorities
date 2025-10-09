@@ -17,7 +17,8 @@ import {
   Trash2,
   Upload,
   Users,
-  LogOut
+  LogOut,
+  CheckSquare
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -121,6 +122,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Notifications',
       icon: Bell,
       condition: dataLength > 0
+    },
+    {
+      id: 'priorities',
+      label: 'Daily Priorities',
+      icon: CheckSquare,
+      condition: true
     },
     {
       id: 'custom-report',
