@@ -99,7 +99,7 @@ export default function AddTaskModal({
       // For other sections, ticket URL is required
       if (!url || url.trim() === '') {
         console.log('Section requires URL but URL is empty - validation failed');
-        setTicketUrlError('MJ Task URL is required');
+        setTicketUrlError('Dashboard Task URL is required');
         return false;
       }
     }
@@ -389,7 +389,7 @@ export default function AddTaskModal({
 
           <div className="grid gap-2">
             <Label htmlFor="ticket_url">
-              MJ Task URL {section !== 'pre_launch' && section !== 'launches' && <span className="text-destructive">*</span>}
+              Dashboard Task URL {section !== 'pre_launch' && section !== 'launches' && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="ticket_url"

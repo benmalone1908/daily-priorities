@@ -178,7 +178,7 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
         {/* Ticket Link & Actions (stacked) */}
         <TableCell className="w-32 p-2">
           <div className="flex flex-col gap-2">
-            {/* MJ Task Link */}
+            {/* Dashboard Task Link */}
             <div className="flex justify-center">
               {priority.ticket_url && isValidUrl(priority.ticket_url) ? (
                 <a
@@ -188,13 +188,13 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                   className="text-blue-600 hover:underline flex items-center gap-1 text-xs"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  View MJ Task
+                  Dashboard Task
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : priority.ticket_url ? (
                 <span className="text-muted-foreground text-xs">{priority.ticket_url}</span>
               ) : (
-                <span className="text-muted-foreground italic text-xs">No MJ task</span>
+                <span className="text-muted-foreground italic text-xs">No Dashboard task</span>
               )}
             </div>
 

@@ -70,6 +70,7 @@ export const getUserById = (userId: string | null): User | null => {
 
 // Helper function to get display name by user ID
 export const getDisplayName = (userId: string | null): string => {
+  if (userId === 'unknown') return 'Unknown User'
   const user = getUserById(userId)
   return user?.displayName || 'Unknown User'
 }

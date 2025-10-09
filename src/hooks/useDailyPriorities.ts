@@ -20,6 +20,13 @@ export function useDailyPriorities(date: string) {
   const queryClient = useQueryClient();
   const { currentUser } = useAuth();
 
+  // Helper function to get current user ID with fallback to localStorage
+  const getCurrentUserId = (): string => {
+    if (currentUser?.id) return currentUser.id;
+    const storedUserId = localStorage.getItem('campaign-trends-user-id');
+    return storedUserId || 'unknown';
+  };
+
   // Helper function to log activity
   const logActivity = async (log: ActivityLogInsert) => {
     if (!supabase) {
@@ -128,6 +135,40 @@ export function useDailyPriorities(date: string) {
         .order('priority_order');
 
       if (error) throw error;
+
+      // Fix any negative priority_order values (from incomplete reorder operations)
+      const tasksWithNegativeOrder = (data || []).filter(task => task.priority_order < 0);
+      if (tasksWithNegativeOrder.length > 0) {
+        console.warn('Found tasks with negative priority_order, fixing...');
+
+        // Group by section and fix each section
+        const sections = new Set(tasksWithNegativeOrder.map(t => t.section));
+        for (const section of sections) {
+          const sectionTasks = (data || [])
+            .filter(t => t.section === section)
+            .sort((a, b) => Math.abs(a.priority_order) - Math.abs(b.priority_order));
+
+          // Update each task with correct positive order
+          for (let i = 0; i < sectionTasks.length; i++) {
+            await supabase
+              .from('daily_priorities')
+              .update({ priority_order: i + 1 })
+              .eq('id', sectionTasks[i].id);
+          }
+        }
+
+        // Refetch after fixing
+        const { data: fixedData, error: refetchError } = await supabase
+          .from('daily_priorities')
+          .select('*')
+          .eq('active_date', date)
+          .order('section')
+          .order('priority_order');
+
+        if (refetchError) throw refetchError;
+        return fixedData as DailyPriority[];
+      }
+
       return data as DailyPriority[];
     },
     enabled: !!supabase
@@ -169,7 +210,7 @@ export function useDailyPriorities(date: string) {
       // Log the creation
       await logActivity({
         priority_id: data.id,
-        user_id: currentUser?.id || 'unknown',
+        user_id: getCurrentUserId(),
         action: 'created',
         task_description: data.client_name || 'Unnamed task',
         changes: null
@@ -219,7 +260,7 @@ export function useDailyPriorities(date: string) {
           // Log completion
           await logActivity({
             priority_id: id,
-            user_id: currentUser?.id || 'unknown',
+            user_id: getCurrentUserId(),
             action: 'completed',
             task_description: task.client_name || 'Unnamed task',
             changes: null
@@ -268,7 +309,7 @@ export function useDailyPriorities(date: string) {
           // Log reopening
           await logActivity({
             priority_id: id,
-            user_id: currentUser?.id || 'unknown',
+            user_id: getCurrentUserId(),
             action: 'reopened',
             task_description: task.client_name || 'Unnamed task',
             changes: null
@@ -327,7 +368,7 @@ export function useDailyPriorities(date: string) {
           // Log the section change
           await logActivity({
             priority_id: id,
-            user_id: currentUser?.id || 'unknown',
+            user_id: getCurrentUserId(),
             action,
             task_description: task.client_name || 'Unnamed task',
             changes: {
@@ -396,7 +437,7 @@ export function useDailyPriorities(date: string) {
         if (Object.keys(changes).length > 0) {
           await logActivity({
             priority_id: id,
-            user_id: currentUser?.id || 'unknown',
+            user_id: getCurrentUserId(),
             action: 'updated',
             task_description: data.client_name || 'Unnamed task',
             changes
@@ -443,7 +484,7 @@ export function useDailyPriorities(date: string) {
       // Log the deletion
       await logActivity({
         priority_id: null, // Task is deleted
-        user_id: currentUser?.id || 'unknown',
+        user_id: getCurrentUserId(),
         action: 'deleted',
         task_description: task.client_name || 'Unnamed task',
         changes: null
@@ -527,7 +568,7 @@ export function useDailyPriorities(date: string) {
         if (task) {
           await logActivity({
             priority_id: priorityIds[i],
-            user_id: currentUser?.id || 'unknown',
+            user_id: getCurrentUserId(),
             action: 'reordered',
             task_description: task.client_name || 'Unnamed task',
             changes: {

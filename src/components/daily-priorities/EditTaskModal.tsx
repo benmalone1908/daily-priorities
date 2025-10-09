@@ -96,7 +96,7 @@ export default function EditTaskModal({
     } else {
       // For other sections, ticket URL is required
       if (!url || url.trim() === '') {
-        setTicketUrlError('MJ Task URL is required');
+        setTicketUrlError('Dashboard Task URL is required');
         return false;
       }
     }
@@ -402,7 +402,7 @@ export default function EditTaskModal({
 
           <div className="grid gap-2">
             <Label htmlFor="ticket_url">
-              MJ Task URL {formData.section !== 'pre_launch' && formData.section !== 'launches' && <span className="text-destructive">*</span>}
+              Dashboard Task URL {formData.section !== 'pre_launch' && formData.section !== 'launches' && <span className="text-destructive">*</span>}
             </Label>
             <Input
               id="ticket_url"
