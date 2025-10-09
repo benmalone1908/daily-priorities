@@ -2,6 +2,7 @@
  * Custom hook for managing resources
  */
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/use-supabase';
 import { Resource, ResourceInsert, ResourceUpdate } from '@/types/resources';
@@ -31,6 +32,36 @@ export function useResources() {
     },
     enabled: !!supabase
   });
+
+  // Subscribe to realtime changes for collaborative updates
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('📚 Setting up realtime subscription for resources...');
+
+    const channel = supabase
+      .channel('resources-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'resources'
+        },
+        (payload) => {
+          console.log('📚 Realtime change detected:', payload);
+          queryClient.invalidateQueries({ queryKey: ['resources'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('📚 Subscription status:', status);
+      });
+
+    return () => {
+      console.log('📚 Cleaning up realtime subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, queryClient]);
 
   // Add resource mutation
   const addResource = useMutation({

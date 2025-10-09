@@ -2,6 +2,7 @@
  * Custom hook for managing daily priorities data with carry-forward support
  */
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/use-supabase';
 import {
@@ -173,6 +174,39 @@ export function useDailyPriorities(date: string) {
     },
     enabled: !!supabase
   });
+
+  // Subscribe to realtime changes for collaborative updates
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('🔴 Setting up realtime subscription for daily_priorities...');
+
+    const channel = supabase
+      .channel('daily-priorities-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'daily_priorities',
+          filter: `active_date=eq.${date}` // Only listen to changes for current date
+        },
+        (payload) => {
+          console.log('🔴 Realtime change detected:', payload);
+          // Invalidate query to refetch data and update all connected users
+          queryClient.invalidateQueries({ queryKey: ['daily-priorities', date] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔴 Subscription status:', status);
+      });
+
+    // Cleanup subscription on unmount or date change
+    return () => {
+      console.log('🔴 Cleaning up realtime subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, date, queryClient]);
 
   // Add a new priority
   const addPriority = useMutation({
@@ -527,55 +561,62 @@ export function useDailyPriorities(date: string) {
     mutationFn: async ({ section, priorityIds }: { section: PrioritySection; priorityIds: string[] }) => {
       if (!supabase) throw new Error('Supabase not initialized');
 
-      // To avoid unique constraint violations, we need to:
-      // 1. First set all priority_order values to negative (temporary values)
-      // 2. Then set them to their final positive values
+      // To avoid unique constraint violations during reorder:
+      // Use a transaction-like approach with temporary negative values
+      // This prevents conflicts even if realtime triggers a refetch mid-operation
 
-      // Step 1: Set all to negative temporary values
-      for (let i = 0; i < priorityIds.length; i++) {
-        const { error } = await supabase
+      // Step 1: Set all to large negative temporary values (to avoid conflicts)
+      const updates1 = priorityIds.map((id, i) =>
+        supabase
           .from('daily_priorities')
-          .update({ priority_order: -(i + 1) })
-          .eq('id', priorityIds[i]);
+          .update({ priority_order: -(1000 + i) }) // Use large negative numbers
+          .eq('id', id)
+      );
 
-        if (error) {
-          console.error('Supabase error details (step 1):', JSON.stringify(error, null, 2));
-          throw error;
-        }
+      const results1 = await Promise.all(updates1);
+      const error1 = results1.find(r => r.error);
+      if (error1?.error) {
+        console.error('Supabase error details (step 1):', JSON.stringify(error1.error, null, 2));
+        throw error1.error;
       }
 
       // Step 2: Set to final positive values
-      for (let i = 0; i < priorityIds.length; i++) {
-        const { error } = await supabase
+      const updates2 = priorityIds.map((id, i) =>
+        supabase
           .from('daily_priorities')
           .update({ priority_order: i + 1 })
-          .eq('id', priorityIds[i]);
+          .eq('id', id)
+      );
 
-        if (error) {
-          console.error('Supabase error details (step 2):', JSON.stringify(error, null, 2));
-          throw error;
-        }
+      const results2 = await Promise.all(updates2);
+      const error2 = results2.find(r => r.error);
+      if (error2?.error) {
+        console.error('Supabase error details (step 2):', JSON.stringify(error2.error, null, 2));
+        throw error2.error;
       }
 
       // Log the reorder activity for each task that was reordered
-      for (let i = 0; i < priorityIds.length; i++) {
-        const { data: task } = await supabase
-          .from('daily_priorities')
-          .select('client_name')
-          .eq('id', priorityIds[i])
-          .single();
+      // Fetch all tasks in one query for better performance
+      const { data: tasks } = await supabase
+        .from('daily_priorities')
+        .select('id, client_name')
+        .in('id', priorityIds);
 
-        if (task) {
-          await logActivity({
-            priority_id: priorityIds[i],
-            user_id: getCurrentUserId(),
-            action: 'reordered',
-            task_description: task.client_name || 'Unnamed task',
-            changes: {
-              section: section,
-              new_order: i + 1
-            }
-          });
+      if (tasks) {
+        for (let i = 0; i < priorityIds.length; i++) {
+          const task = tasks.find(t => t.id === priorityIds[i]);
+          if (task) {
+            await logActivity({
+              priority_id: priorityIds[i],
+              user_id: getCurrentUserId(),
+              action: 'reordered',
+              task_description: task.client_name || 'Unnamed task',
+              changes: {
+                section: section,
+                new_order: i + 1
+              }
+            });
+          }
         }
       }
     },

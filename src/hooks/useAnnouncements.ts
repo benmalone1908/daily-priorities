@@ -2,6 +2,7 @@
  * Custom hook for managing announcements
  */
 
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/use-supabase';
 import { Announcement, AnnouncementInsert } from '@/types/announcements';
@@ -34,6 +35,36 @@ export function useAnnouncements() {
     // Refetch every 5 minutes to check for expired announcements
     refetchInterval: 5 * 60 * 1000
   });
+
+  // Subscribe to realtime changes for collaborative updates
+  useEffect(() => {
+    if (!supabase) return;
+
+    console.log('📢 Setting up realtime subscription for announcements...');
+
+    const channel = supabase
+      .channel('announcements-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'announcements'
+        },
+        (payload) => {
+          console.log('📢 Realtime change detected:', payload);
+          queryClient.invalidateQueries({ queryKey: ['announcements'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('📢 Subscription status:', status);
+      });
+
+    return () => {
+      console.log('📢 Cleaning up realtime subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, queryClient]);
 
   // Add announcement mutation
   const addAnnouncement = useMutation({
