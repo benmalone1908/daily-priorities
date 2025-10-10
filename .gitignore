@@ -38,3 +38,17 @@ run-migration.js
 setup-shared-database.sh
 apply-migration.sh
 *.sql
+
+# One-off debugging/maintenance scripts (contain credentials)
+check_*.mjs
+fix_*.mjs
+cleanup_*.mjs
+verify_*.mjs
+debug_*.mjs
+test_*.mjs
+manual_*.mjs
+compare_*.mjs
+fixed_*.mjs
+query_*.mjs
+renumber_*.mjs
+final_*.mjs
