@@ -52,3 +52,5 @@ fixed_*.mjs
 query_*.mjs
 renumber_*.mjs
 final_*.mjs
+query_tasks.js
+verify.mjs
