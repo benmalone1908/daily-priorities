@@ -54,17 +54,6 @@ export function useDailyPriorities(date: string) {
   // Carry forward incomplete tasks from ALL past dates
   const carryForwardTasks = async (targetDate: string) => {
     if (!supabase) return;
-    // Check if tasks already exist for target date
-    const { data: existingTasks } = await supabase
-      .from('daily_priorities')
-      .select('id')
-      .eq('active_date', targetDate)
-      .limit(1);
-
-    // If tasks already exist for this date, don't carry forward
-    if (existingTasks && existingTasks.length > 0) {
-      return;
-    }
 
     // Get ALL tasks created before or on this date
     const { data: allTasks, error } = await supabase
@@ -77,14 +66,41 @@ export function useDailyPriorities(date: string) {
       return;
     }
 
-    // Group by unique task identifier (created_date + section + client_name)
-    // Keep only the most recent active_date version of each task
+    // Get existing tasks on target date to avoid duplicates AND to get max priority orders
+    const { data: existingTasksOnTarget } = await supabase
+      .from('daily_priorities')
+      .select('*')
+      .eq('active_date', targetDate);
+
+    // Create a set of existing task keys for quick lookup (by created_date + client_name only, ignoring section)
+    const existingKeys = new Set(
+      (existingTasksOnTarget || []).map(
+        t => `${t.created_date}_${t.client_name}`
+      )
+    );
+
+    // Get max priority_order for each section on target date
+    const maxPriorityBySection: Record<string, number> = {};
+    (existingTasksOnTarget || []).forEach(task => {
+      const currentMax = maxPriorityBySection[task.section] || 0;
+      maxPriorityBySection[task.section] = Math.max(currentMax, task.priority_order);
+    });
+
+    // Group by unique task identifier (created_date + client_name, IGNORING section)
+    // Keep only the MOST RECENT active_date version of each task (which has the latest section)
     const uniqueTasks = new Map<string, typeof allTasks[0]>();
 
     allTasks.forEach(task => {
-      const key = `${task.created_date}_${task.section}_${task.client_name}`;
+      const key = `${task.created_date}_${task.client_name}`;
       if (!uniqueTasks.has(key)) {
+        // First time seeing this task, add it
         uniqueTasks.set(key, task);
+      } else {
+        // Task already exists, keep the one with the most recent active_date
+        const existing = uniqueTasks.get(key)!;
+        if (task.active_date > existing.active_date) {
+          uniqueTasks.set(key, task);
+        }
       }
     });
 
@@ -92,8 +108,13 @@ export function useDailyPriorities(date: string) {
     // A task should NOT appear on target date if:
     // - It has completed_at set, AND
     // - The completed_at date is on or before the target date
-    const tasksToCarryForward = Array.from(uniqueTasks.values())
+    const filteredTasks = Array.from(uniqueTasks.values())
       .filter(task => {
+        const key = `${task.created_date}_${task.client_name}`;
+
+        // Skip if task already exists on target date (in ANY section)
+        if (existingKeys.has(key)) return false;
+
         // If never completed, carry forward
         if (!task.completed_at) return true;
 
@@ -101,19 +122,58 @@ export function useDailyPriorities(date: string) {
         // Task should NOT appear if it was completed before today
         const completedDate = task.completed_at.split('T')[0]; // Get YYYY-MM-DD
         return completedDate > targetDate; // Only carry forward if completed AFTER target date (shouldn't happen)
-      })
-      .map((task) => ({
+      });
+
+    // Sort by section and priority_order to maintain order
+    filteredTasks.sort((a, b) => {
+      if (a.section !== b.section) return a.section.localeCompare(b.section);
+      return a.priority_order - b.priority_order;
+    });
+
+    // Build a map of used priorities per section (from existing tasks on target date)
+    const usedPrioritiesBySection: Record<string, Set<number>> = {};
+    (existingTasksOnTarget || []).forEach(task => {
+      if (!usedPrioritiesBySection[task.section]) {
+        usedPrioritiesBySection[task.section] = new Set();
+      }
+      usedPrioritiesBySection[task.section].add(task.priority_order);
+    });
+
+    // Now map to new tasks, preserving original priority_order but adjusting for conflicts
+    const tasksToCarryForward = filteredTasks.map((task) => {
+      const section = task.section;
+
+      // Get or create the used priorities set for this section
+      if (!usedPrioritiesBySection[section]) {
+        usedPrioritiesBySection[section] = new Set();
+      }
+      const usedPriorities = usedPrioritiesBySection[section];
+
+      let newPriority = task.priority_order;
+
+      // If there's a conflict, find the next available priority
+      while (usedPriorities.has(newPriority)) {
+        newPriority++;
+      }
+
+      // Mark this priority as used for subsequent tasks
+      usedPriorities.add(newPriority);
+      maxPriorityBySection[section] = Math.max(maxPriorityBySection[section] || 0, newPriority);
+
+      return {
         active_date: targetDate,
         created_date: task.created_date, // Keep original created date
-        priority_order: task.priority_order,
-        section: task.section,
+        priority_order: newPriority, // Preserve original order, adjust for conflicts
+        section: task.section, // Use the most recent section
+        agency_name: task.agency_name, // Preserve agency name
         client_name: task.client_name,
         ticket_url: task.ticket_url,
         description: task.description,
         assignees: task.assignees,
         completed: false, // Always unchecked when carried forward
         created_by: task.created_by
-      }));
+      };
+    });
 
     if (tasksToCarryForward.length > 0) {
       await supabase.from('daily_priorities').insert(tasksToCarryForward);
