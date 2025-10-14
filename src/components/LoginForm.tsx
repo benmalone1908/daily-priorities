@@ -37,10 +37,10 @@ export const LoginForm: React.FC = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Campaign Trends
+            Daily Priorities
           </CardTitle>
           <CardDescription className="text-center">
-            Sign in to access your campaign analytics
+            Sign in to access your daily priorities and campaign analytics
           </CardDescription>
         </CardHeader>
         <CardContent>

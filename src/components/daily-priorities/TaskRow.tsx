@@ -3,15 +3,30 @@
  */
 
 import { useState, useEffect, forwardRef } from 'react';
-import { DailyPriority, DailyPriorityUpdate } from '@/types/daily-priorities';
+import { DailyPriority, DailyPriorityUpdate, PrioritySection, SECTION_LABELS } from '@/types/daily-priorities';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Trash2, GripVertical, ExternalLink, Pencil, MessageSquare, Check, Ban, Unlock } from 'lucide-react';
+import { Trash2, GripVertical, ExternalLink, Pencil, MessageSquare, Check, Ban, Unlock, ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSupabase } from '@/contexts/use-supabase';
 import EditTaskModal from './EditTaskModal';
 import CommentsPanel from './CommentsPanel';
 import { getDisplayName } from '@/config/users';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface TaskRowProps {
   priority: DailyPriority;
@@ -27,6 +42,8 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
 ) {
   const { supabase } = useSupabase();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<PrioritySection>(priority.section);
   // HIDDEN: Commenting feature temporarily disabled
   // const [commentCount, setCommentCount] = useState<number>(0);
   // const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
@@ -87,6 +104,21 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
     }
   };
 
+  const handleOpenMoveModal = () => {
+    setSelectedSection(priority.section);
+    setIsMoveModalOpen(true);
+  };
+
+  const handleMoveTask = () => {
+    if (selectedSection !== priority.section) {
+      onUpdate(priority.id, {
+        section: selectedSection,
+        original_section: null // Clear original_section when manually moving
+      });
+    }
+    setIsMoveModalOpen(false);
+  };
+
   const isValidUrl = (url: string) => {
     try {
       new URL(url);
@@ -111,7 +143,7 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
         </TableCell>
 
         {/* Priority Number */}
-        <TableCell className="w-16 p-2 text-center font-mono text-sm text-muted-foreground border-r">
+        <TableCell className="w-16 p-2 text-center text-xs text-muted-foreground border-r">
           {priority.priority_order}
         </TableCell>
 
@@ -124,11 +156,11 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
               )}
             </div>
             <div className={cn(
-              "font-medium",
+              "font-medium text-xs",
               priority.completed && "text-muted-foreground italic line-through"
             )}>
               {priority.client_name || (
-                <span className="text-muted-foreground italic">No client</span>
+                <span className="text-muted-foreground italic text-xs">No client</span>
               )}
             </div>
           </div>
@@ -140,7 +172,7 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
             {priority.description ? (
               <div
                 className={cn(
-                  'whitespace-pre-wrap cursor-pointer',
+                  'whitespace-pre-wrap cursor-pointer text-xs',
                   !isDescriptionExpanded && 'line-clamp-2',
                   priority.completed && "text-muted-foreground italic line-through"
                 )}
@@ -150,7 +182,7 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                 {priority.description}
               </div>
             ) : (
-              <span className="text-muted-foreground italic">No description</span>
+              <span className="text-muted-foreground italic text-xs">No description</span>
             )}
           </div>
         </TableCell>
@@ -170,14 +202,14 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                 ))}
               </div>
             ) : (
-              <span className="text-muted-foreground italic text-sm">No assignees</span>
+              <span className="text-muted-foreground italic text-xs">No assignees</span>
             )}
           </div>
         </TableCell>
 
         {/* Ticket Link & Actions (stacked) */}
-        <TableCell className="w-32 p-2">
-          <div className="flex flex-col gap-2">
+        <TableCell className="w-32">
+          <div className="flex flex-col gap-2 py-1">
             {/* Dashboard Task Link */}
             <div className="flex justify-center">
               {priority.ticket_url && isValidUrl(priority.ticket_url) ? (
@@ -212,6 +244,24 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={() => setIsEditModalOpen(true)}
+                title="Edit task"
+                className="h-7 w-7"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleOpenMoveModal}
+                title="Move to another section"
+                className="h-7 w-7"
+              >
+                <ArrowLeftRight className="h-4 w-4 text-purple-600" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={handleToggleBlock}
                 title={priority.section === 'blocked' ? 'Unblock task' : 'Block task'}
                 className="h-7 w-7"
@@ -221,14 +271,6 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                 ) : (
                   <Ban className="h-4 w-4 text-orange-600" />
                 )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditModalOpen(true)}
-                className="h-7 w-7"
-              >
-                <Pencil className="h-4 w-4" />
               </Button>
               {/* HIDDEN: Commenting feature temporarily disabled */}
               {/* <Button
@@ -253,6 +295,7 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                     onDelete(priority.id);
                   }
                 }}
+                title="Delete task"
                 className="h-7 w-7"
               >
                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -269,6 +312,41 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
         task={priority}
         // HIDDEN: onCommentAdded={handleCommentAdded}
       />
+
+      {/* Move Task Modal */}
+      <Dialog open={isMoveModalOpen} onOpenChange={setIsMoveModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Task to Another Section</DialogTitle>
+            <DialogDescription>
+              Select the section you want to move this task to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedSection} onValueChange={(value) => setSelectedSection(value as PrioritySection)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a section" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="partner_success">{SECTION_LABELS.partner_success}</SelectItem>
+                <SelectItem value="engineering">{SECTION_LABELS.engineering}</SelectItem>
+                <SelectItem value="launches">{SECTION_LABELS.launches}</SelectItem>
+                <SelectItem value="pre_launch">{SECTION_LABELS.pre_launch}</SelectItem>
+                <SelectItem value="ops">{SECTION_LABELS.ops}</SelectItem>
+                <SelectItem value="blocked">{SECTION_LABELS.blocked}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMoveModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMoveTask}>
+              Move Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* HIDDEN: Commenting feature temporarily disabled */}
       {/* <CommentsPanel
