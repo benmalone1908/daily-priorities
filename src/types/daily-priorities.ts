@@ -76,6 +76,7 @@ export type RenewalStatus =
   | 'Awaiting Confirmation'
   | 'Confirmed - Pending Submission'
   | 'Renewal Submitted'
+  | 'Renewal Activated'
   | 'Not Renewing';
 
 export interface CampaignRenewal {
@@ -180,6 +181,7 @@ export const RENEWAL_STATUS_LABELS: Record<RenewalStatus, string> = {
   'Awaiting Confirmation': 'Awaiting Confirmation',
   'Confirmed - Pending Submission': 'Confirmed - Pending Submission',
   'Renewal Submitted': 'Renewal Submitted',
+  'Renewal Activated': 'Renewal Activated',
   'Not Renewing': 'Not Renewing'
 };
 
@@ -187,5 +189,6 @@ export const RENEWAL_STATUS_COLORS: Record<RenewalStatus, string> = {
   'Awaiting Confirmation': 'bg-gray-100 text-gray-800 border-gray-300',
   'Confirmed - Pending Submission': 'bg-blue-100 text-blue-700 border-blue-300',
   'Renewal Submitted': 'bg-green-100 text-green-700 border-green-300',
+  'Renewal Activated': 'bg-green-100 text-green-700 border-green-300',
   'Not Renewing': 'bg-red-100 text-red-700 border-red-300'
 };
