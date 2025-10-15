@@ -7,11 +7,23 @@ import { useSupabase } from '@/contexts/use-supabase';
 import { useAuth } from '@/contexts/use-auth';
 import { CampaignRenewal, CampaignRenewalUpdate, RenewalStatus } from '@/types/daily-priorities';
 import { toast } from 'sonner';
+import { logActivity } from '@/lib/activityLogger';
 
 export function useCampaignRenewals() {
   const { supabase } = useSupabase();
-  const { user } = useAuth();
+  const { user, currentUser } = useAuth();
   const queryClient = useQueryClient();
+
+  // Helper function to get current user ID
+  const getCurrentUserId = (): string => {
+    if (!currentUser?.id) {
+      console.error('getCurrentUserId called but currentUser is not set!', {
+        currentUser,
+        timestamp: new Date().toISOString()
+      });
+    }
+    return currentUser?.id || 'unknown';
+  };
 
   // Fetch all campaign renewals
   const { data: renewals = [], isLoading } = useQuery<CampaignRenewal[]>({
@@ -117,15 +129,19 @@ export function useCampaignRenewals() {
       // Return a context object with the snapshotted value
       return { previousRenewals };
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data, variables, context) => {
       // Invalidate and refetch to get the real data from server
       queryClient.invalidateQueries({ queryKey: ['campaign-renewals'] });
+
+      // Get old status from previous renewals
+      const oldRenewal = context?.previousRenewals?.find(r => r.campaign_order_name === variables.campaignName);
+      const oldStatus = oldRenewal?.renewal_status || null;
 
       // Log activity
       logRenewalStatusChange(
         variables.campaignName,
-        variables.newStatus,
-        user?.username || 'Unknown'
+        oldStatus,
+        variables.newStatus
       );
 
       toast.success(`Renewal status updated to "${variables.newStatus}"`);
@@ -144,22 +160,21 @@ export function useCampaignRenewals() {
   // Log renewal status change to activity log
   const logRenewalStatusChange = async (
     campaignName: string,
-    newStatus: RenewalStatus,
-    username: string
+    oldStatus: RenewalStatus | null,
+    newStatus: RenewalStatus
   ) => {
-    try {
-      await supabase.from('activity_log').insert({
-        action_type: 'renewal_status_change',
-        description: `Changed renewal status for "${campaignName}" to "${newStatus}"`,
-        performed_by: username,
-        metadata: {
-          campaign_name: campaignName,
-          new_status: newStatus
+    await logActivity(supabase, queryClient, {
+      priority_id: null,
+      user_id: getCurrentUserId(),
+      action: 'renewal_status_updated',
+      task_description: campaignName,
+      changes: {
+        status: {
+          before: oldStatus,
+          after: newStatus
         }
-      });
-    } catch (error) {
-      console.error('Failed to log activity:', error);
-    }
+      }
+    });
   };
 
   // Get renewal status for a specific campaign

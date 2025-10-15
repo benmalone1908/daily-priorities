@@ -21,11 +21,15 @@ export function useDailyPriorities(date: string) {
   const queryClient = useQueryClient();
   const { currentUser } = useAuth();
 
-  // Helper function to get current user ID with fallback to localStorage
+  // Helper function to get current user ID
   const getCurrentUserId = (): string => {
-    if (currentUser?.id) return currentUser.id;
-    const storedUserId = localStorage.getItem('campaign-trends-user-id');
-    return storedUserId || 'unknown';
+    if (!currentUser?.id) {
+      console.error('getCurrentUserId called but currentUser is not set!', {
+        currentUser,
+        timestamp: new Date().toISOString()
+      });
+    }
+    return currentUser?.id || 'unknown';
   };
 
   // Helper function to log activity

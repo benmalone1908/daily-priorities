@@ -41,6 +41,12 @@ const getActionText = (entry: ActivityLogEntry): string => {
       return 'moved task';
     case 'reordered':
       return 'reordered task';
+    case 'roas_ignored':
+      return 'ignored ROAS alerts for';
+    case 'roas_unignored':
+      return 'enabled ROAS alerts for';
+    case 'renewal_status_updated':
+      return 'updated renewal status for';
     default:
       return entry.action;
   }
@@ -53,10 +59,17 @@ const formatChanges = (changes: Record<string, unknown> | null): string | null =
   const parts: string[] = [];
 
   Object.entries(changes).forEach(([key, value]) => {
-    if (key === 'field' || typeof value !== 'object') return;
+    // Handle simple key-value pairs (for ROAS ignore reason)
+    if (key === 'reason' && typeof value === 'string') {
+      parts.push(`reason: ${value}`);
+      return;
+    }
 
-    const before = value.before;
-    const after = value.after;
+    if (key === 'field' || typeof value !== 'object' || value === null) return;
+
+    const changeValue = value as { before?: unknown; after?: unknown };
+    const before = changeValue.before;
+    const after = changeValue.after;
 
     // Format based on field type
     if (key === 'section') {
@@ -69,6 +82,11 @@ const formatChanges = (changes: Record<string, unknown> | null): string | null =
       const beforeStr = Array.isArray(before) ? before.join(', ') : 'none';
       const afterStr = Array.isArray(after) ? after.join(', ') : 'none';
       parts.push(`assignees: ${beforeStr} → ${afterStr}`);
+    } else if (key === 'status') {
+      // Renewal status changes
+      const beforeStr = before || 'none';
+      const afterStr = after || 'none';
+      parts.push(`${beforeStr} → ${afterStr}`);
     } else {
       parts.push(`${key}: ${before || '(empty)'} → ${after || '(empty)'}`);
     }

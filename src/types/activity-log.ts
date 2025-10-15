@@ -11,7 +11,10 @@ export type ActivityAction =
   | 'blocked'
   | 'unblocked'
   | 'moved_section'
-  | 'reordered';
+  | 'reordered'
+  | 'roas_ignored'
+  | 'roas_unignored'
+  | 'renewal_status_updated';
 
 export interface ActivityLogEntry {
   id: string;
