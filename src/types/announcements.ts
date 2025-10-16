@@ -15,3 +15,8 @@ export interface AnnouncementInsert {
   created_by: string;
   expires_at: string;
 }
+
+export interface AnnouncementUpdate {
+  message?: string;
+  expires_at?: string;
+}

@@ -5,13 +5,27 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Megaphone, X, Plus } from 'lucide-react';
+import { Megaphone, X, Plus, Pencil } from 'lucide-react';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { Announcement } from '@/types/announcements';
 import AddAnnouncementModal from './AddAnnouncementModal';
+import EditAnnouncementModal from './EditAnnouncementModal';
 
 export default function AnnouncementBanner() {
-  const { announcements, isLoading, addAnnouncement, deleteAnnouncement } = useAnnouncements();
+  const { announcements, isLoading, addAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+
+  const handleEditClick = (announcement: Announcement) => {
+    setEditingAnnouncement(announcement);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditClose = () => {
+    setIsEditModalOpen(false);
+    setEditingAnnouncement(null);
+  };
 
   if (isLoading) {
     return null;
@@ -59,15 +73,26 @@ export default function AnnouncementBanner() {
                       {announcement.message}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteAnnouncement(announcement.id)}
-                    className="h-6 w-6 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-100"
-                    title="Delete announcement"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(announcement)}
+                      className="h-6 w-6 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-100"
+                      title="Edit announcement"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteAnnouncement(announcement.id)}
+                      className="h-6 w-6 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-100"
+                      title="Delete announcement"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -79,6 +104,13 @@ export default function AnnouncementBanner() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={addAnnouncement}
+      />
+
+      <EditAnnouncementModal
+        isOpen={isEditModalOpen}
+        onClose={handleEditClose}
+        onUpdate={updateAnnouncement}
+        announcement={editingAnnouncement}
       />
     </>
   );

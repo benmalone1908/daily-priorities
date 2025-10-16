@@ -5,7 +5,7 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/use-supabase';
-import { Announcement, AnnouncementInsert } from '@/types/announcements';
+import { Announcement, AnnouncementInsert, AnnouncementUpdate } from '@/types/announcements';
 import { toast } from 'sonner';
 
 export function useAnnouncements() {
@@ -90,6 +90,31 @@ export function useAnnouncements() {
     }
   });
 
+  // Update announcement mutation
+  const updateAnnouncement = useMutation({
+    mutationFn: async ({ id, update }: { id: string; update: AnnouncementUpdate }) => {
+      if (!supabase) throw new Error('Supabase not initialized');
+
+      const { data, error } = await supabase
+        .from('announcements')
+        .update(update)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Announcement;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      toast.success('Announcement updated');
+    },
+    onError: (error) => {
+      console.error('Error updating announcement:', error);
+      toast.error('Failed to update announcement');
+    }
+  });
+
   // Delete announcement mutation
   const deleteAnnouncement = useMutation({
     mutationFn: async (id: string) => {
@@ -117,6 +142,7 @@ export function useAnnouncements() {
     isLoading,
     error,
     addAnnouncement: (announcement: AnnouncementInsert) => addAnnouncement.mutate(announcement),
+    updateAnnouncement: (id: string, update: AnnouncementUpdate) => updateAnnouncement.mutate({ id, update }),
     deleteAnnouncement: (id: string) => deleteAnnouncement.mutate(id)
   };
 }
