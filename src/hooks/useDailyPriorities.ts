@@ -499,28 +499,49 @@ export function useDailyPriorities(date: string) {
         }
       }
 
-      // For other updates, just update this specific record
-      // Get current task data for logging
+      // For other updates, we need to handle carefully
+      // Get current task data for logging AND to identify all instances
       const { data: currentTask } = await supabase
         .from('daily_priorities')
         .select('*')
         .eq('id', id)
         .single();
 
-      const { data, error } = await supabase
-        .from('daily_priorities')
-        .update({
-          ...updates,
-          updated_by: currentUser?.id || null
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      if (!currentTask) throw new Error('Task not found');
 
-      if (error) throw error;
+      // Check if we're updating fields that define task identity (client_name, agency_name, description, ticket_url, assignees)
+      const identityFieldsChanged =
+        updates.client_name !== undefined ||
+        updates.agency_name !== undefined ||
+        updates.description !== undefined ||
+        updates.ticket_url !== undefined ||
+        updates.assignees !== undefined;
 
-      // Log the update with changes
-      if (currentTask) {
+      if (identityFieldsChanged) {
+        // Update ALL instances of this task (same created_date + section + old client_name)
+        // This ensures the task remains consistent across all dates
+        const { error: bulkUpdateError } = await supabase
+          .from('daily_priorities')
+          .update({
+            ...updates,
+            updated_by: currentUser?.id || null
+          })
+          .eq('created_date', currentTask.created_date)
+          .eq('section', currentTask.section)
+          .eq('client_name', currentTask.client_name);
+
+        if (bulkUpdateError) throw bulkUpdateError;
+
+        // Fetch the updated record for this specific date to return
+        const { data, error } = await supabase
+          .from('daily_priorities')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        // Log the update with changes
         const changes: Record<string, { before: unknown; after: unknown }> = {};
         Object.keys(updates).forEach(key => {
           const typedKey = key as keyof DailyPriorityUpdate;
@@ -541,9 +562,46 @@ export function useDailyPriorities(date: string) {
             changes
           });
         }
-      }
 
-      return data as DailyPriority;
+        return data as DailyPriority;
+      } else {
+        // For non-identity updates (like priority_order), only update this specific record
+        const { data, error } = await supabase
+          .from('daily_priorities')
+          .update({
+            ...updates,
+            updated_by: currentUser?.id || null
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Log the update with changes
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        Object.keys(updates).forEach(key => {
+          const typedKey = key as keyof DailyPriorityUpdate;
+          if (key !== 'updated_by' && currentTask[typedKey] !== updates[typedKey]) {
+            changes[key] = {
+              before: currentTask[typedKey],
+              after: updates[typedKey]
+            };
+          }
+        });
+
+        if (Object.keys(changes).length > 0) {
+          await logActivity({
+            priority_id: id,
+            user_id: getCurrentUserId(),
+            action: 'updated',
+            task_description: data.client_name || 'Unnamed task',
+            changes
+          });
+        }
+
+        return data as DailyPriority;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['daily-priorities', date] });
