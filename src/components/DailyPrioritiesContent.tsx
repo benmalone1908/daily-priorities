@@ -74,17 +74,13 @@ export default function DailyPrioritiesContent({
   // Handle navigation with history tracking
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      console.log('Popstate event, hash:', window.location.hash, 'state:', event.state);
       const scrollContainer = getScrollContainer();
-      console.log('Scroll container:', scrollContainer, 'scrollTop:', scrollContainer.scrollTop);
 
       // If there's no hash (went back to top), scroll to top
       if (!window.location.hash || window.location.hash === '') {
-        console.log('Scrolling to top');
         scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (event.state && event.state.scrollPosition !== undefined) {
         // Otherwise restore the saved scroll position
-        console.log('Scrolling to saved position:', event.state.scrollPosition);
         scrollContainer.scrollTo({ top: event.state.scrollPosition, behavior: 'smooth' });
       }
     };
@@ -100,15 +96,10 @@ export default function DailyPrioritiesContent({
     const element = document.getElementById(sectionId);
     const scrollContainer = getScrollContainer();
     if (element) {
-      console.log('Before scrolling to section, position:', scrollContainer.scrollTop);
       // Save current scroll position and push to history
       const currentScrollPosition = scrollContainer.scrollTop;
       window.history.pushState({ scrollPosition: currentScrollPosition }, '', `#${sectionId}`);
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Check position after scroll
-      setTimeout(() => {
-        console.log('After scrolling to section', sectionId, ', position:', scrollContainer.scrollTop);
-      }, 500);
     }
   };
 
