@@ -227,28 +227,56 @@ export function useDailyPriorities(date: string) {
         throw error;
       }
 
-      // Fix any negative priority_order values (from incomplete reorder operations)
-      const tasksWithNegativeOrder = (data || []).filter(task => task.priority_order < 0);
-      if (tasksWithNegativeOrder.length > 0) {
-        console.warn('Found tasks with negative priority_order, fixing...');
+      // Normalize priority_order values to ensure sequential ordering (1, 2, 3, 4...)
+      // This fixes:
+      // 1. Negative values from incomplete reorder operations
+      // 2. Gaps in sequence (e.g., 1,2,3,4,6,7,8,9,18,31,49)
+      // 3. Duplicate priority orders within a section
 
-        // Group by section and fix each section
-        const sections = new Set(tasksWithNegativeOrder.map(t => t.section));
-        for (const section of sections) {
-          const sectionTasks = (data || [])
-            .filter(t => t.section === section)
-            .sort((a, b) => Math.abs(a.priority_order) - Math.abs(b.priority_order));
+      const needsNormalization = (data || []).some(task => task.priority_order < 0);
 
-          // Update each task with correct positive order
-          for (let i = 0; i < sectionTasks.length; i++) {
-            await supabase
-              .from('daily_priorities')
-              .update({ priority_order: i + 1 })
-              .eq('id', sectionTasks[i].id);
+      // Check for gaps or duplicates by section
+      const sectionMap = new Map<string, DailyPriority[]>();
+      (data || []).forEach(task => {
+        if (!sectionMap.has(task.section)) {
+          sectionMap.set(task.section, []);
+        }
+        sectionMap.get(task.section)!.push(task);
+      });
+
+      let hasGapsOrDuplicates = false;
+      for (const [section, tasks] of sectionMap.entries()) {
+        const orders = tasks.map(t => t.priority_order).sort((a, b) => a - b);
+        // Check if orders are sequential starting from 1
+        for (let i = 0; i < orders.length; i++) {
+          if (orders[i] !== i + 1) {
+            hasGapsOrDuplicates = true;
+            break;
+          }
+        }
+        if (hasGapsOrDuplicates) break;
+      }
+
+      if (needsNormalization || hasGapsOrDuplicates) {
+        console.warn('Found priority_order issues, normalizing...');
+
+        // Normalize each section
+        for (const [section, tasks] of sectionMap.entries()) {
+          // Sort by current priority_order to maintain relative positioning
+          const sortedTasks = tasks.sort((a, b) => a.priority_order - b.priority_order);
+
+          // Update each task with sequential order (1, 2, 3, 4...)
+          for (let i = 0; i < sortedTasks.length; i++) {
+            if (sortedTasks[i].priority_order !== i + 1) {
+              await supabase
+                .from('daily_priorities')
+                .update({ priority_order: i + 1 })
+                .eq('id', sortedTasks[i].id);
+            }
           }
         }
 
-        // Refetch after fixing
+        // Refetch after normalizing
         const { data: fixedData, error: refetchError } = await supabase
           .from('daily_priorities')
           .select('*')
