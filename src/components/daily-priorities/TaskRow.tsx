@@ -155,13 +155,18 @@ const TaskRow = forwardRef<HTMLTableRowElement, TaskRowProps>(function TaskRow(
                 <span className="italic">No agency</span>
               )}
             </div>
-            <div className={cn(
-              "font-medium text-xs",
-              priority.completed && "text-muted-foreground italic line-through"
-            )}>
-              {priority.client_name || (
-                <span className="text-muted-foreground italic text-xs">No client</span>
-              )}
+            <div className="space-y-0.5">
+              <div className={cn(
+                "font-medium text-xs",
+                priority.completed && "text-muted-foreground italic line-through"
+              )}>
+                {priority.client_name || (
+                  <span className="text-muted-foreground italic text-xs">No client</span>
+                )}
+              </div>
+              <div className="text-muted-foreground text-[10px]">
+                Created: {new Date(priority.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
             </div>
           </div>
         </TableCell>

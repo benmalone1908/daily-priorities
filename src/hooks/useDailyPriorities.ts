@@ -57,29 +57,40 @@ export function useDailyPriorities(date: string) {
 
   // Carry forward incomplete tasks from ALL past dates
   const carryForwardTasks = async (targetDate: string) => {
-    if (!supabase) return;
-
-    // Get ALL tasks created before or on this date
-    const { data: allTasks, error } = await supabase
-      .from('daily_priorities')
-      .select('*')
-      .lte('created_date', targetDate)
-      .order('active_date', { ascending: false });
-
-    if (error || !allTasks || allTasks.length === 0) {
+    console.log('📅 carryForwardTasks called for:', targetDate);
+    if (!supabase) {
+      console.log('❌ No supabase client, returning');
       return;
     }
 
-    // Get existing tasks on target date to avoid duplicates AND to get max priority orders
+    console.log('🔍 Fetching existing tasks on target date:', targetDate);
+    // First get existing tasks on target date
     const { data: existingTasksOnTarget } = await supabase
       .from('daily_priorities')
       .select('*')
       .eq('active_date', targetDate);
 
-    // Create a set of existing task keys for quick lookup (by created_date + client_name only, ignoring section)
+    console.log('📦 Found existing tasks on target:', existingTasksOnTarget?.length || 0);
+
+    console.log('🔍 Fetching incomplete tasks from past dates');
+    // Get ALL incomplete tasks from dates before today (using active_date, not created_date)
+    const { data: allTasks, error } = await supabase
+      .from('daily_priorities')
+      .select('*')
+      .lt('active_date', targetDate)
+      .eq('completed', false)
+      .order('active_date', { ascending: false });
+
+    console.log('📦 Fetched incomplete tasks:', allTasks?.length || 0, 'Error:', error);
+    if (error || !allTasks || allTasks.length === 0) {
+      console.log('⏭️ No incomplete tasks to carry forward, returning');
+      return;
+    }
+
+    // Create a set of existing task keys for quick lookup (by client_name + created_at timestamp)
     const existingKeys = new Set(
       (existingTasksOnTarget || []).map(
-        t => `${t.created_date}_${t.client_name}`
+        t => `${t.client_name}_${t.created_at}`
       )
     );
 
@@ -90,12 +101,12 @@ export function useDailyPriorities(date: string) {
       maxPriorityBySection[task.section] = Math.max(currentMax, task.priority_order);
     });
 
-    // Group by unique task identifier (created_date + client_name, IGNORING section)
+    // Group by unique task identifier (client_name + created_at timestamp)
     // Keep only the MOST RECENT active_date version of each task (which has the latest section)
     const uniqueTasks = new Map<string, typeof allTasks[0]>();
 
     allTasks.forEach(task => {
-      const key = `${task.created_date}_${task.client_name}`;
+      const key = `${task.client_name}_${task.created_at}`;
       if (!uniqueTasks.has(key)) {
         // First time seeing this task, add it
         uniqueTasks.set(key, task);
@@ -114,7 +125,7 @@ export function useDailyPriorities(date: string) {
     // - The completed_at date is on or before the target date
     const filteredTasks = Array.from(uniqueTasks.values())
       .filter(task => {
-        const key = `${task.created_date}_${task.client_name}`;
+        const key = `${task.client_name}_${task.created_at}`;
 
         // Skip if task already exists on target date (in ANY section)
         if (existingKeys.has(key)) return false;
@@ -166,7 +177,7 @@ export function useDailyPriorities(date: string) {
 
       return {
         active_date: targetDate,
-        created_date: task.created_date, // Keep original created date
+        created_date: task.created_date, // Preserve for backwards compatibility
         priority_order: newPriority, // Preserve original order, adjust for conflicts
         section: task.section, // Use the most recent section
         agency_name: task.agency_name, // Preserve agency name
@@ -176,22 +187,34 @@ export function useDailyPriorities(date: string) {
         assignees: task.assignees,
         completed: false, // Always unchecked when carried forward
         created_by: task.created_by
+        // NOTE: created_at is set automatically by database
       };
     });
 
     if (tasksToCarryForward.length > 0) {
-      await supabase.from('daily_priorities').insert(tasksToCarryForward);
+      const { error: insertError } = await supabase
+        .from('daily_priorities')
+        .insert(tasksToCarryForward);
+
+      // Ignore conflict errors (409) - they mean tasks were already carried forward
+      if (insertError && insertError.code !== '23505') {
+        console.error('Error carrying forward tasks:', insertError);
+      }
     }
   };
 
   // Fetch priorities for a specific date, with automatic carry-forward
   const { data: priorities = [], isLoading, error } = useQuery({
     queryKey: ['daily-priorities', date],
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
     queryFn: async () => {
-      // First, check if we need to carry forward tasks from previous day
-      await carryForwardTasks(date);
+      console.log('🔄 Query starting for date:', date);
+      console.log('🔍 About to query Supabase...');
 
-      // Then fetch tasks for this date
+      // Fetch tasks for this date - maintains historical record
+      const startTime = Date.now();
       const { data, error } = await supabase
         .from('daily_priorities')
         .select('*')
@@ -199,7 +222,14 @@ export function useDailyPriorities(date: string) {
         .order('section')
         .order('priority_order');
 
-      if (error) throw error;
+      const elapsed = Date.now() - startTime;
+      console.log(`⏱️ Query completed in ${elapsed}ms`);
+
+      console.log('📊 Fetched priorities for date:', date, 'Count:', data?.length || 0, 'Data:', data);
+      if (error) {
+        console.error('❌ Error fetching priorities:', error);
+        throw error;
+      }
 
       // Fix any negative priority_order values (from incomplete reorder operations)
       const tasksWithNegativeOrder = (data || []).filter(task => task.priority_order < 0);
@@ -509,28 +539,93 @@ export function useDailyPriorities(date: string) {
 
       if (!currentTask) throw new Error('Task not found');
 
-      // Check if we're updating fields that define task identity (client_name, agency_name, description, ticket_url, assignees)
-      const identityFieldsChanged =
-        updates.client_name !== undefined ||
+      // Check if we're updating fields that define task identity
+      // NOTE: client_name is the ONLY PRIMARY identity field (created_date is immutable)
+      // Other fields (agency_name, description, ticket_url, assignees) should sync across all dates
+      const isChangingPrimaryIdentity = updates.client_name !== undefined;
+
+      const isUpdatingSecondaryFields =
         updates.agency_name !== undefined ||
         updates.description !== undefined ||
         updates.ticket_url !== undefined ||
         updates.assignees !== undefined;
 
-      if (identityFieldsChanged) {
-        // Update ALL instances of this task (same created_date + section + old client_name)
-        // This ensures the task remains consistent across all dates
-        const { error: bulkUpdateError } = await supabase
+      if (isChangingPrimaryIdentity) {
+        // When changing primary identity (client_name), only update this single record
+        // This is effectively creating a new task identity
+        const { data, error } = await supabase
           .from('daily_priorities')
           .update({
             ...updates,
             updated_by: currentUser?.id || null
           })
-          .eq('created_date', currentTask.created_date)
-          .eq('section', currentTask.section)
-          .eq('client_name', currentTask.client_name);
+          .eq('id', id)
+          .select()
+          .single();
 
-        if (bulkUpdateError) throw bulkUpdateError;
+        if (error) {
+          console.error('Single update error:', { error, updates });
+          throw new Error(`Failed to update task: ${error.message}`);
+        }
+
+        // Log the update
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        Object.keys(updates).forEach(key => {
+          const typedKey = key as keyof DailyPriorityUpdate;
+          if (key !== 'updated_by' && currentTask[typedKey] !== updates[typedKey]) {
+            changes[key] = {
+              before: currentTask[typedKey],
+              after: updates[typedKey]
+            };
+          }
+        });
+
+        if (Object.keys(changes).length > 0) {
+          await logActivity({
+            priority_id: id,
+            user_id: getCurrentUserId(),
+            action: 'updated',
+            task_description: data.client_name || 'Unnamed task',
+            changes
+          });
+        }
+
+        return data as DailyPriority;
+      } else if (isUpdatingSecondaryFields) {
+        // Update ALL instances of this task (same client_name + created_date across all dates)
+        // This ensures the task remains consistent across all dates
+
+        // Build the query carefully to handle null values
+        let query = supabase
+          .from('daily_priorities')
+          .update({
+            ...updates,
+            updated_by: currentUser?.id || null
+          });
+
+        // Handle null client_name properly
+        if (currentTask.client_name === null) {
+          query = query.is('client_name', null);
+        } else {
+          query = query.eq('client_name', currentTask.client_name);
+        }
+
+        // Match on created_at timestamp for unique identification
+        query = query.eq('created_at', currentTask.created_at);
+
+        const { error: bulkUpdateError } = await query;
+
+        if (bulkUpdateError) {
+          console.error('Bulk update error:', {
+            error: bulkUpdateError,
+            updates,
+            currentTask: {
+              client_name: currentTask.client_name,
+              created_at: currentTask.created_at
+            }
+          });
+          throw new Error(`Failed to update all task instances: ${bulkUpdateError.message}`);
+        }
 
         // Fetch the updated record for this specific date to return
         const { data, error } = await supabase
@@ -627,13 +722,21 @@ export function useDailyPriorities(date: string) {
 
       if (!task) throw new Error('Task not found');
 
-      // Delete ALL instances of this task (same created_date, section, client_name)
-      const { error } = await supabase
+      // Delete ALL instances of this task (same client_name + created_at across all dates)
+      let deleteQuery = supabase
         .from('daily_priorities')
-        .delete()
-        .eq('created_date', task.created_date)
-        .eq('section', task.section)
-        .eq('client_name', task.client_name);
+        .delete();
+
+      // Handle null client_name properly
+      if (task.client_name === null) {
+        deleteQuery = deleteQuery.is('client_name', null);
+      } else {
+        deleteQuery = deleteQuery.eq('client_name', task.client_name);
+      }
+
+      deleteQuery = deleteQuery.eq('created_at', task.created_at);
+
+      const { error } = await deleteQuery;
 
       if (error) throw error;
 
