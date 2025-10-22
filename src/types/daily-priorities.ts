@@ -13,7 +13,7 @@ export type PrioritySection =
 export interface DailyPriority {
   id: string;
   active_date: string; // ISO date string (YYYY-MM-DD) - date task appears on
-  created_date: string; // ISO date string (YYYY-MM-DD) - date task was created
+  created_date: string; // ISO timestamp - date/time task was created (used for unique identification)
   priority_order: number;
   section: PrioritySection;
   original_section: PrioritySection | null; // Section before being blocked
@@ -46,7 +46,7 @@ export interface PriorityCommentInsert {
 
 export interface DailyPriorityInsert {
   active_date: string;
-  created_date: string;
+  created_date: string; // ISO timestamp for unique identification
   priority_order: number;
   section: PrioritySection;
   agency_name?: string | null;

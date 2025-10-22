@@ -116,7 +116,7 @@ export default function PrioritySection({
   };
 
   return (
-    <Card className="mb-6">
+    <Card id={section} className="mb-6 scroll-mt-4">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

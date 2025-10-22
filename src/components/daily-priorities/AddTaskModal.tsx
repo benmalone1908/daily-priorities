@@ -124,7 +124,7 @@ export default function AddTaskModal({
 
     const taskToAdd = {
       active_date: date,
-      created_date: date,
+      created_date: new Date().toISOString(), // Use current timestamp for unique identification
       section,
       priority_order: priorityNum,
       agency_name: formData.agency_name || null,

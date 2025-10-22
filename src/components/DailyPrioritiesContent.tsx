@@ -2,7 +2,7 @@
  * DailyPrioritiesContent - Content for daily priorities tab
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { Calendar, ChevronLeft, ChevronRight, History, Camera } from 'lucide-react';
@@ -63,6 +63,45 @@ export default function DailyPrioritiesContent({
   const { data: priorityDates = [] } = usePriorityDates();
   const { updateRenewalStatus } = useCampaignRenewals();
   const { addIgnore, removeIgnore, isIgnored, getIgnoreReason, ignoredCampaigns } = useRoasIgnores();
+
+  // Get the scrollable container
+  const getScrollContainer = () => {
+    // The scrollable container is the div with overflow-auto class in Index.tsx
+    // It's the parent of the content area
+    return document.querySelector('.overflow-auto') as HTMLElement || document.documentElement;
+  };
+
+  // Handle navigation with history tracking
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const scrollContainer = getScrollContainer();
+
+      // If there's no hash (went back to top), scroll to top
+      if (!window.location.hash || window.location.hash === '') {
+        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (event.state && event.state.scrollPosition !== undefined) {
+        // Otherwise restore the saved scroll position
+        scrollContainer.scrollTo({ top: event.state.scrollPosition, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Handle section navigation with history
+  const handleSectionClick = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    const scrollContainer = getScrollContainer();
+    if (element) {
+      // Save current scroll position and push to history
+      const currentScrollPosition = scrollContainer.scrollTop;
+      window.history.pushState({ scrollPosition: currentScrollPosition }, '', `#${sectionId}`);
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleRenewalStatusUpdate = (campaignName: string, newStatus: RenewalStatus) => {
     updateRenewalStatus({ campaignName, newStatus });
@@ -205,16 +244,58 @@ export default function DailyPrioritiesContent({
       </div>
 
       {/* Date Navigation */}
-      <div className="flex items-center justify-end gap-3">
-        <div className="text-xs text-muted-foreground">
-          {isLoading ? 'Loading...' : `${priorities.length} tasks`}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-muted-foreground">
+            {isLoading ? 'Loading...' : `${priorities.length} tasks`}
+          </div>
+          <Separator orientation="vertical" className="h-4" />
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => handleSectionClick('partner_success')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Partner Success
+            </button>
+            <button
+              onClick={() => handleSectionClick('engineering')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Engineering
+            </button>
+            <button
+              onClick={() => handleSectionClick('launches')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Launches
+            </button>
+            <button
+              onClick={() => handleSectionClick('pre_launch')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Pre-Launch
+            </button>
+            <button
+              onClick={() => handleSectionClick('ops')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Ops
+            </button>
+            <button
+              onClick={() => handleSectionClick('blocked')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+            >
+              Blocked
+            </button>
+          </div>
         </div>
 
-        {!isToday && (
-          <Button variant="outline" size="sm" onClick={handleToday} className="h-7 text-xs">
-            Back to Today
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {!isToday && (
+            <Button variant="outline" size="sm" onClick={handleToday} className="h-7 text-xs">
+              Back to Today
+            </Button>
+          )}
 
         <div className="flex items-center gap-1">
           <Button
@@ -261,6 +342,7 @@ export default function DailyPrioritiesContent({
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
+        </div>
         </div>
       </div>
 

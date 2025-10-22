@@ -2,13 +2,14 @@
  * ChangelogModal - Shows activity log/changelog for daily priorities
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { History, Calendar } from 'lucide-react';
+import { History, Calendar, Search } from 'lucide-react';
 import { useActivityLog, useActivityLogArchive } from '@/hooks/useActivityLog';
 import { getDisplayName } from '@/config/users';
 import { format } from 'date-fns';
@@ -102,6 +103,7 @@ export default function ChangelogModal({ isOpen, onClose }: ChangelogModalProps)
   const currentDate = new Date();
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth());
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const { entries: currentMonthEntries, isLoading: currentLoading } = useActivityLog(
     currentDate.getFullYear(),
@@ -114,6 +116,23 @@ export default function ChangelogModal({ isOpen, onClose }: ChangelogModalProps)
   );
 
   const { archive } = useActivityLogArchive();
+
+  // Filter entries by search query (advertiser name only)
+  const filteredCurrentEntries = useMemo(() => {
+    if (!searchQuery.trim()) return currentMonthEntries;
+    const query = searchQuery.toLowerCase();
+    return currentMonthEntries.filter(entry =>
+      entry.task_description?.toLowerCase().includes(query)
+    );
+  }, [currentMonthEntries, searchQuery]);
+
+  const filteredArchiveEntries = useMemo(() => {
+    if (!searchQuery.trim()) return archiveEntries;
+    const query = searchQuery.toLowerCase();
+    return archiveEntries.filter(entry =>
+      entry.task_description?.toLowerCase().includes(query)
+    );
+  }, [archiveEntries, searchQuery]);
 
   const renderEntry = (entry: ActivityLogEntry) => {
     const date = new Date(entry.created_at);
@@ -177,6 +196,17 @@ export default function ChangelogModal({ isOpen, onClose }: ChangelogModalProps)
           </DialogTitle>
         </DialogHeader>
 
+        {/* Search Field */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by advertiser name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         <Tabs defaultValue="current" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="current">
@@ -194,12 +224,12 @@ export default function ChangelogModal({ isOpen, onClose }: ChangelogModalProps)
                 <div className="text-sm text-muted-foreground py-8 text-center">
                   Loading activity...
                 </div>
-              ) : currentMonthEntries.length === 0 ? (
+              ) : filteredCurrentEntries.length === 0 ? (
                 <div className="text-sm text-muted-foreground py-8 text-center italic">
-                  No activity this month
+                  {searchQuery ? 'No matching activity found' : 'No activity this month'}
                 </div>
               ) : (
-                currentMonthEntries.map(renderEntry)
+                filteredCurrentEntries.map(renderEntry)
               )}
             </ScrollArea>
           </TabsContent>
@@ -240,12 +270,12 @@ export default function ChangelogModal({ isOpen, onClose }: ChangelogModalProps)
                     <div className="text-sm text-muted-foreground py-8 text-center">
                       Loading activity...
                     </div>
-                  ) : archiveEntries.length === 0 ? (
+                  ) : filteredArchiveEntries.length === 0 ? (
                     <div className="text-sm text-muted-foreground py-8 text-center italic">
-                      No activity for selected month
+                      {searchQuery ? 'No matching activity found' : 'No activity for selected month'}
                     </div>
                   ) : (
-                    archiveEntries.map(renderEntry)
+                    filteredArchiveEntries.map(renderEntry)
                   )}
                 </ScrollArea>
               </>
