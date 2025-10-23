@@ -214,9 +214,20 @@ export function useDailyPriorities(date: string) {
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
     queryFn: async () => {
-      // CARRY-FORWARD TEMPORARILY DISABLED - causing duplicates
-      // Need to implement with proper locking/deduplication
-      // TODO: Re-implement with database-level locking or unique constraint check
+      // Smart carry-forward: only run if date has no tasks
+      // Database constraint prevents duplicates even if called multiple times
+      const { data: existingCheck } = await supabase
+        .from('daily_priorities')
+        .select('id')
+        .eq('active_date', date)
+        .limit(1);
+
+      // If no tasks exist for this date, carry forward from previous dates
+      // The unique constraint on (active_date, client_name, created_at) will
+      // prevent duplicates even if this runs multiple times concurrently
+      if (!existingCheck || existingCheck.length === 0) {
+        await carryForwardTasks(date);
+      }
 
       // Fetch tasks for this date - maintains historical record
       const { data, error } = await supabase
