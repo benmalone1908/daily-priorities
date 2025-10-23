@@ -214,18 +214,9 @@ export function useDailyPriorities(date: string) {
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
     queryFn: async () => {
-      // First, check if we need to carry forward tasks for this date
-      // Only runs if the date has no tasks yet
-      const { data: existingCheck } = await supabase
-        .from('daily_priorities')
-        .select('id')
-        .eq('active_date', date)
-        .limit(1);
-
-      // If no tasks exist for this date, carry forward from previous dates
-      if (!existingCheck || existingCheck.length === 0) {
-        await carryForwardTasks(date);
-      }
+      // CARRY-FORWARD TEMPORARILY DISABLED - causing duplicates
+      // Need to implement with proper locking/deduplication
+      // TODO: Re-implement with database-level locking or unique constraint check
 
       // Fetch tasks for this date - maintains historical record
       const { data, error } = await supabase
