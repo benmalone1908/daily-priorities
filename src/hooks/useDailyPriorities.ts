@@ -411,13 +411,21 @@ export function useDailyPriorities(date: string) {
           });
 
           // 2. Delete all FUTURE instances of this task (active_date > current date)
-          const { error: deleteError } = await supabase
+          // Use created_at (immutable timestamp) for task identity, not created_date
+          let deleteQuery = supabase
             .from('daily_priorities')
             .delete()
-            .eq('created_date', task.created_date)
-            .eq('section', task.section)
-            .eq('client_name', task.client_name)
             .gt('active_date', task.active_date);
+
+          // Match on task identity: (client_name + created_at)
+          if (task.client_name === null) {
+            deleteQuery = deleteQuery.is('client_name', null);
+          } else {
+            deleteQuery = deleteQuery.eq('client_name', task.client_name);
+          }
+          deleteQuery = deleteQuery.eq('created_at', task.created_at);
+
+          const { error: deleteError } = await deleteQuery;
 
           if (deleteError) throw deleteError;
 
