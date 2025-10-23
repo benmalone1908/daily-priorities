@@ -189,8 +189,8 @@ export function useDailyPriorities(date: string) {
         description: task.description,
         assignees: task.assignees,
         completed: false, // Always unchecked when carried forward
-        created_by: task.created_by
-        // NOTE: created_at is set automatically by database
+        created_by: task.created_by,
+        created_at: task.created_at // CRITICAL: Preserve original created_at for task identity
       };
     });
 
