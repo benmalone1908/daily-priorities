@@ -1,52 +1,32 @@
 /**
- * Custom hook to fetch and extract unique advertiser names from campaign data
+ * Custom hook to fetch and extract unique advertiser names from daily priorities
  * Returns both a flat list of all advertisers and a mapping by agency
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/use-supabase';
-import { useCampaignFilter } from '@/contexts/use-campaign-filter';
 
 export function useAdvertisersList() {
   const { supabase } = useSupabase();
-  const { extractAdvertiserName, extractAgencyInfo } = useCampaignFilter();
 
   return useQuery({
     queryKey: ['advertisers-list'],
     queryFn: async () => {
-      // Fetch ALL campaign data rows
-      let allData: { campaign_order_name: string }[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
+      // Fetch unique advertiser and agency combinations from daily_priorities table
+      const { data, error } = await supabase
+        .from('daily_priorities')
+        .select('client_name, agency_name')
+        .not('client_name', 'is', null);
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('campaign_data')
-          .select('campaign_order_name')
-          .range(from, from + pageSize - 1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          allData = [...allData, ...data];
-          from += pageSize;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      // Get unique campaign names first
-      const uniqueCampaigns = [...new Set(allData.map(row => row.campaign_order_name))];
+      if (error) throw error;
 
       // Extract unique advertiser names and build agency-to-advertisers mapping
       const advertisersSet = new Set<string>();
       const agencyToAdvertisers = new Map<string, Set<string>>();
 
-      uniqueCampaigns.forEach(campaignName => {
-        const advertiser = extractAdvertiserName(campaignName);
-        const { agency } = extractAgencyInfo(campaignName);
+      (data || []).forEach(row => {
+        const advertiser = row.client_name;
+        const agency = row.agency_name;
 
         if (advertiser && advertiser.trim()) {
           const trimmedAdvertiser = advertiser.trim();
@@ -80,6 +60,6 @@ export function useAdvertisersList() {
       return { advertisers, byAgency };
     },
     enabled: !!supabase,
-    staleTime: 5 * 60 * 1000, // 5 minutes - advertisers don't change often
+    staleTime: 1 * 60 * 1000, // 1 minute - refresh more frequently for better UX
   });
 }
