@@ -88,7 +88,11 @@ export default function EditTaskModal({
 
   const validateTicketUrl = (url: string): boolean => {
     // For pre-launch and launches sections, ticket URL is optional
-    if (formData.section === 'pre_launch' || formData.section === 'launches') {
+    // Also allow moving tasks from these sections to other sections without requiring a URL
+    const isInOptionalSection = formData.section === 'pre_launch' || formData.section === 'launches';
+    const wasInOptionalSection = task.section === 'pre_launch' || task.section === 'launches';
+
+    if (isInOptionalSection || wasInOptionalSection) {
       if (!url || url.trim() === '') {
         setTicketUrlError('');
         return true; // Optional for these sections
@@ -101,6 +105,7 @@ export default function EditTaskModal({
       }
     }
 
+    // If a URL is provided, validate its format
     const pattern = /^https:\/\/mediajel\.io\/tasks\/details\/.+$/;
     if (!pattern.test(url)) {
       setTicketUrlError('URL must start with "https://mediajel.io/tasks/details/" followed by a task ID');
