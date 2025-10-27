@@ -196,6 +196,14 @@ export function useDailyPriorities(date: string) {
     });
 
     if (tasksToCarryForward.length > 0) {
+      // Log what we're about to carry forward for verification
+      console.log(`[Carry Forward] Carrying forward ${tasksToCarryForward.length} tasks from ${mostRecentDate} to ${targetDate}`);
+      console.log(`[Carry Forward] Sample task:`, {
+        client_name: tasksToCarryForward[0].client_name,
+        created_at: tasksToCarryForward[0].created_at,
+        active_date: tasksToCarryForward[0].active_date
+      });
+
       // Use ignoreDuplicates option to prevent errors when tasks already exist
       // This is safer than catching and ignoring error codes
       const { error: insertError } = await supabase
@@ -203,8 +211,12 @@ export function useDailyPriorities(date: string) {
         .insert(tasksToCarryForward, { ignoreDuplicates: true });
 
       if (insertError) {
-        console.error('Error carrying forward tasks:', insertError);
+        console.error('[Carry Forward] Error carrying forward tasks:', insertError);
+      } else {
+        console.log(`[Carry Forward] Successfully carried forward ${tasksToCarryForward.length} tasks`);
       }
+    } else {
+      console.log(`[Carry Forward] No tasks to carry forward from ${mostRecentDate} to ${targetDate}`);
     }
   };
 
