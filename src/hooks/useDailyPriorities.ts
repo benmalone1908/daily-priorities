@@ -120,29 +120,14 @@ export function useDailyPriorities(date: string) {
       maxPriorityBySection[task.section] = Math.max(currentMax, task.priority_order);
     });
 
-    // Group by unique task identifier (client_name + created_at timestamp)
-    // Keep only the MOST RECENT active_date version of each task (which has the latest section/details)
-    const uniqueTasks = new Map<string, typeof allTasks[0]>();
-
-    allTasks.forEach(task => {
-      const key = `${task.client_name}_${task.created_at}`;
-      if (!uniqueTasks.has(key)) {
-        // First time seeing this task, add it
-        uniqueTasks.set(key, task);
-      } else {
-        // Task already exists, keep the one with the most recent active_date
-        const existing = uniqueTasks.get(key)!;
-        if (task.active_date > existing.active_date) {
-          uniqueTasks.set(key, task);
-        }
-      }
-    });
+    // Since we're only getting tasks from one date (mostRecentDate), no deduplication needed
+    // All tasks are already unique within that single date
 
     // Filter out tasks that were completed before the target date
     // A task should NOT appear on target date if:
     // - It has completed_at set, AND
     // - The completed_at date is on or before the target date
-    const filteredTasks = Array.from(uniqueTasks.values())
+    const filteredTasks = allTasks
       .filter(task => {
         const key = `${task.client_name}_${task.created_at}`;
 
