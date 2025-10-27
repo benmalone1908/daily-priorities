@@ -77,13 +77,29 @@ export function useDailyPriorities(date: string) {
       .select('*')
       .eq('active_date', targetDate);
 
-    // Get ALL incomplete tasks from dates before today (using active_date, not created_date)
+    // Get incomplete tasks from the most recent previous date only
+    // This improves performance by not processing hundreds of historical tasks
+    // Find the most recent date with tasks before target date
+    const { data: recentDates } = await supabase
+      .from('daily_priorities')
+      .select('active_date')
+      .lt('active_date', targetDate)
+      .order('active_date', { ascending: false })
+      .limit(1);
+
+    if (!recentDates || recentDates.length === 0) {
+      return; // No previous dates to carry forward from
+    }
+
+    const mostRecentDate = recentDates[0].active_date;
+
+    // Get ALL incomplete tasks from the most recent date only
     const { data: allTasks, error } = await supabase
       .from('daily_priorities')
       .select('*')
-      .lt('active_date', targetDate)
+      .eq('active_date', mostRecentDate)
       .eq('completed', false)
-      .order('active_date', { ascending: false });
+      .order('priority_order', { ascending: true });
 
     if (error || !allTasks || allTasks.length === 0) {
       return;
