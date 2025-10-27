@@ -56,6 +56,7 @@ export interface DailyPriorityInsert {
   assignees?: string[];
   completed?: boolean;
   created_by?: string | null;
+  created_at?: string; // CRITICAL: Include to preserve task identity during carry-forward
 }
 
 export interface DailyPriorityUpdate {
