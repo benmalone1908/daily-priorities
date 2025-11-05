@@ -59,8 +59,12 @@ export default function AddTaskModal({
     }));
   }, [nextPriorityOrder]);
 
-  const { data: agencies = [] } = useAgenciesList();
-  const { data: advertisersData } = useAdvertisersList();
+  const { data: agencies = [], isLoading: isLoadingAgencies, error: agenciesError } = useAgenciesList();
+  const { data: advertisersData, isLoading: isLoadingAdvertisers, error: advertisersError } = useAdvertisersList();
+
+  // Debug logging
+  console.log('[AddTaskModal] agencies:', agencies.length, 'loading:', isLoadingAgencies, 'error:', agenciesError);
+  console.log('[AddTaskModal] advertisers:', advertisersData?.advertisers.length, 'loading:', isLoadingAdvertisers, 'error:', advertisersError);
 
   // Get filtered advertisers based on selected agency
   const advertisers = (() => {
