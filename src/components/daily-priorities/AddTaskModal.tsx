@@ -124,7 +124,14 @@ export default function AddTaskModal({
       return;
     }
 
-    const priorityNum = parseInt(formData.priority_order) || nextPriorityOrder;
+    // Parse and validate priority number
+    let priorityNum = parseInt(formData.priority_order);
+
+    // If invalid (NaN, negative, or zero), use the next available priority
+    if (isNaN(priorityNum) || priorityNum < 1) {
+      console.warn('Invalid priority_order entered:', formData.priority_order, '- using default:', nextPriorityOrder);
+      priorityNum = nextPriorityOrder;
+    }
 
     const taskToAdd = {
       active_date: date,
@@ -188,7 +195,13 @@ export default function AddTaskModal({
               type="number"
               min="1"
               value={formData.priority_order}
-              onChange={(e) => setFormData({ ...formData, priority_order: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow positive integers or empty string
+                if (value === '' || parseInt(value) >= 1) {
+                  setFormData({ ...formData, priority_order: value });
+                }
+              }}
               placeholder="1"
               autoFocus
             />
