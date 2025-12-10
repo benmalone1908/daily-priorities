@@ -506,7 +506,12 @@ export function useDailyPriorities(date: string) {
           const oldSection = task.section;
           const oldPriorityOrder = task.priority_order;
 
-          // Get the max priority_order in the target section
+          // IMPORTANT: Validate that we can safely identify this task
+          if (!task.created_at) {
+            throw new Error('Cannot update task: missing created_at timestamp. This task may be corrupted.');
+          }
+
+          // Get the max priority_order in the target section for the current date
           const { data: sectionTasks } = await supabase
             .from('daily_priorities')
             .select('priority_order')
@@ -519,7 +524,7 @@ export function useDailyPriorities(date: string) {
             ? sectionTasks[0].priority_order + 1
             : 1;
 
-          // Update with new section and priority_order
+          // Update current date's record with new section and priority_order
           const { data, error } = await supabase
             .from('daily_priorities')
             .update({
@@ -532,6 +537,33 @@ export function useDailyPriorities(date: string) {
             .single();
 
           if (error) throw error;
+
+          // CRITICAL FIX: Update all future instances of this task to maintain the new section/order
+          // This ensures that if carry-forward already ran, future dates reflect the changes
+          // Task identity: (client_name + created_at)
+          let futureUpdateQuery = supabase
+            .from('daily_priorities')
+            .update({
+              section: updates.section,
+              priority_order: nextPriorityOrder, // Use same priority_order for consistency
+              updated_by: currentUser?.id || null
+            })
+            .gt('active_date', task.active_date);
+
+          // Match on task identity
+          if (task.client_name === null) {
+            futureUpdateQuery = futureUpdateQuery.is('client_name', null);
+          } else {
+            futureUpdateQuery = futureUpdateQuery.eq('client_name', task.client_name);
+          }
+          futureUpdateQuery = futureUpdateQuery.eq('created_at', task.created_at);
+
+          const { error: futureUpdateError } = await futureUpdateQuery;
+
+          if (futureUpdateError) {
+            console.error('Error updating future instances:', futureUpdateError);
+            // Don't throw - current date update succeeded, future updates are best-effort
+          }
 
           // Determine specific action for logging
           const action: ActivityAction = updates.section === 'blocked' ? 'blocked' :
@@ -551,7 +583,7 @@ export function useDailyPriorities(date: string) {
             }
           });
 
-          // Reorder remaining tasks in the old section to close the gap
+          // Reorder remaining tasks in the old section to close the gap (current date only)
           const { data: remainingTasks } = await supabase
             .from('daily_priorities')
             .select('id, priority_order')
@@ -770,8 +802,73 @@ export function useDailyPriorities(date: string) {
         }
 
         return data as DailyPriority;
+      } else if (updates.priority_order !== undefined && updates.section === undefined) {
+        // If updating priority_order without changing section, propagate to future dates
+        // This ensures that manual priority_order changes are maintained on future dates
+        if (!currentTask.created_at) {
+          throw new Error('Cannot update task: missing created_at timestamp. This task may be corrupted.');
+        }
+
+        // Update current date's record
+        const { data, error } = await supabase
+          .from('daily_priorities')
+          .update({
+            ...updates,
+            updated_by: currentUser?.id || null
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Update all future instances to maintain the new priority_order
+        let futureUpdateQuery = supabase
+          .from('daily_priorities')
+          .update({
+            priority_order: updates.priority_order,
+            updated_by: currentUser?.id || null
+          })
+          .gt('active_date', currentTask.active_date)
+          .eq('section', currentTask.section); // Only update same section
+
+        // Match on task identity
+        if (currentTask.client_name === null) {
+          futureUpdateQuery = futureUpdateQuery.is('client_name', null);
+        } else {
+          futureUpdateQuery = futureUpdateQuery.eq('client_name', currentTask.client_name);
+        }
+        futureUpdateQuery = futureUpdateQuery.eq('created_at', currentTask.created_at);
+
+        const { error: futureUpdateError } = await futureUpdateQuery;
+
+        if (futureUpdateError) {
+          console.error('Error updating future instances for priority_order:', futureUpdateError);
+          // Don't throw - current date update succeeded
+        }
+
+        // Log the update
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        if (currentTask.priority_order !== updates.priority_order) {
+          changes.priority_order = {
+            before: currentTask.priority_order,
+            after: updates.priority_order
+          };
+        }
+
+        if (Object.keys(changes).length > 0) {
+          await logActivity({
+            priority_id: id,
+            user_id: getCurrentUserId(),
+            action: 'updated',
+            task_description: data.client_name || 'Unnamed task',
+            changes
+          });
+        }
+
+        return data as DailyPriority;
       } else {
-        // For other updates (like priority_order, section, completed), only update this specific record
+        // For other updates (like other fields), only update this specific record
         const { data, error } = await supabase
           .from('daily_priorities')
           .update({
