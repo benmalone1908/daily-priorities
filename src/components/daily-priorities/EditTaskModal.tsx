@@ -107,11 +107,12 @@ export default function EditTaskModal({
 
     // If a URL is provided, validate its format
     // Accept URLs that start with either /tasks/details/ or /tasks/projects/
-    const detailsPattern = /^https:\/\/mediajel\.io\/tasks\/details\/.+$/;
-    const projectsPattern = /^https:\/\/mediajel\.io\/tasks\/projects\/.+$/;
+    // Allow both mediajel.io and stage.mediajel.io domains
+    const detailsPattern = /^https:\/\/(mediajel\.io|stage\.mediajel\.io)\/tasks\/details\/.+$/;
+    const projectsPattern = /^https:\/\/(mediajel\.io|stage\.mediajel\.io)\/tasks\/projects\/.+$/;
     
     if (!detailsPattern.test(url) && !projectsPattern.test(url)) {
-      setTicketUrlError('URL must start with "https://mediajel.io/tasks/details/" or "https://mediajel.io/tasks/projects/" followed by an ID');
+      setTicketUrlError('URL must start with "https://mediajel.io/tasks/details/", "https://mediajel.io/tasks/projects/", "https://stage.mediajel.io/tasks/details/", or "https://stage.mediajel.io/tasks/projects/" followed by an ID');
       return false;
     }
 
@@ -422,7 +423,7 @@ export default function EditTaskModal({
                   validateTicketUrl(e.target.value);
                 }
               }}
-              placeholder="https://mediajel.io/tasks/details/... or https://mediajel.io/tasks/projects/..."
+              placeholder="https://mediajel.io/tasks/details/... or https://stage.mediajel.io/tasks/details/..."
               className={ticketUrlError ? 'border-destructive' : ''}
             />
             {ticketUrlError && (
