@@ -7,6 +7,7 @@ import { SupabaseProvider } from "@/contexts/SupabaseContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import RenewalsStatusPage from "./pages/RenewalsStatusPage";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/renewals-status"
+                element={
+                  <ProtectedRoute>
+                    <RenewalsStatusPage />
                   </ProtectedRoute>
                 }
               />
