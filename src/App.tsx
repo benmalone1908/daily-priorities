@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import RenewalsStatusPage from "./pages/RenewalsStatusPage";
+import LaunchStatusPage from "./pages/LaunchStatusPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <RenewalsStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/launch-status"
+                element={
+                  <ProtectedRoute>
+                    <LaunchStatusPage />
                   </ProtectedRoute>
                 }
               />

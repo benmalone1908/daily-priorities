@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DailyPriority, PrioritySection as PrioritySectionType, SECTION_LABELS, DailyPriorityInsert, DailyPriorityUpdate } from '@/types/daily-priorities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -82,6 +83,7 @@ export default function PrioritySection({
   onDeletePriority,
   onReorderPriorities
 }: PrioritySectionProps) {
+  const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
 
   const sensors = useSensors(
@@ -127,15 +129,27 @@ export default function PrioritySection({
               </span>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Task
-          </Button>
+          <div className="flex items-center gap-2">
+            {section === 'launches' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/launch-status')}
+                className="gap-2"
+              >
+                Status Board
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Task
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

@@ -197,31 +197,43 @@ export const RENEWAL_STATUS_COLORS: Record<RenewalStatus, string> = {
 
 // Renewal Status Tracking Types
 export type RenewalProcessStatus =
-  | 'Renewal Pending'
-  | 'Recently Renewed'
-  | 'Live'
-  | 'Queued'
-  | 'Paused - Client Request';
+  | 'Not Started'
+  | 'In Progress'
+  | 'Blocked'
+  | 'Completed';
 
 export type RenewalType =
   | 'Extension'
   | 'Relaunch'
   | 'NOT Renewing';
 
+/**
+ * Represents a renewal/launch status tracking record.
+ * Tracks the progress of a campaign through various workflow steps.
+ */
 export interface RenewalStatusTracking {
   id: string;
   campaign_name: string;
   renewal_date: string | null;
   task_url: string | null;
+  /** Project and kickoff ticket has been created */
   project_kickoff_ticket_creation: boolean;
+  /** BT (Business Terms) have been updated/submitted */
   bt_approval: boolean;
+  /** BT (Business Terms) have been approved by the approver */
+  bt_approved: boolean;
+  /** Coda strategy document has been completed */
   coda_strategy: boolean;
   dashboard_update: boolean;
+  /** DSP creative assets have been set up */
+  dsp_creative_setup: boolean;
   dsp_update: boolean;
   pre_qa: boolean;
   post_qa: boolean;
   status: RenewalProcessStatus;
   renewal_type: RenewalType;
+  notes: string | null;
+  notes_updated_at: string | null;
   completed: boolean;
   completed_at: string | null;
   created_at: string;
@@ -230,13 +242,22 @@ export interface RenewalStatusTracking {
   updated_by: string | null;
 }
 
+/**
+ * Data for creating a new renewal/launch status tracking record.
+ * All workflow step fields default to false if not provided.
+ */
 export interface RenewalStatusTrackingInsert {
   campaign_name: string;
   renewal_date?: string | null;
   project_kickoff_ticket_creation?: boolean;
+  /** BT (Business Terms) have been updated/submitted */
   bt_approval?: boolean;
+  /** BT (Business Terms) have been approved by the approver */
+  bt_approved?: boolean;
   coda_strategy?: boolean;
   dashboard_update?: boolean;
+  /** DSP creative assets have been set up */
+  dsp_creative_setup?: boolean;
   dsp_update?: boolean;
   pre_qa?: boolean;
   post_qa?: boolean;
@@ -245,18 +266,29 @@ export interface RenewalStatusTrackingInsert {
   created_by?: string | null;
 }
 
+/**
+ * Data for updating a renewal/launch status tracking record.
+ * All fields are optional - only provided fields will be updated.
+ */
 export interface RenewalStatusTrackingUpdate {
   renewal_date?: string | null;
   task_url?: string | null;
   project_kickoff_ticket_creation?: boolean;
+  /** BT (Business Terms) have been updated/submitted */
   bt_approval?: boolean;
+  /** BT (Business Terms) have been approved by the approver */
+  bt_approved?: boolean;
   coda_strategy?: boolean;
   dashboard_update?: boolean;
+  /** DSP creative assets have been set up */
+  dsp_creative_setup?: boolean;
   dsp_update?: boolean;
   pre_qa?: boolean;
   post_qa?: boolean;
   status?: RenewalProcessStatus;
   renewal_type?: RenewalType;
+  notes?: string | null;
+  notes_updated_at?: string | null;
   completed?: boolean;
   completed_at?: string | null;
   updated_by?: string | null;
