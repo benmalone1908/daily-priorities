@@ -27,6 +27,23 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, ArrowLeft, CalendarIcon } from 'lucide-react';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-6 flex items-center justify-center">
+      <Card className="max-w-md">
+        <CardHeader>
+          <CardTitle className="text-red-600">Something went wrong</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{error.message}</p>
+          <Button onClick={resetErrorBoundary}>Try again</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function LaunchStatusPage() {
   const navigate = useNavigate();
@@ -52,9 +69,15 @@ export default function LaunchStatusPage() {
   const [notesInputs, setNotesInputs] = useState<Record<string, string>>({});
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Split records into open and completed
-  const openRecords = trackingRecords.filter(r => !r.completed);
-  const completedRecords = trackingRecords.filter(r => r.completed);
+  // Split records into open and completed, sorted by launch date (stored in renewal_date field)
+  const sortByLaunchDate = (a: typeof trackingRecords[0], b: typeof trackingRecords[0]) => {
+    if (!a.renewal_date && !b.renewal_date) return 0;
+    if (!a.renewal_date) return 1;
+    if (!b.renewal_date) return -1;
+    return new Date(a.renewal_date).getTime() - new Date(b.renewal_date).getTime();
+  };
+  const openRecords = trackingRecords.filter(r => !r.completed).sort(sortByLaunchDate);
+  const completedRecords = trackingRecords.filter(r => r.completed).sort(sortByLaunchDate);
 
   const handleAddManual = () => {
     if (!newCampaignName.trim()) {
@@ -67,14 +90,19 @@ export default function LaunchStatusPage() {
       return;
     }
 
-    createTrackingRecord({
-      campaign_name: newCampaignName.trim(),
-      renewal_date: newLaunchDate ? format(newLaunchDate, 'yyyy-MM-dd') : null
-    });
-
-    setNewCampaignName('');
-    setNewLaunchDate(undefined);
-    setShowAddDialog(false);
+    createTrackingRecord(
+      {
+        campaign_name: newCampaignName.trim(),
+        renewal_date: newLaunchDate ? format(newLaunchDate, 'yyyy-MM-dd') : null
+      },
+      {
+        onSuccess: () => {
+          setNewCampaignName('');
+          setNewLaunchDate(undefined);
+          setShowAddDialog(false);
+        }
+      }
+    );
   };
 
   const handleCheckboxChange = (
@@ -157,16 +185,17 @@ export default function LaunchStatusPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
-      <div className="max-w-[1600px] mx-auto">
-        <Card className="shadow-sm">
-          <CardHeader className="border-b bg-white">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/')}
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
+        <div className="max-w-[1600px] mx-auto">
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-white">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/')}
                   className="h-8 w-8 p-0"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -398,7 +427,8 @@ export default function LaunchStatusPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        </AlertDialog>
+      </div>
+    </ErrorBoundary>
   );
 }

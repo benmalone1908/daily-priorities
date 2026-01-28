@@ -164,9 +164,13 @@ export function createStatusTrackingHook(config: StatusTrackingConfig) {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: [queryKey] });
       },
-      onError: (error) => {
+      onError: (error: unknown) => {
         console.error('Error updating tracking record:', error);
-        toast.error('Failed to update tracking record');
+        const errorMessage = (error as { message?: string })?.message || 'Unknown error';
+        toast.error(`Failed to update: ${errorMessage}`, {
+          duration: 5000,
+          description: 'Please try again. If the problem persists, refresh the page.'
+        });
       }
     });
 
@@ -186,9 +190,13 @@ export function createStatusTrackingHook(config: StatusTrackingConfig) {
         queryClient.invalidateQueries({ queryKey: [queryKey] });
         toast.success('Tracking record deleted');
       },
-      onError: (error) => {
+      onError: (error: unknown) => {
         console.error('Error deleting tracking record:', error);
-        toast.error('Failed to delete tracking record');
+        const errorMessage = (error as { message?: string })?.message || 'Unknown error';
+        toast.error(`Failed to delete: ${errorMessage}`, {
+          duration: 5000,
+          description: 'Please try again. If the problem persists, refresh the page.'
+        });
       }
     });
 

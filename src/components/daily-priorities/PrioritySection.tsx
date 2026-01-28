@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DailyPriority, PrioritySection as PrioritySectionType, SECTION_LABELS, DailyPriorityInsert, DailyPriorityUpdate } from '@/types/daily-priorities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import TaskRow from './TaskRow';

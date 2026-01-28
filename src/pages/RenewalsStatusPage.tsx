@@ -29,6 +29,23 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, ArrowLeft, CalendarIcon, ChevronDown } from 'lucide-react';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-6 flex items-center justify-center">
+      <Card className="max-w-md">
+        <CardHeader>
+          <CardTitle className="text-red-600">Something went wrong</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">{error.message}</p>
+          <Button onClick={resetErrorBoundary}>Try again</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function RenewalsStatusPage() {
   const navigate = useNavigate();
@@ -67,6 +84,7 @@ export default function RenewalsStatusPage() {
         }
       } catch (error) {
         console.error('Failed to load campaign data:', error);
+        toast.error('Could not load upcoming renewals. Please refresh and try again.');
       }
     };
     loadCampaignData();
@@ -83,9 +101,15 @@ export default function RenewalsStatusPage() {
   const [activeTab, setActiveTab] = useState('open');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Split records into open and completed
-  const openRecords = trackingRecords.filter(r => !r.completed);
-  const completedRecords = trackingRecords.filter(r => r.completed);
+  // Split records into open and completed, sorted by renewal_date
+  const sortByRenewalDate = (a: typeof trackingRecords[0], b: typeof trackingRecords[0]) => {
+    if (!a.renewal_date && !b.renewal_date) return 0;
+    if (!a.renewal_date) return 1;
+    if (!b.renewal_date) return -1;
+    return new Date(a.renewal_date).getTime() - new Date(b.renewal_date).getTime();
+  };
+  const openRecords = trackingRecords.filter(r => !r.completed).sort(sortByRenewalDate);
+  const completedRecords = trackingRecords.filter(r => r.completed).sort(sortByRenewalDate);
 
   const handleAddManual = () => {
     if (!newCampaignName.trim()) {
@@ -98,14 +122,19 @@ export default function RenewalsStatusPage() {
       return;
     }
 
-    createTrackingRecord({
-      campaign_name: newCampaignName.trim(),
-      renewal_date: newRenewalDate ? format(newRenewalDate, 'yyyy-MM-dd') : null
-    });
-
-    setNewCampaignName('');
-    setNewRenewalDate(undefined);
-    setShowAddDialog(false);
+    createTrackingRecord(
+      {
+        campaign_name: newCampaignName.trim(),
+        renewal_date: newRenewalDate ? format(newRenewalDate, 'yyyy-MM-dd') : null
+      },
+      {
+        onSuccess: () => {
+          setNewCampaignName('');
+          setNewRenewalDate(undefined);
+          setShowAddDialog(false);
+        }
+      }
+    );
   };
 
   const handleAddFromRenewals = (campaignName: string, endDate?: string) => {
@@ -121,18 +150,26 @@ export default function RenewalsStatusPage() {
         const date = parseISO(endDate);
         if (isValid(date)) {
           formattedEndDate = format(date, 'yyyy-MM-dd');
+        } else {
+          toast.warning('Could not parse renewal date. You can set it manually.');
         }
       } catch (e) {
         console.error('Error parsing end date:', e);
+        toast.warning('Could not parse renewal date. You can set it manually.');
       }
     }
 
-    createTrackingRecord({
-      campaign_name: campaignName,
-      renewal_date: formattedEndDate
-    });
-
-    setShowSelectDialog(false);
+    createTrackingRecord(
+      {
+        campaign_name: campaignName,
+        renewal_date: formattedEndDate
+      },
+      {
+        onSuccess: () => {
+          setShowSelectDialog(false);
+        }
+      }
+    );
   };
 
   const handleCheckboxChange = (
@@ -206,10 +243,11 @@ export default function RenewalsStatusPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
-      <div className="max-w-[1600px] mx-auto">
-        <Card className="shadow-sm">
-          <CardHeader className="border-b bg-white">
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
+        <div className="max-w-[1600px] mx-auto">
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-white">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Button
@@ -455,7 +493,8 @@ export default function RenewalsStatusPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        </AlertDialog>
+      </div>
+    </ErrorBoundary>
   );
 }
