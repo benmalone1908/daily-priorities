@@ -22,14 +22,20 @@ export interface StatusTrackingConfig {
   displayName: string;
 }
 
+/** Options for mutation callbacks */
+export interface MutationCallbackOptions {
+  onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+}
+
 export interface StatusTrackingHookReturn {
   trackingRecords: RenewalStatusTracking[];
   isLoading: boolean;
   error: Error | null;
   isError: boolean;
-  createTrackingRecord: (insert: RenewalStatusTrackingInsert) => void;
-  updateTrackingRecord: (params: { id: string; updates: RenewalStatusTrackingUpdate }) => void;
-  deleteTrackingRecord: (id: string) => void;
+  createTrackingRecord: (insert: RenewalStatusTrackingInsert, options?: MutationCallbackOptions) => void;
+  updateTrackingRecord: (params: { id: string; updates: RenewalStatusTrackingUpdate }, options?: MutationCallbackOptions) => void;
+  deleteTrackingRecord: (id: string, options?: MutationCallbackOptions) => void;
   hasTrackingRecord: (campaignName: string) => boolean;
   isCreating: boolean;
   isUpdating: boolean;
