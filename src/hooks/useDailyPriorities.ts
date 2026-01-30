@@ -622,19 +622,16 @@ export function useDailyPriorities(date: string) {
       // - client_name is the only user-editable identity field
       // - Changing client_name creates a NEW task identity (only affects current date)
       //
-      // SECONDARY FIELDS are split into two categories:
-      // 1. CONSISTENT FIELDS: Should sync across ALL dates (ticket_url, agency_name, assignees)
-      //    - These represent current state that should be the same everywhere
-      // 2. HISTORICAL FIELDS: Only update current date (description)
-      //    - These preserve a paper trail of how the task evolved over time
+      // SECONDARY FIELDS: Should sync across ALL FUTURE dates (ticket_url, agency_name, assignees, description)
+      // - These represent current state that should be the same everywhere
+      // - Description now syncs to future dates to ensure updates appear on carried-forward tasks
+      // - Past dates remain unchanged to preserve historical record
       const isChangingPrimaryIdentity = updates.client_name !== undefined;
 
       const isUpdatingConsistentFields =
         updates.agency_name !== undefined ||
         updates.ticket_url !== undefined ||
-        updates.assignees !== undefined;
-
-      const isUpdatingHistoricalFields =
+        updates.assignees !== undefined ||
         updates.description !== undefined;
 
       if (isChangingPrimaryIdentity) {
@@ -679,8 +676,9 @@ export function useDailyPriorities(date: string) {
 
         return data as DailyPriority;
       } else if (isUpdatingConsistentFields) {
-        // Update CONSISTENT FIELDS across ALL instances of this task (same client_name + created_at across all dates)
-        // This ensures fields like ticket_url, agency_name, assignees stay consistent everywhere
+        // Update CONSISTENT FIELDS across current and FUTURE instances of this task
+        // This ensures fields like ticket_url, agency_name, assignees, description stay consistent
+        // on all future dates (today onwards), while preserving past dates as historical record
         //
         // Task identity: (client_name + created_at)
         // - created_at is the immutable database timestamp that uniquely identifies this task
@@ -692,17 +690,15 @@ export function useDailyPriorities(date: string) {
           throw new Error('Cannot update task: missing created_at timestamp. This task may be corrupted.');
         }
 
-        // Filter out description from consistent fields update (description is historical)
-        const consistentUpdates = { ...updates };
-        delete consistentUpdates.description;
-
         // Build the query carefully to handle null values
+        // Update current date and all future dates (active_date >= current date)
         let query = supabase
           .from('daily_priorities')
           .update({
-            ...consistentUpdates,
+            ...updates,
             updated_by: currentUser?.id || null
-          });
+          })
+          .gte('active_date', currentTask.active_date); // Only update current and future dates
 
         // Handle null client_name properly
         if (currentTask.client_name === null) {
@@ -738,48 +734,6 @@ export function useDailyPriorities(date: string) {
         if (error) throw error;
 
         // Log the update with changes
-        const changes: Record<string, { before: unknown; after: unknown }> = {};
-        Object.keys(updates).forEach(key => {
-          const typedKey = key as keyof DailyPriorityUpdate;
-          if (key !== 'updated_by' && currentTask[typedKey] !== updates[typedKey]) {
-            changes[key] = {
-              before: currentTask[typedKey],
-              after: updates[typedKey]
-            };
-          }
-        });
-
-        if (Object.keys(changes).length > 0) {
-          await logActivity({
-            priority_id: id,
-            user_id: getCurrentUserId(),
-            action: 'updated',
-            task_description: data.client_name || 'Unnamed task',
-            changes
-          });
-        }
-
-        return data as DailyPriority;
-      } else if (isUpdatingHistoricalFields) {
-        // Update HISTORICAL FIELDS for only the current date's record
-        // This preserves a paper trail showing how the task description evolved over time
-        // Future dates will get the updated description via carry-forward
-        const { data, error } = await supabase
-          .from('daily_priorities')
-          .update({
-            ...updates,
-            updated_by: currentUser?.id || null
-          })
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Historical field update error:', { error, updates });
-          throw new Error(`Failed to update task: ${error.message}`);
-        }
-
-        // Log the update
         const changes: Record<string, { before: unknown; after: unknown }> = {};
         Object.keys(updates).forEach(key => {
           const typedKey = key as keyof DailyPriorityUpdate;
