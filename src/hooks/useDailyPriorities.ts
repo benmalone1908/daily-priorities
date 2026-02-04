@@ -626,7 +626,11 @@ export function useDailyPriorities(date: string) {
       // - These represent current state that should be the same everywhere
       // - Description now syncs to future dates to ensure updates appear on carried-forward tasks
       // - Past dates remain unchanged to preserve historical record
-      const isChangingPrimaryIdentity = updates.client_name !== undefined;
+      //
+      // IMPORTANT: Only consider it a primary identity change if client_name ACTUALLY changed,
+      // not just if it's present in the updates object. The EditTaskModal sends all fields
+      // including unchanged ones, so we must compare against the current value.
+      const isChangingPrimaryIdentity = updates.client_name !== undefined && updates.client_name !== currentTask.client_name;
 
       const isUpdatingConsistentFields =
         updates.agency_name !== undefined ||
