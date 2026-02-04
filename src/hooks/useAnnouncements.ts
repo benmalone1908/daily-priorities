@@ -22,7 +22,7 @@ export function useAnnouncements() {
         .from('announcements')
         .select('*')
         .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
+        .order('expires_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching announcements:', error);
